@@ -140,8 +140,8 @@ async function loginAuthority(req, res, next) {
         }
 
         const authUser = await db.get(
-            `SELECT * FROM authority_users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)`,
-            [username.trim(), username.trim()]
+            `SELECT * FROM authority_users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(badge_number) = LOWER(?)`,
+            [username.trim(), username.trim(), username.trim()]
         );
 
         if (!authUser) {

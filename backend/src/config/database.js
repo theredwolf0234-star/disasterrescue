@@ -274,6 +274,78 @@ async function createTables() {
     `);
 
     console.log('[DB] All 9 relational database tables initialized successfully.');
+    await seedDefaultAdminAndAuthority();
+}
+
+async function seedDefaultAdminAndAuthority() {
+    try {
+        const bcrypt = require('bcryptjs');
+
+        // 1. Ensure Admin AISTER23 exists with password @aster23
+        const adminHash = await bcrypt.hash('@aster23', 10);
+        const adminUser = await get(`SELECT id FROM authority_users WHERE LOWER(username) = LOWER('AISTER23') OR LOWER(badge_number) = LOWER('AISTER23')`);
+        if (!adminUser) {
+            await run(
+                `INSERT OR REPLACE INTO authority_users (id, username, email, password_hash, badge_number, organization, role, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, 'ADMIN', datetime('now'), datetime('now'))`,
+                [
+                    'AUTH_admin_aister23',
+                    'AISTER23',
+                    'admin@aster23.gov.in',
+                    adminHash,
+                    'AISTER23',
+                    'Disaster Rescue Administration Command'
+                ]
+            );
+            console.log('[DB] Admin account AISTER23 created and verified.');
+        } else {
+            await run(
+                `UPDATE authority_users 
+                 SET password_hash = ?, badge_number = 'AISTER23', role = 'ADMIN', updated_at = datetime('now')
+                 WHERE id = ?`,
+                [adminHash, adminUser.id]
+            );
+            console.log('[DB] Admin account AISTER23 verified and active.');
+        }
+
+        // 2. Ensure ndrf_commander exists
+        const officerUser = await get(`SELECT id FROM authority_users WHERE LOWER(username) = LOWER('ndrf_commander')`);
+        if (!officerUser) {
+            const officerHash = await bcrypt.hash('authority123', 10);
+            await run(
+                `INSERT OR REPLACE INTO authority_users (id, username, email, password_hash, badge_number, organization, role, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, 'AUTHORITY', datetime('now'), datetime('now'))`,
+                [
+                    'AUTH_dev_officer_01',
+                    'ndrf_commander',
+                    'officer@ndrf.gov.in',
+                    officerHash,
+                    'NDRF-HQ-DELHI-01',
+                    'National Disaster Response Force (NDRF)'
+                ]
+            );
+            console.log('[DB] NDRF Authority account verified and active.');
+        }
+
+        // 3. Ensure default shelters exist if table is empty
+        const shelterCount = await get(`SELECT COUNT(*) as cnt FROM shelters`);
+        if (!shelterCount || Number(shelterCount.cnt) === 0) {
+            const shelters = [
+                ['SHELTER_01', 'Central Relief Camp #1 (Hazratganj Community Complex)', 'Operational', 250, 42, 850, 2400, 65, 320, '850 Meal Packets, 2400L Potable Water, 65 Trauma First-Aid Kits', 26.8467, 80.9462],
+                ['SHELTER_02', 'Gomti Nagar Indoor Stadium Relief Station #2', 'Operational', 400, 118, 1400, 4500, 120, 500, '1400 Meal Packets, 4500L Potable Water, Emergency Surgical Kits', 26.8525, 80.9982],
+                ['SHELTER_03', 'Alambagh Safe Evacuation Refuge #3', 'Operational', 180, 25, 600, 1800, 40, 200, '600 Meal Packets, 1800L Potable Water, 40 First-Aid Kits', 26.8142, 80.9015]
+            ];
+            for (const s of shelters) {
+                await run(
+                    `INSERT INTO shelters (id, title, status, capacity, current_occupancy, food_packets, water_liters, medical_kits, blankets, resources_summary, latitude, longitude, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+                    s
+                );
+            }
+        }
+    } catch (seedErr) {
+        console.warn('[DB] Auto-seed warning:', seedErr.message);
+    }
 }
 
 module.exports = {
