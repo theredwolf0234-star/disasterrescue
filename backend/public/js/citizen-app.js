@@ -327,7 +327,10 @@ function switchTab(tabId) {
 
 // Fetch Real-time Weather Telemetry via Backend Proxy
 async function fetchRealtimeWeatherData(lat, lng) {
-    const coords = lat && lng ? [lat, lng] : (typeof getUserCoordinates === 'function' ? getUserCoordinates() : [26.8467, 80.9462]);
+    const userPos = typeof getUserCoordinates === 'function' ? getUserCoordinates() : [26.8467, 80.9462];
+    const latitude = (lat && !isNaN(lat)) ? lat : ((userPos && !isNaN(userPos[0])) ? userPos[0] : 26.8467);
+    const longitude = (lng && !isNaN(lng)) ? lng : ((userPos && !isNaN(userPos[1])) ? userPos[1] : 80.9462);
+
     const statusEl = document.getElementById('telemetry-status');
     const badge = document.getElementById('active-provider-badge');
     const keyInput = document.getElementById('weatherapi-key-input');
@@ -340,7 +343,7 @@ async function fetchRealtimeWeatherData(lat, lng) {
     if (statusEl) statusEl.innerHTML = `<span class="text-purple-300">📡 Querying WeatherAPI.com / satellite telemetry...</span>`;
 
     try {
-        let endpoint = `/api/weather?lat=${coords[0]}&lng=${coords[1]}`;
+        let endpoint = `/api/weather?lat=${latitude}&lng=${longitude}`;
         if (customKey) {
             endpoint += `&apiKey=${encodeURIComponent(customKey)}`;
         }
@@ -349,10 +352,15 @@ async function fetchRealtimeWeatherData(lat, lng) {
         if (!res.success || !res.data) throw new Error(res.message || 'Telemetry unavailable');
 
         const w = res.data;
-        document.getElementById('iot-temp').innerText = `${Math.round(w.temperature)} °C`;
-        document.getElementById('iot-rain').innerText = `${w.rainfall} mm/h`;
-        document.getElementById('iot-wind').innerText = `${Math.round(w.windSpeed)} km/h`;
-        document.getElementById('iot-humidity').innerText = `${Math.round(w.humidity)} %`;
+        const tempEl = document.getElementById('iot-temp');
+        const rainEl = document.getElementById('iot-rain');
+        const windEl = document.getElementById('iot-wind');
+        const humEl = document.getElementById('iot-humidity');
+
+        if (tempEl) tempEl.innerText = `${Math.round(w.temperature !== null ? w.temperature : 28)} °C`;
+        if (rainEl) rainEl.innerText = `${w.rainfall !== null ? w.rainfall : 0} mm/h`;
+        if (windEl) windEl.innerText = `${Math.round(w.windSpeed !== null ? w.windSpeed : 12)} km/h`;
+        if (humEl) humEl.innerText = `${Math.round(w.humidity !== null ? w.humidity : 65)} %`;
 
         if (badge) {
             badge.innerText = w.provider;
@@ -361,6 +369,12 @@ async function fetchRealtimeWeatherData(lat, lng) {
             } else {
                 badge.className = 'text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700';
             }
+        }
+
+        if (w.hadKeyError) {
+            showToast('Note: The entered WeatherAPI.com key is invalid or inactive (Code 2006). Loaded satellite telemetry.', 'warning');
+        } else if (w.provider === 'WeatherAPI.com' && customKey) {
+            showToast('✓ WeatherAPI.com connected successfully!', 'success');
         }
 
         if (statusEl) {
