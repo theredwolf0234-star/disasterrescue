@@ -1,0 +1,36 @@
+# Node modules
+node_modules/
+*/node_modules/
+package-lock.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Persistent databases
+backend/data/*.db
+backend/data/*.sqlite
+*.sqlite3
+*.db
+!backend/data/.gitkeep
+
+# Uploaded user files
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python & Streamlit artifacts if any
+__pycache__/
+*.pyc
+.streamlit/

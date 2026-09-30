@@ -1,0 +1,31 @@
+const express = require('express');
+const router = express.Router();
+const incidentController = require('../controllers/incidentController');
+const { verifyToken, optionalToken, requireRoles } = require('../middleware/authMiddleware');
+const { uploadEvidence } = require('../middleware/uploadMiddleware');
+
+// Overview statistics for dashboard counters (Restricted to AUTHORITY and ADMIN)
+router.get('/stats/overview', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.getIncidentStats);
+
+// List incidents: Citizen receives only own reports; Authority and Admin receive all
+router.get('/', verifyToken, incidentController.getIncidents);
+
+// Retrieve single incident with timeline notes: Citizen authorized for own only; Authority/Admin for all
+router.get('/:id', verifyToken, incidentController.getIncidentById);
+
+// Submit new emergency SOS beacon (Citizen authenticated or guest emergency dispatch)
+router.post('/', optionalToken, uploadEvidence.single('evidence'), incidentController.createIncident);
+
+// Update incident status (Restricted to AUTHORITY and ADMIN)
+router.patch('/:id', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.updateIncident);
+
+// Update incident real-time GPS location telemetry (Citizen for own incident, Authority/Admin for any)
+router.patch('/:id/location', verifyToken, incidentController.updateIncidentLocation);
+
+// Assign rescue team (Restricted to AUTHORITY and ADMIN)
+router.post('/:id/assign', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.assignRescueTeam);
+
+// Append incident timeline note (Authenticated: Citizen for own incident, Authority/Admin for any)
+router.post('/:id/notes', verifyToken, incidentController.addIncidentNote);
+
+module.exports = router;
