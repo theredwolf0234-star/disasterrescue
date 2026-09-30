@@ -1,0 +1,12 @@
+{
+  "name": "rescue-ai-frontend",
+  "version": "1.0.0",
+  "description": "Frontend UI for RescueAI Emergency Response",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

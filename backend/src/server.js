@@ -1,6 +1,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../../.env') });
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -69,9 +70,28 @@ app.use('/api/auth', strictLimiter);
 const uploadsPath = path.resolve(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath, { maxAge: '1d' }));
 
-// 7. Serve Frontend Assets for direct all-in-one deployment
-const frontendPath = path.resolve(__dirname, '../../frontend');
+// 7. Robust Frontend Static Asset Resolution (Monorepo, Sibling, or Nested public/ dir)
+function getFrontendDir() {
+    const candidates = [
+        path.resolve(__dirname, '../public'),        // Inside backend/public
+        path.resolve(__dirname, '../../frontend'),   // Monorepo root /frontend
+        path.resolve(__dirname, '../frontend'),      // Nested backend/frontend
+        path.resolve(process.cwd(), 'frontend'),     // cwd/frontend
+        path.resolve(process.cwd(), 'public'),       // cwd/public
+        process.cwd()                                // cwd itself
+    ];
+    for (const dir of candidates) {
+        if (fs.existsSync(path.join(dir, 'index.html'))) {
+            return dir;
+        }
+    }
+    return path.resolve(__dirname, '../public');
+}
+
+const frontendPath = getFrontendDir();
 app.use(express.static(frontendPath));
+app.use(express.static(path.resolve(__dirname, '../public')));
+app.use(express.static(path.resolve(__dirname, '../../frontend')));
 
 // 8. Health Check Endpoint
 app.get('/api/health', async (req, res) => {
@@ -106,9 +126,37 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/database', databaseRoutes);
 
-// 10. SPA / Static routing fallback
+// 10. SPA / Static routing fallbacks
+app.get('/', (req, res) => {
+    const fPath = getFrontendDir();
+    const indexPath = path.join(fPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+    }
+    res.json({
+        success: true,
+        service: 'RESCUE AI Emergency Platform API',
+        status: 'online',
+        endpoints: {
+            health: '/api/health',
+            incidents: '/api/incidents',
+            authority: '/authority',
+            database: '/api/database/overview'
+        }
+    });
+});
+
 app.get('/authority', (req, res) => {
-    res.sendFile(path.join(frontendPath, 'authority.html'));
+    const fPath = getFrontendDir();
+    const authPath = path.join(fPath, 'authority.html');
+    if (fs.existsSync(authPath)) {
+        return res.sendFile(authPath);
+    }
+    res.status(404).json({
+        success: false,
+        message: 'Authority portal file authority.html not found.',
+        checkedPath: authPath
+    });
 });
 
 // 11. Centralized 404 & Error Handling
