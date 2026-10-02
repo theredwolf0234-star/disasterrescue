@@ -1,0 +1,91 @@
+name: Build Android App & Play Store Bundle (AAB)
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'frontend/**'
+      - 'android/**'
+      - 'capacitor.config.json'
+      - 'package.json'
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build Signed AAB & APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Node Dependencies
+        run: npm install
+
+      - name: Sync Capacitor Android Project
+        run: npx cap sync android
+
+      - name: Ensure Keystore Exists for Release Signing
+        working-directory: android
+        run: |
+          if [ ! -f "app/rescue-ai-release-key.jks" ]; then
+            echo "Generating release keystore..."
+            keytool -genkeypair -v \
+              -keystore app/rescue-ai-release-key.jks \
+              -alias rescueai \
+              -keyalg RSA \
+              -keysize 2048 \
+              -validity 10000 \
+              -storepass rescueai2026secure \
+              -keypass rescueai2026secure \
+              -dname "CN=RESCUE AI, OU=Emergency, O=Rescue AI Inc, L=Lucknow, ST=UP, C=IN"
+          fi
+          
+          # Create key.properties if not present
+          cat <<EOF > key.properties
+          storePassword=rescueai2026secure
+          keyPassword=rescueai2026secure
+          keyAlias=rescueai
+          storeFile=rescue-ai-release-key.jks
+          EOF
+
+      - name: Make Gradlew Executable
+        run: chmod +x android/gradlew
+
+      - name: Build Android App Bundle (.aab for Play Store)
+        working-directory: android
+        run: ./gradlew bundleRelease --stacktrace
+
+      - name: Build Standalone APK (.apk for Direct Testing)
+        working-directory: android
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Upload Play Store AAB Bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: rescue-ai-playstore-bundle-aab
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+
+      - name: Upload Testable Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rescue-ai-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn

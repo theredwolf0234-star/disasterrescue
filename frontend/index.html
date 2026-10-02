@@ -27,6 +27,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
+    <!-- Mobile & PWA Optimization -->
+    <meta name="theme-color" content="#7E22CE">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RESCUE AI">
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <link rel="manifest" href="manifest.json">
+
     <!-- Custom Production Styles -->
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -541,18 +550,34 @@
                 <p class="font-bold text-slate-300">RESCUE AI &bull; AI Disaster Rescue Coordinator</p>
                 <p class="text-[11px] text-slate-500 mt-0.5">Automated Triage, Meteorology Telemetry & Volunteer Command Platform</p>
             </div>
-            <div class="text-[11px] text-slate-500">
-                <span>Emergency Hotline: <strong>112</strong></span> | 
-                <span>NDRF Helpline: <strong>1078</strong></span>
+            <div class="text-[11px] text-slate-500 space-y-1 sm:text-right">
+                <div>
+                    <span>Emergency Hotline: <strong>112</strong></span> | 
+                    <span>NDRF Helpline: <strong>1078</strong></span>
+                </div>
+                <div>
+                    <a href="privacy-policy.html" class="text-purple-400 hover:text-purple-300 underline font-medium">Privacy Policy</a> &bull;
+                    <a href="authority.html" class="text-slate-400 hover:text-slate-300">Authority Console</a>
+                </div>
             </div>
         </div>
     </footer>
 
     <!-- App Scripts (Modular Production Architecture) -->
+    <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/socket.js"></script>
     <script src="js/voice-sos.js"></script>
     <script src="js/citizen-map.js"></script>
     <script src="js/citizen-app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js').catch(err => {
+                    console.log('[PWA] Service worker registration ignored:', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

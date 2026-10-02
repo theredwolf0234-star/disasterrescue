@@ -8,9 +8,19 @@
     "dev": "node backend/src/server.js",
     "seed": "node backend/scripts/seed.js",
     "test": "node backend/test/api.test.js",
-    "test:e2e": "node backend/test/e2e-flow.test.js"
+    "test:e2e": "node backend/test/e2e-flow.test.js",
+    "app:sync": "npx cap sync android",
+    "app:copy": "npx cap copy android",
+    "app:open": "npx cap open android",
+    "app:icons": "powershell -ExecutionPolicy Bypass -File scripts/generate-icons.ps1"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/geolocation": "^8.2.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -33,5 +43,8 @@
     "ndrf"
   ],
   "author": "RESCUE AI Engineering",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.2"
+  }
 }

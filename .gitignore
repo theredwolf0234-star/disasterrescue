@@ -34,3 +34,15 @@ yarn-error.log*
 __pycache__/
 *.pyc
 .streamlit/
+
+# Android Build & Signing Artifacts
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+android/app/*.jks
+android/app/*.keystore
+android/key.properties
+*.aab
+*.apk
+
