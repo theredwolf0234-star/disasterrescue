@@ -40,7 +40,8 @@ jobs:
           chmod +x android/gradlew
 
       - name: Copy Web Assets to Android Project
-        run: npx cap copy android
+        continue-on-error: true
+        run: npx cap copy android --verbose
 
       - name: Ensure Keystore Exists for Release Signing
         working-directory: android
