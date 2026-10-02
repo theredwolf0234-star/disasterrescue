@@ -40,7 +40,7 @@ jobs:
           chmod +x android/gradlew
 
       - name: Sync Capacitor Android Project
-        run: npx cap sync android
+        run: npx cap sync android --verbose
 
       - name: Ensure Keystore Exists for Release Signing
         working-directory: android
