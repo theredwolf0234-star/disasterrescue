@@ -8,6 +8,7 @@ on:
       - 'android/**'
       - 'capacitor.config.json'
       - 'package.json'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 jobs:
