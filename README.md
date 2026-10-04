@@ -1,262 +1,316 @@
-# RESCUE AI — Disaster Rescue Coordinator Platform
+# AI Disaster Rescue Coordinator Platform (RESCUE AI)
 
 [![License: ISC](https://img.shields.io/badge/License-ISC-purple.svg)](https://opensource.org/licenses/ISC)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org)
-[![Build Status](https://img.shields.io/badge/tests-16%2F16%20passed-emerald)](https://github.com)
+[![Build Status](https://img.shields.io/badge/tests-26%2F26%20passed-emerald)](https://github.com)
 [![E2E Flow](https://img.shields.io/badge/e2e%20flow-verified%20live-emerald)](https://github.com)
+[![Deployment](https://img.shields.io/badge/Render-Deployment--Ready-blue)](https://disaster-rescuecoordinator.onrender.com)
 
-**RESCUE AI** is a production-grade, full-stack disaster coordination, situational awareness, and emergency triage platform. It integrates a citizen-facing dispatch portal, an authority command console, real-time WebSocket mesh telemetry, a transparent priority engine, persistent relational storage, and open meteorology satellite APIs.
+**AI Disaster Rescue Coordinator** is an end-to-end, full-stack emergency response and tactical situational awareness platform built for Smart India Hackathon (SIH) and emergency coordination demonstrations. It bridges distressed citizens on the ground with first responders, disaster authorities (NDRF, SDRF, Fire, EMS), and triage command centers in real time.
 
 ---
 
 > [!IMPORTANT]
-> **Emergency Advisory Notice:**
-> This platform is an emergency coordination and triage platform prototype. It does **not** automatically dispatch public emergency services (112 / 911 / Police / Fire / NDRF). In case of immediate life threat, contact **112** directly.
+> **Demo Emergency Coordination System Notice:**
+> This platform is an educational, prototype-tested emergency coordination platform. It does **not** possess an official authorization integration with national 112 / 911 / NDRF dispatch mainframes. For real life-threatening emergencies, dial **112** directly. All simulated features, mock fleets, and synthetic data are visibly tagged as **DEMO DATA**.
 
 ---
 
-## 1. Verified Real Working Flow
+## 1. Core End-to-End Workflow
+
+Every single step in this sequence connects directly to the persistent backend, database, and Socket.IO real-time event pipeline:
 
 ```
-CITIZEN SOS
+CITIZEN (Browser / Mobile)
     │
-    ▼ (POST /api/incidents with JWT, coordinates, category, evidence)
-DATABASE (SQLite / PostgreSQL)
+    ▼ (1. Captures GPS, emergency type, victim count, details, optional photo/audio)
+POST /api/incidents (JWT or guest with client validation)
     │
-    ▼ (Inserts incidents, incident_updates, notifications)
-SOCKET.IO EVENT (incident:new)
+    ▼ (2. Stores incident in SQLite/PostgreSQL with collision-proof SOS-YYYY-XXXXXX ID)
+DATABASE (Relational Persistence)
     │
-    ▼ (Dispatched to 'authorities' room)
-AUTHORITY DASHBOARD
+    ▼ (3. Evaluates multi-factor risk, environmental factors, victim count, terrain)
+AI / RISK ENGINE (Multi-Disaster Risk Engine: 0-100 Score & Transparent Heuristics)
     │
-    ▼ (Real-time alert displayed, queue updated, stats incremented)
-AUTHORITY ACTION
+    ▼ (4. Computes Priority: CRITICAL [76-100], HIGH [51-75], MODERATE [26-50], LOW [0-25])
+REAL-TIME SOCKET.IO MESH (incident:new event dispatched to authority channel)
     │
-    ▼ (PATCH /api/incidents/:id - Status change, squad assignment, timeline notes)
-DATABASE UPDATE
+    ▼ (5. Renders incident card, audio chime, tactical map beacon)
+AUTHORITY COMMAND DASHBOARD (AISTER23 / NDRF Commander)
     │
-    ▼ (Updates status, resolution notes, resolved_at, writes to incident_updates)
-SOCKET.IO EVENT (incident:updated & incident:status_changed)
+    ▼ (6. Commander acknowledges beacon: PATCH /api/incidents/:id/status -> ACKNOWLEDGED)
+DATABASE AUDIT TIMELINE (Recorded in incident_updates & audit_logs)
     │
-    ▼ (Dispatched to 'citizens' and incident room)
-CITIZEN REPORT STATUS UPDATE
-    (Citizen 'My Reports' view and details modal reflect new status in real-time)
-```
-
----
-
-## 2. Architecture & File Structure
-
-```
-LUCKNOW/
-│
-├── frontend/
-│   ├── index.html                  # Citizen emergency portal & live dispatch
-│   ├── authority.html              # Authority command dashboard & tactical grid
-│   ├── css/
-│   │   └── style.css               # Production theme tokens, animations, scrollbars
-│   ├── js/
-│   │   ├── api.js                  # Centralized REST API client & toast engine
-│   │   ├── socket.js               # Real-time Socket.IO client & connection badges
-│   │   ├── voice-sos.js            # Vanilla Web Speech API hands-free voice intake
-│   │   ├── citizen-map.js          # Mapbox GL / Leaflet citizen map with GPS & safe routing
-│   │   ├── citizen-app.js          # Citizen UI state, scoped reports & SOS dispatch
-│   │   └── authority-app.js        # Authority auth gate, triage queue & dispatch actions
-│   ├── assets/                     # Static imagery and logos
-│   └── package.json                # Frontend package descriptor
-│
-├── backend/
-│   ├── src/
-│   │   ├── server.js               # Express application with Helmet, CORS & Socket.IO
-│   │   ├── config/
-│   │   │   └── database.js         # Relational database adapter (PostgreSQL & SQLite)
-│   │   ├── controllers/
-│   │   │   ├── authController.js       # Register, login, authority-login, me, profile
-│   │   │   ├── incidentController.js   # Scoped SOS reports, triage, updates & stats
-│   │   │   ├── shelterController.js    # Relief shelters & resource inventory
-│   │   │   ├── rescueTeamController.js # Rescue squad dispatch & positions
-│   │   │   ├── weatherController.js    # WeatherAPI.com / Open-Meteo telemetry proxy
-│   │   │   ├── geocodeController.js    # Reverse and forward geocoding proxy
-│   │   │   ├── notificationController.js # System alerts
-│   │   │   └── auditController.js      # Administrative audit logs
-│   │   ├── middleware/
-│   │   │   ├── authMiddleware.js       # JWT verification & RBAC role guards
-│   │   │   ├── rateLimiter.js          # Express rate limiting against brute force
-│   │   │   ├── uploadMiddleware.js     # Secure MIME/size photo & video upload
-│   │   │   └── errorHandler.js        # Centralized 404 & safe 500 error handlers
-│   │   ├── routes/
-│   │   │   ├── authRoutes.js
-│   │   │   ├── incidentRoutes.js
-│   │   │   ├── shelterRoutes.js
-│   │   │   ├── rescueTeamRoutes.js
-│   │   │   ├── weatherRoutes.js
-│   │   │   ├── geocodeRoutes.js
-│   │   │   ├── notificationRoutes.js
-│   │   │   └── auditRoutes.js
-│   │   ├── services/
-│   │   │   ├── priorityService.js      # Transparent rule-based triage assessment
-│   │   │   ├── weatherService.js       # Atmospheric telemetry service
-│   │   │   └── auditService.js         # Security audit logging engine
-│   │   ├── sockets/
-│   │   │   └── socketHandler.js        # Real-time room management & event dispatch
-│   │   └── utils/
-│   │       └── idGenerator.js          # Collision-proof formatted IDs (SOS-YYYY-XXXXXX)
-│   ├── scripts/
-│   │   └── seed.js                 # Realistic seed data with bcrypt password hashing
-│   ├── test/
-│   │   ├── api.test.js             # 16 automated unit & integration tests
-│   │   └── e2e-flow.test.js        # Live citizen-to-authority end-to-end flow test
-│   ├── data/
-│   │   └── rescue_ai.db            # Persistent SQLite database (local dev)
-│   ├── uploads/                    # Sanitized user evidence uploads (photo/video)
-│   └── package.json                # Backend dependencies and scripts
-│
-├── .env.example                    # Environment variable template
-├── .env                            # Local development configuration
-├── .gitignore                      # Git exclusions (node_modules, .env, *.db)
-├── README.md                       # Comprehensive operational documentation
-└── package.json                    # Root monorepo orchestration
+    ▼ (7. Commander assigns available rescue fleet: POST /api/incidents/:id/assign)
+TACTICAL RESCUE SQUAD (Status set to BUSY; coordinates tracked)
+    │
+    ▼ (8. Safe Route Engine calculates hazard-free vector avoiding floods and blocked roads)
+GIS SAFE ROUTING (Distance, ETA, Route Risk Score)
+    │
+    ▼ (9. Status progressions: TEAM_DISPATCHED -> TEAM_APPROACHING -> ON_SCENE)
+CITIZEN LIVE TRACKING (7-Step real-time visual timeline checklist updates live)
+    │
+    ▼ (10. Authority enters resolution notes and marks RESOLVED)
+INCIDENT RESOLVED & ANALYTICS UPDATED (Resolved timestamp populated, analytics aggregated)
 ```
 
 ---
 
-## 3. Database Layer & Safety
+## 2. Features Overview
 
-The database abstraction layer (`backend/src/config/database.js`) dynamically detects the environment:
+### 2.1 Citizen Portal (`/index.html`)
+- **14 Dedicated Sections**:
+  1. `Home`: Hero view with rapid SOS trigger, active stats, and system status badge.
+  2. `Emergency SOS`: Fast 1-click panic trigger with automatic GPS acquisition.
+  3. `Report Disaster`: Comprehensive reporting form supporting multi-disaster types.
+  4. `Live Risk`: Interactive multi-disaster risk calculator and explainability breakdown.
+  5. `Weather`: Live atmospheric telemetry (temperature, wind, precipitation, barometric pressure).
+  6. `Tactical Map`: Leaflet / Mapbox interactive GIS map with 5 toggleable layers.
+  7. `Shelters`: Real-time relief shelter locator with occupancy and capacity stats.
+  8. `Hospitals`: Emergency hospital directory with ICU beds, trauma status, and ambulances.
+  9. `Emergency Contacts`: Quick-dial directory for police, ambulance, fire, disaster helpline.
+  10. `My Reports`: Authenticated citizen personal incident tracker and progress checklist.
+  11. `About`: Mission statement, technical architecture, and SIH demonstration goals.
+  12. `Help`: Emergency preparedness protocols, survival guidelines, and triage tips.
+  13. `Language`: Instant client-side English & Hindi (`EN` / `HI`) translation switch.
+  14. `Profile`: Citizen profile management with blood group, emergency contact, and phone.
 
-- **Development**: Local zero-configuration persistent **SQLite** (`backend/data/rescue_ai.db`).
-- **Production**: **PostgreSQL** via connection string `DATABASE_URL=postgresql://user:password@host:5432/dbname`.
-- **Query Normalization**: Seamlessly converts `?` to `$1, $2, ...` and `datetime('now')` to `NOW()` when running on PostgreSQL.
-- **Relational Integrity**: Foreign keys enabled; all 9 relational tables created with safe `CREATE TABLE IF NOT EXISTS`:
-  1. `users`
-  2. `authority_users`
-  3. `incidents`
-  4. `incident_updates`
-  5. `shelters`
-  6. `rescue_teams`
-  7. `notifications`
-  8. `weather_reports`
-  9. `audit_logs`
-- **Data Persistence**: Zero destruction of existing records during restarts or migrations.
+- **Offline / Poor Network Queue**:
+  - Automatically caches submitted SOS reports in `localStorage` (`rescue_offline_sos_queue`) when offline.
+  - Displays a persistent red offline banner (`Network unavailable. Retrying...`).
+  - Automatically synchronizes queued incidents to the backend as soon as connectivity resumes.
+
+- **Voice SOS Intake**:
+  - Native `MediaRecorder` audio recording with start, stop, duration timer, preview player, and multipart upload.
+  - Automatic fallback to Web Speech API speech-to-text recognition.
+
+- **Photo & Video Evidence with Assistive AI Vision**:
+  - Secure Multer upload pipeline with MIME filtering and file-size constraints.
+  - Transparent heuristic AI vision analysis evaluating flood, fire, debris, and crowd conditions with confidence scores.
+
+### 2.2 Authority Command Center (`/authority.html`)
+- **6 Integrated Command Subviews**:
+  1. `Tactical Grid`: Live incident queue, filter controls, map view, and triage drawer.
+  2. `Rescue Fleets`: Management of rescue squads, availability toggles, equipment, and current targets.
+  3. `Logistics Inventory`: Resource tracking (ambulances, boats, fire trucks, medical kits, food/water).
+  4. `Incident Clusters`: Duplicate/cluster detection grouping proximate incidents to identify macro-disasters.
+  5. `Analytics`: Graphical and numerical breakdown of resolution times, disaster distribution, and response rates.
+  6. `Master Database`: Live administrative relational database table browser with search, pagination, and JSON inspect.
+
+- **Incident Action Operations**:
+  - `[ACKNOWLEDGE]`: Updates status from `NEW` to `ACKNOWLEDGED`.
+  - `[ASSIGN TEAM]`: Dispatches an `AVAILABLE` rescue fleet and updates team status to `BUSY`.
+  - `[VIEW ROUTE]`: Calculates hazard-avoiding GIS route from squad location to incident coordinates.
+  - `[CONTACT USER]`: Reveals citizen contact details and initiates direct dial / SMS note.
+  - `[CHANGE PRIORITY]`: Manual authority triage override (`CRITICAL`, `HIGH`, `MODERATE`, `LOW`).
+  - `[MARK RESOLVED]`: Records mandatory resolution notes, sets status to `RESOLVED`, and records timestamp.
+  - `[GENERATE REPORT]`: Generates a printable incident dossier with complete audit timeline.
 
 ---
 
-## 4. Verified API Endpoints & Role Authorization
+## 3. Technology Stack
 
-| Method | Endpoint | Access Role | Description |
-|---|---|---|---|
-| `GET` | `/api/health` | Public | System status & database connectivity check |
-| `POST` | `/api/auth/register` | Public | Citizen registration |
-| `POST` | `/api/auth/login` | Public | Citizen login |
-| `POST` | `/api/auth/authority-login` | Public | Authority login (NDRF / First Responder) |
-| `GET` | `/api/auth/me` | Authenticated | Current profile information |
-| `GET` | `/api/incidents` | Authenticated | **Citizen**: returns only own reports (`user_id = req.user.id`).<br>**Authority/Admin**: returns all incidents globally |
-| `GET` | `/api/incidents/:id` | Authenticated | **Citizen**: restricted to own incident (403 if other).<br>**Authority/Admin**: access to any incident with full timeline |
-| `POST` | `/api/incidents` | Optional Auth | Submit SOS beacon with coordinates, details, optional address & evidence |
-| `GET` | `/api/incidents/stats/overview` | Authority, Admin | Live metrics (`total`, `active`, `critical`, `resolved`, `people`) |
-| `PATCH` | `/api/incidents/:id` | Authority, Admin | Update status, assigned authority, team, resolution notes, and timeline |
-| `POST` | `/api/incidents/:id/assign` | Authority, Admin | Assign rescue team and record update timeline |
-| `POST` | `/api/incidents/:id/notes` | Authenticated | Append timeline triage note (Citizen for own, Authority for any) |
-| `GET` | `/api/shelters` | Public | List operational relief shelters and resource inventory |
-| `POST` | `/api/shelters` | Authority, Admin | Register new relief shelter |
-| `PATCH` | `/api/shelters/:id` | Authority, Admin | Update shelter capacity, occupancy, and ration stock |
-| `DELETE`| `/api/shelters/:id` | Authority, Admin | Delete relief shelter |
-| `GET` | `/api/rescue-teams` | Public / Auth | List available rescue squads and active coordinates |
-| `GET` | `/api/weather` | Public | Weather telemetry proxy |
-| `GET` | `/api/geocode/reverse` | Public | Reverse geocoding proxy |
+| Domain | Technology | Description |
+|---|---|---|
+| **Frontend** | Vanilla HTML5, Vanilla JavaScript (ES6+), Vanilla CSS | Ultra-fast, zero-build-step client, glassmorphism dark aesthetic |
+| **Icons & Maps** | Lucide Icons, Leaflet.js, Mapbox GL JS | Vector icons, tactical map layers, custom colored risk pins |
+| **Backend** | Node.js (>= 18), Express.js | High-concurrency RESTful API architecture |
+| **Real-Time** | Socket.IO (v4) | Bidirectional WebSocket event mesh for instant push alerts |
+| **Database** | SQLite3 (Local) / PostgreSQL (Prod) | Zero-config persistent relational database with automatic migration |
+| **Security** | Helmet, bcryptjs, jsonwebtoken, CORS, RateLimiter | Enterprise-grade HTTP security headers, password hashing, and RBAC |
+| **File Handling** | Multer | Secure multipart upload with MIME verification and size caps |
+| **GIS & Weather** | Haversine, Open-Meteo, WeatherAPI.com | Geodesic distance calculations and live meteorological telemetry |
 
 ---
 
-## 5. Environment Variables
+## 4. Multi-Disaster AI Risk Engine Specification
+
+The platform utilizes a modular, explainable risk assessment engine (`backend/src/services/multiDisasterEngine.js` and `priorityService.js`):
+
+### Risk Score Ranges & Classifications
+- **0 – 25**: `LOW` (Green)
+- **26 – 50**: `MODERATE` (Yellow)
+- **51 – 75**: `HIGH` (Orange)
+- **76 – 100**: `CRITICAL` (Red)
+
+### Supported Disaster Modules & Factors
+1. **Flood Engine**: Rainfall intensity, water level, terrain elevation, distance to river, population density.
+2. **Landslide Engine**: Slope angle, precipitation saturation, soil instability, historical landslide frequency.
+3. **Earthquake Engine**: Richter magnitude, distance to fault/epicenter, building vulnerability, local seismic zone.
+4. **Cyclone Engine**: Sustained wind speed, barometric pressure drop, cyclone track proximity, storm surge alert.
+5. **Fire Engine**: Ambient temperature, dry wind velocity, vegetation density, proximate fire reports.
+6. **Lightning & Structural Risk**: Thunderstorm intensity, electrical grid proximity, building structural integrity.
+
+> **AI Transparency Statement**: The current engine runs transparent deterministic mathematical heuristics and multi-factor weighted scoring. It explicitly reports confidence percentages and reasoning strings (e.g. *"Risk escalated due to extreme precipitation, low elevation, and 5 stranded citizens"*). It does **not** claim to be a black-box deep neural network.
+
+---
+
+## 5. Verified API Reference
+
+All endpoints return standard JSON envelopes `{ success: true, data: ... }` or `{ success: false, message: ... }`:
+
+### Public & Health Endpoints
+- `GET /health` — Deployment health check (`{"status": "ok", "service": "AI Disaster Rescue Coordinator"}`)
+- `GET /api/weather` — Meteorological telemetry proxy with live/demo indicator
+- `GET /api/routes/hazards` — Active hazard zones, flood barriers, and blocked roadways
+- `GET /api/routes/safe-route` — Safe route vector with hazard avoidance calculations
+- `GET /api/hospitals` — Emergency hospitals with bed availability and ambulances
+- `GET /api/shelters` — Relief shelters with capacity and occupancy metrics
+- `GET /api/resources` — Available equipment inventory (ambulances, boats, etc.)
+
+### Authentication
+- `POST /api/auth/register` — Citizen registration (`fullName`, `email`, `password`, `phone`)
+- `POST /api/auth/login` — Citizen login (`email`, `password`)
+- `POST /api/auth/authority-login` — First responder & commander login (`username` / `badge_id`, `password`)
+- `GET /api/auth/me` — Authenticated profile details
+
+### Incidents & SOS
+- `POST /api/incidents` — Submit SOS report (`disaster_type`, `latitude`, `longitude`, `details`, `people_affected`, `evidence`)
+- `GET /api/incidents` — Scoped list (Citizens receive only their reports; Authorities receive global queue)
+- `GET /api/incidents/:id` — Incident details with audit timeline (Enforces RBAC)
+- `PATCH /api/incidents/:id/status` — Status transition (`ACKNOWLEDGED`, `ON_SCENE`, `RESOLVED`, etc.)
+- `POST /api/incidents/:id/assign` — Assign rescue squad to incident
+- `GET /api/incidents/:id/report` — Comprehensive printable incident dossier
+- `GET /api/incidents/export/csv` — CSV export of all incidents for offline reporting
+- `GET /api/incidents/analytics/summary` — Aggregated incident metrics, response times, and disaster distributions
+
+### Command & Administration
+- `GET /api/rescue-teams` — List of all tactical rescue squads
+- `PATCH /api/rescue-teams/:id` — Update squad status (`AVAILABLE`, `BUSY`, `OFFLINE`)
+- `GET /api/clusters` — AI incident clusters and duplicate detection groupings
+- `POST /api/risk/evaluate` — Direct calculation via Multi-Disaster Risk Engine
+- `GET /api/database/overview` — Administrative master database overview
+- `GET /api/database/table/:tableName` — Dynamic database table viewer with column projection
+
+---
+
+## 6. Environment Variables
 
 Documented in `.env.example`:
 
 | Variable | Required | Default / Example | Purpose |
 |---|---|---|---|
 | `PORT` | Optional | `5000` | Port for the backend Express server |
-| `NODE_ENV` | Optional | `development` | Environment mode (`development` or `production`) |
-| `DATABASE_URL` | Optional | *(empty for local SQLite)* | PostgreSQL connection URL for production deployments |
-| `JWT_SECRET` | **Required** in Prod | `rescue_ai_super_secret_jwt_key_...` | Secret key for signing and verifying JWT tokens |
-| `FRONTEND_URL` | Optional | `*` | CORS allowed origin for HTTP API requests |
-| `SOCKET_ORIGIN` | Optional | `*` | Allowed origin for Socket.IO connections |
-| `WEATHERAPI_KEY`| Optional | *(empty)* | Optional API key for WeatherAPI.com (falls back to Open-Meteo) |
-| `MAPBOX_ACCESS_TOKEN` | Optional | Default public token | Mapbox vector map and directions access token |
+| `NODE_ENV` | Optional | `development` | Runtime mode (`development` or `production`) |
+| `DATABASE_URL` | Optional | *(empty)* | PostgreSQL connection URL (defaults to persistent local SQLite) |
+| `JWT_SECRET` | **Required** in Prod | `rescue_ai_super_secret_jwt_key_...` | Cryptographic secret for signing JWT tokens |
+| `FRONTEND_URL` | Optional | `*` | Allowed CORS origins for API requests |
+| `SOCKET_ORIGIN` | Optional | `*` | Allowed origins for Socket.IO WebSocket connections |
+| `WEATHERAPI_KEY` | Optional | *(empty)* | Optional API key for WeatherAPI.com (falls back to Open-Meteo) |
+| `MAPBOX_ACCESS_TOKEN` | Optional | *(empty)* | Optional vector map token (falls back to OpenStreetMap CartoDB) |
 
 ---
 
-## 6. Local Quickstart Commands
+## 7. Local Setup & Quickstart
 
+### Prerequisites
+- Node.js >= 18.0.0
+- npm >= 9.0.0
+
+### Installation Steps
 ```bash
-# 1. Install dependencies
+# 1. Clone repository
+git clone https://github.com/theredwolf0234-star/disasterrescue.git
+cd disasterrescue
+
+# 2. Install backend dependencies
 npm run install:backend
 
-# 2. Seed development database with test credentials
+# 3. Create .env configuration
+cp .env.example .env
+
+# 4. Seed database with initial squads, shelters, hospitals & credentials
 npm run seed
 
-# 3. Run automated tests (16 comprehensive tests)
+# 5. Run test suite (26 automated tests)
 npm test
 
-# 4. Run end-to-end working flow test
-npm run test:e2e
-
-# 5. Start development server
+# 6. Start the server
 npm start
 ```
 
-Default seeded credentials:
-- **Citizen Account**: `satyam@example.com` / `citizen123`
-- **Authority Account**: `ndrf_commander` / `authority123`
+### Default Credentials
+| Portal | Username / Email | Password | Role |
+|---|---|---|---|
+| **Citizen Portal** | `satyam@example.com` | `citizen123` | CITIZEN |
+| **Authority HQ** | `AISTER23` | `@aster23` | ADMIN |
+| **NDRF Responder** | `ndrf_commander` | `authority123` | AUTHORITY |
 
-Access the portals:
-- **Citizen Portal**: `http://localhost:5000/index.html`
-- **Authority Command HQ**: `http://localhost:5000/authority.html`
-- **Health Check**: `http://localhost:5000/api/health`
-
----
-
-## 7. Production Deployment Instructions
-
-1. **Platform Selection**:
-   Deploy on Node.js hosting environments such as Railway, Render, Fly.io, AWS Elastic Beanstalk, or Docker.
-2. **Persistent Storage**:
-   - Provide a managed PostgreSQL database URL in `DATABASE_URL`.
-   - If using SQLite, ensure the platform mounts a persistent volume to `backend/data/` and `backend/uploads/`.
-3. **Environment Setup**:
-   - Set `NODE_ENV=production`.
-   - Set a strong, randomly generated `JWT_SECRET`.
-   - Set `FRONTEND_URL` and `SOCKET_ORIGIN` to your production domain (e.g. `https://rescue-ai.yourdomain.com`).
-4. **Static File Serving**:
-   - The Express application automatically serves frontend assets from `frontend/` and user evidence from `backend/uploads/`.
-5. **Reverse Proxy & SSL**:
-   - Route traffic through NGINX, Cloudflare, or platform load balancer with WebSocket upgrade headers enabled (`Upgrade: websocket`, `Connection: Upgrade`).
+Access the live portals:
+- **Citizen Dispatch Portal**: `http://localhost:5000/index.html`
+- **Authority Command Console**: `http://localhost:5000/authority.html`
+- **System Health Check**: `http://localhost:5000/health`
 
 ---
 
-## 8. Test Results Summary
+## 8. Render Production Deployment Guide
 
-```
-======================================================
-   RUNNING RESCUE AI COMPREHENSIVE BACKEND TESTS      
-======================================================
+The repository is pre-configured for 1-click deployment on **Render**:
 
-  ✓ PASS: 1. GET /api/health returns 200 with status ok and connected database
-  ✓ PASS: 2. Citizen registration and login
-  ✓ PASS: 3. POST /api/auth/authority-login authenticates valid authority credentials
-  ✓ PASS: 4. Unauthorized dashboard API access is rejected with 401 or 403
-  ✓ PASS: 5. Citizen creates emergency SOS incident with automatic priority
-  ✓ PASS: 6. Citizen GET /api/incidents returns ONLY own reports (user_id = req.user.id)
-  ✓ PASS: 7. Citizen cannot retrieve another citizen incident via GET /api/incidents/:id (403 Forbidden)
-  ✓ PASS: 8. Authority GET /api/incidents returns complete incident list across all citizens
-  ✓ PASS: 9. Authority GET /api/incidents/stats/overview returns correct schema and handles null sum
-  ✓ PASS: 10. Authority PATCH /api/incidents/:id updates status and assigns rescue team
-  ✓ PASS: 11. Incident timeline entry is saved in incident_updates on update
-  ✓ PASS: 12. PATCH /api/incidents/:id rejects invalid status with 400
-  ✓ PASS: 13. POST /api/incidents rejects missing or invalid coordinates with 400
-  ✓ PASS: 14. Socket.IO instance initialized and event emission methods callable
-  ✓ PASS: 15. Resolving an incident populates resolved_at timestamp and resolution_notes
-  ✓ PASS: 16. Non-existent incident returns 404 NOT_FOUND cleanly without crash
+1. **Create Web Service on Render**:
+   - Connect the GitHub repository.
+   - **Environment**: `Node`
+   - **Build Command**: `npm install --prefix backend`
+   - **Start Command**: `node backend/src/server.js`
 
-======================================================
-Tests Summary: 16 passed, 0 failed.
-======================================================
-```
+2. **Environment Variables on Render**:
+   - `PORT`: `10000` (Render default)
+   - `NODE_ENV`: `production`
+   - `JWT_SECRET`: *(Generate a secure 64-character random string)*
+   - `DATABASE_URL`: *(Attach a Render PostgreSQL instance or mount persistent disk for SQLite)*
+
+3. **Disk Mount (if using SQLite)**:
+   - Mount Path: `/opt/render/project/src/backend/data`
+   - Size: `1 GB`
+
+4. **Health Check Path**:
+   - Set Health Check Path to: `/health`
+
+---
+
+## 9. Real vs. Demo / Simulated Data Disclosure
+
+To ensure complete academic and demonstration integrity, the platform maintains absolute transparency regarding data sources:
+
+| Feature | Operational Status | Details |
+|---|---|---|
+| **Citizen SOS Dispatch** | **REAL** | Authenticates user, captures GPS, persists incident to DB, generates collision-proof ID. |
+| **AI Risk Assessment** | **REAL** | Deterministic multi-factor scoring algorithm running live on incident parameters. |
+| **Socket.IO Real-Time Mesh** | **REAL** | Instant bidirectional event emission between citizens and authority dashboards. |
+| **Incident Status Lifecycle** | **REAL** | Complete 9-stage lifecycle stored in relational database with immutable audit logs. |
+| **Relational Database** | **REAL** | Persistent SQLite/PostgreSQL with indexed queries and foreign key constraints. |
+| **Weather Telemetry** | **HYBRID** | Real-time Open-Meteo satellite feed with graceful fallback to simulated radar if offline. |
+| **Safe Route Engine** | **SIMULATED / DEMO** | Heuristic Dijkstra-based hazard avoidance using simulated flood/obstruction zones. |
+| **Rescue Squad Locations** | **SIMULATED / DEMO** | Realistic mock coordinates representing active NDRF, SDRF, and EMS units. |
+| **112 / 911 / NDRF Integration** | **DEMO ONLY** | No unauthorized integration with public emergency CAD dispatchers. Clearly labeled. |
+
+---
+
+## 10. Security & Cybersecurity Hardening
+
+- **Cryptographic Hashing**: All citizen and authority passwords hashed with `bcryptjs` (salt factor 10).
+- **Strict Role-Based Access Control (RBAC)**: Enforced via `authMiddleware.js` (`ADMIN`, `AUTHORITY`, `OPERATOR`, `RESPONDER`, `CITIZEN`). Normal citizens are strictly forbidden from viewing other citizens' incidents (returns 403 Forbidden).
+- **Secure HTTP Headers**: Configured with `helmet` with custom CSP rules permitting Leaflet and CartoDB tiles.
+- **Brute-Force & Rate Limiting**: `express-rate-limit` guards login and SOS endpoints against abuse.
+- **File Upload Protection**: Multer filters incoming files by MIME type, validates extension signatures, enforces size limits (15MB), and sanitizes filenames to prevent path traversal attacks.
+- **Sanitized SQL Queries**: All database queries use parameterized inputs (`?` and `$n`) to prevent SQL injection.
+- **Audit Logging**: Every authority status transition, team assignment, and priority change is permanently recorded in `audit_logs` and `incident_updates`.
+
+---
+
+## 11. Known Limitations & Future Scope
+
+### Limitations
+- Voice transcription depends on browser Web Speech API availability when running on client; fallback audio files are stored safely for authority playback.
+- OpenStreetMap CartoDB tiles require internet access on the client device for map rendering; when offline, cached pins and coordinates remain accessible.
+
+### Future Scope
+- Integration with LoRaWAN / satellite mesh radios for communication in infrastructure-destroyed environments.
+- Computer vision model deployment (YOLOv8-Disaster) on dedicated GPU edge nodes for automated aerial drone video triage.
+- Integration with official CAP (Common Alerting Protocol) feeds from the National Disaster Management Authority (NDMA).
+
+---
+
+## 12. License
+
+This project is licensed under the **ISC License**. Developed for academic evaluation, disaster management research, and the Smart India Hackathon (SIH).

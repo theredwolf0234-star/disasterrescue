@@ -25,13 +25,33 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <!-- Mobile & PWA Optimization -->
+    <meta name="theme-color" content="#7E22CE">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="RESCUE AI">
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <link rel="manifest" href="manifest.json">
 
     <!-- Custom Production Styles -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="text-slate-200 antialiased min-h-screen flex flex-col selection:bg-purple-600 selection:text-white">
+<body class="text-slate-200 antialiased min-h-screen flex flex-col selection:bg-purple-600 selection:text-white bg-[#0B0F19]">
 
+    <!-- MANDATORY DEMO NOTICE BANNER (SECTION 3 & 38) -->
+    <aside aria-label="Demo Emergency System Notice" class="bg-amber-950/80 border-b border-amber-700/60 text-amber-200 px-4 py-1.5 text-[11px] text-center font-bold flex items-center justify-center space-x-2">
+        <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+        <span data-i18n="demoNotice">Demo Emergency Coordination System • Simulated demo environment for college/SIH demonstration • Not connected to real 112/NDRF dispatch</span>
+    </aside>
+
+    <!-- OFFLINE RETRY BANNER (SECTION 32) -->
+    <div id="offline-network-banner" class="hidden bg-red-950/90 border-b border-red-700 text-red-200 px-4 py-2 text-xs text-center font-bold flex items-center justify-center space-x-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+        <span id="offline-banner-text" data-i18n="offlineNotice">Network unavailable. Retrying... Saved reports will sync automatically when online.</span>
+    </div>
 
     <!-- NAVBAR -->
     <header class="sticky top-0 bg-[#0B0F19]/95 backdrop-blur-md border-b border-slate-800 z-50 shadow-md">
@@ -44,67 +64,131 @@
                     <div class="text-left">
                         <div class="flex items-center space-x-1.5">
                             <span class="font-black text-lg md:text-xl tracking-tight text-white">RESCUE<span class="text-purple-400">AI</span></span>
-                            <span class="text-[10px] font-extrabold uppercase bg-slate-800 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800/50">24/7 Grid</span>
+                            <span class="text-[10px] font-extrabold uppercase bg-slate-800 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800/50" data-i18n="grid247">24/7 Grid</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 font-medium hidden sm:block">Disaster Rescue Coordinator Platform</p>
+                        <p class="text-[10px] text-slate-400 font-medium hidden sm:block" data-i18n="tagline">AI Disaster Rescue Coordinator</p>
                     </div>
                 </button>
 
-                <!-- Navigation Tabs -->
-                <nav class="hidden md:flex items-center space-x-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
-                    <button id="nav-home" onclick="switchTab('home')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-slate-800 border border-slate-700 flex items-center space-x-1.5 transition">
-                        <i data-lucide="home" class="w-4 h-4 text-purple-400"></i>
-                        <span>Home</span>
+                <!-- Desktop Navigation Tabs (Sections 2: Home, SOS, Report, Risk, Map, Shelters, Hospitals, Contacts, Reports, Help, About) -->
+                <nav class="hidden xl:flex items-center space-x-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800 text-xs">
+                    <button id="nav-home" onclick="switchTab('home')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-white bg-slate-800 border border-slate-700 flex items-center space-x-1 transition">
+                        <i data-lucide="home" class="w-3.5 h-3.5 text-purple-400"></i>
+                        <span data-i18n="navHome">Home</span>
                     </button>
-                    <button id="nav-resolutions" onclick="switchTab('resolutions')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1.5">
-                        <i data-lucide="sparkles" class="w-4 h-4 text-emerald-400"></i>
-                        <span>AI Solutions Engine</span>
+                    <button id="nav-sos" onclick="openSosModal()" class="nav-btn px-2.5 py-1.5 rounded-lg font-bold text-red-400 hover:text-red-300 transition flex items-center space-x-1">
+                        <i data-lucide="siren" class="w-3.5 h-3.5 text-red-500 animate-pulse"></i>
+                        <span data-i18n="navSos">SOS</span>
                     </button>
-                    <button id="nav-reports" onclick="switchTab('reports')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1.5">
-                        <i data-lucide="clipboard-list" class="w-4 h-4 text-purple-400"></i>
-                        <span>My Reports</span>
+                    <button id="nav-report" onclick="switchTab('report')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                        <i data-lucide="file-plus-2" class="w-3.5 h-3.5 text-purple-400"></i>
+                        <span data-i18n="navReport">Report</span>
                     </button>
-                    <button id="nav-map" onclick="switchTab('map')" class="nav-btn px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1.5">
-                        <i data-lucide="map-pin" class="w-4 h-4 text-purple-400"></i>
-                        <span>Live Map</span>
+                    <button id="nav-risk" onclick="switchTab('risk')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                        <i data-lucide="activity" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span data-i18n="navLiveRisk">Live Risk</span>
+                    </button>
+                    <button id="nav-map" onclick="switchTab('map')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-purple-400"></i>
+                        <span data-i18n="navMap">Map</span>
+                    </button>
+                    <button id="nav-shelters" onclick="switchTab('shelters')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                        <i data-lucide="tent" class="w-3.5 h-3.5 text-purple-400"></i>
+                        <span data-i18n="navShelters">Shelters</span>
+                    </button>
+                    <button id="nav-hospitals" onclick="switchTab('hospitals')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                        <i data-lucide="cross" class="w-3.5 h-3.5 text-blue-400"></i>
+                        <span data-i18n="navHospitals">Hospitals</span>
+                    </button>
+                    <button id="nav-reports" onclick="switchTab('reports')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                        <i data-lucide="clipboard-list" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <span data-i18n="navReports">My Reports</span>
+                    </button>
+                    <button id="nav-contacts" onclick="switchTab('contacts')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                        <i data-lucide="phone-call" class="w-3.5 h-3.5 text-red-400"></i>
+                        <span data-i18n="navContacts">Hotlines</span>
+                    </button>
+                    <button id="nav-help" onclick="switchTab('help')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                        <i data-lucide="help-circle" class="w-3.5 h-3.5 text-slate-400"></i>
+                        <span data-i18n="navHelp">Guide</span>
+                    </button>
+                    <button id="nav-about" onclick="switchTab('about')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                        <i data-lucide="info" class="w-3.5 h-3.5 text-purple-400"></i>
+                        <span data-i18n="navAbout">About</span>
                     </button>
                 </nav>
 
-                <!-- Right Actions: Auth Container & Authority Portal Link -->
-                <div class="flex items-center space-x-2.5">
-                    <!-- Citizen Authentication State Container (Sign In / Register or Logged in User) -->
+                <!-- Right Actions: Language Switcher, Profile/Auth, Authority Portal Link -->
+                <div class="flex items-center space-x-2">
+                    <!-- Bilingual Language Switcher (Section 29) -->
+                    <button id="lang-toggle-btn" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-purple-300 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
+                        <span>🌐 हिंदी</span>
+                    </button>
+
+                    <!-- Citizen Auth State Container -->
                     <div id="nav-auth-container"></div>
 
+                    <!-- Authority Portal Link -->
                     <a href="authority.html" target="_blank" class="bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
                         <i data-lucide="shield" class="w-3.5 h-3.5 text-purple-400"></i>
-                        <span class="hidden lg:inline">Command Portal</span>
+                        <span class="hidden sm:inline" data-i18n="commandPortal">Command Portal</span>
                     </a>
                 </div>
             </div>
 
-            <!-- Mobile Navigation Bar Strip -->
-            <div class="md:hidden flex items-center justify-around py-2 border-t border-slate-800/80 text-xs">
-                <button onclick="switchTab('home')" class="text-slate-300 font-semibold flex items-center space-x-1">
-                    <i data-lucide="home" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span>Home</span>
+            <!-- Mobile / Tablet Navigation Strip (Responsive < 1280px) -->
+            <div class="xl:hidden flex items-center overflow-x-auto py-2 border-t border-slate-800/80 text-[11px] gap-2 scrollbar-none">
+                <button onclick="switchTab('home')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="home" class="w-3 h-3 text-purple-400"></i>
+                    <span data-i18n="navHome">Home</span>
                 </button>
-                <button onclick="switchTab('resolutions')" class="text-slate-300 font-semibold flex items-center space-x-1">
-                    <i data-lucide="cpu" class="w-3.5 h-3.5 text-emerald-400"></i>
-                    <span>Engine</span>
+                <button onclick="openSosModal()" class="px-2.5 py-1 rounded bg-red-950/70 border border-red-800 text-red-300 font-bold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="siren" class="w-3 h-3 text-red-400"></i>
+                    <span data-i18n="navSos">SOS</span>
                 </button>
-                <button onclick="switchTab('reports')" class="text-slate-300 font-semibold flex items-center space-x-1">
-                    <i data-lucide="clipboard-list" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span>Reports</span>
+                <button onclick="switchTab('report')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="file-plus-2" class="w-3 h-3 text-purple-400"></i>
+                    <span data-i18n="navReport">Report</span>
                 </button>
-                <button onclick="switchTab('map')" class="text-slate-300 font-semibold flex items-center space-x-1">
-                    <i data-lucide="map-pin" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span>Map</span>
+                <button onclick="switchTab('risk')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="activity" class="w-3 h-3 text-amber-400"></i>
+                    <span data-i18n="navLiveRisk">Live Risk</span>
+                </button>
+                <button onclick="switchTab('map')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="map-pin" class="w-3 h-3 text-purple-400"></i>
+                    <span data-i18n="navMap">Map</span>
+                </button>
+                <button onclick="switchTab('shelters')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="tent" class="w-3 h-3 text-purple-400"></i>
+                    <span data-i18n="navShelters">Shelters</span>
+                </button>
+                <button onclick="switchTab('hospitals')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="cross" class="w-3 h-3 text-blue-400"></i>
+                    <span data-i18n="navHospitals">Hospitals</span>
+                </button>
+                <button onclick="switchTab('reports')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="clipboard-list" class="w-3 h-3 text-emerald-400"></i>
+                    <span data-i18n="navReports">Reports</span>
+                </button>
+                <button onclick="switchTab('contacts')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="phone-call" class="w-3 h-3 text-red-400"></i>
+                    <span data-i18n="navContacts">Hotlines</span>
+                </button>
+                <button onclick="switchTab('help')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="help-circle" class="w-3 h-3 text-slate-400"></i>
+                    <span data-i18n="navHelp">Help</span>
+                </button>
+                <button onclick="switchTab('about')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                    <i data-lucide="info" class="w-3 h-3 text-purple-400"></i>
+                    <span data-i18n="navAbout">About</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- PAGE 1: HOME SECTION -->
+    <!-- ============================================================= -->
+    <!-- SECTION 1: HOME PAGE -->
+    <!-- ============================================================= -->
     <main id="page-home" class="page-content flex-grow">
         <div class="hero-disaster-bg relative text-white py-16 sm:py-24 lg:py-28 border-b border-slate-800">
             <div class="max-w-5xl mx-auto px-4 text-center flex flex-col items-center">
@@ -113,28 +197,28 @@
                       <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                     </span>
-                    <span id="live-hero-location" class="text-purple-300 font-bold">Querying Regional Grid...</span>
+                    <span id="live-hero-location" class="text-purple-300 font-bold" data-i18n="heroQuerying">Querying Regional Grid...</span>
                     <span class="text-slate-500">|</span>
-                    <span class="text-emerald-400 font-semibold">Live Telemetry Active</span>
+                    <span class="text-emerald-400 font-semibold" data-i18n="heroActive">Live Telemetry Active</span>
                 </div>
 
-                <h1 class="text-3xl sm:text-5xl lg:text-7xl font-extrabold text-white tracking-tight leading-tight drop-shadow-2xl max-w-4xl">
+                <h1 class="text-3xl sm:text-5xl lg:text-7xl font-extrabold text-white tracking-tight leading-tight drop-shadow-2xl max-w-4xl" data-i18n="tagline">
                     AI Disaster Rescue Coordinator
                 </h1>
 
-                <p class="text-slate-300 text-xs sm:text-base font-bold tracking-[0.2em] uppercase mt-5 drop-shadow-md">
+                <p class="text-slate-300 text-xs sm:text-base font-bold tracking-[0.2em] uppercase mt-5 drop-shadow-md" data-i18n="motto">
                     BE READY <span class="text-purple-400">•</span> STAY SAFE <span class="text-purple-400">•</span> RECOVER TOGETHER
                 </p>
 
                 <!-- SOS Emergency Callout Buttons -->
                 <div class="mt-8 flex flex-col sm:flex-row gap-4 w-full sm:w-auto max-w-md">
-                    <button onclick="document.getElementById('sos-modal').classList.remove('hidden')" class="bg-purple-700 hover:bg-purple-600 text-white font-extrabold px-8 py-4 rounded-2xl shadow-2xl shadow-purple-950 border border-purple-500/50 transition transform hover:scale-105 flex items-center justify-center space-x-3 text-base">
+                    <button onclick="openSosModal()" class="bg-red-600 hover:bg-red-500 text-white font-extrabold px-8 py-4 rounded-2xl shadow-2xl shadow-red-950 border border-red-400/50 transition transform hover:scale-105 flex items-center justify-center space-x-3 text-base">
                         <i data-lucide="siren" class="w-6 h-6 animate-pulse"></i>
-                        <span>DISPATCH SOS BEACON</span>
+                        <span data-i18n="dispatchSosBtn">DISPATCH SOS BEACON</span>
                     </button>
-                    <button onclick="switchTab('resolutions')" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold px-8 py-4 rounded-2xl border border-emerald-500/50 transition flex items-center justify-center space-x-2 text-base shadow-xl">
+                    <button onclick="switchTab('risk')" class="bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold px-8 py-4 rounded-2xl border border-emerald-500/50 transition flex items-center justify-center space-x-2 text-base shadow-xl">
                         <i data-lucide="cpu" class="w-5 h-5"></i>
-                        <span>AI SOLUTIONS ENGINE</span>
+                        <span data-i18n="aiSolutionsBtn">AI SOLUTIONS ENGINE</span>
                     </button>
                 </div>
             </div>
@@ -147,8 +231,8 @@
                     <i data-lucide="shield-alert" class="w-5 h-5"></i>
                 </div>
                 <div>
-                    <h4 class="font-bold text-white text-xs">Rapid Triage Protocol</h4>
-                    <p class="text-[11px] text-slate-400">Automated severity scoring & victim headcount routing</p>
+                    <h4 class="font-bold text-white text-xs">Rapid Triage & AI Risk</h4>
+                    <p class="text-[11px] text-slate-400">Automated severity scoring (0-100) & multi-disaster analysis</p>
                 </div>
             </div>
 
@@ -158,35 +242,190 @@
                 </div>
                 <div>
                     <h4 class="font-bold text-white text-xs">Real-Time WebSocket Grid</h4>
-                    <p class="text-[11px] text-slate-400">Zero-polling dispatch sync between citizens & authorities</p>
+                    <p class="text-[11px] text-slate-400">Instant synchronized dispatch between citizen & command headquarters</p>
                 </div>
             </div>
 
             <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-lg bg-blue-950 border border-blue-800 flex items-center justify-center text-blue-400">
-                    <i data-lucide="map" class="w-5 h-5"></i>
+                    <i data-lucide="navigation-2" class="w-5 h-5"></i>
                 </div>
                 <div>
-                    <h4 class="font-bold text-white text-xs">Tactical Safe Corridors</h4>
-                    <p class="text-[11px] text-slate-400">Dynamic routing avoiding water logging & hazard zones</p>
+                    <h4 class="font-bold text-white text-xs">Tactical Safe Routes</h4>
+                    <p class="text-[11px] text-slate-400">Dynamic routing avoiding active flood inundated zones and debris</p>
                 </div>
             </div>
         </div>
+
+        <!-- Quick Access Feature Grid -->
+        <div class="max-w-7xl mx-auto px-4 pb-12 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <button onclick="switchTab('report')" class="bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-2xl p-5 text-left transition space-y-2">
+                <div class="w-8 h-8 rounded-lg bg-purple-950 text-purple-400 flex items-center justify-center font-bold">
+                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                </div>
+                <h4 class="font-bold text-white text-sm" data-i18n="navReport">Report Disaster</h4>
+                <p class="text-[11px] text-slate-400">Detailed report with photos, video & audio evidence</p>
+            </button>
+
+            <button onclick="switchTab('shelters')" class="bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-2xl p-5 text-left transition space-y-2">
+                <div class="w-8 h-8 rounded-lg bg-purple-950 text-purple-400 flex items-center justify-center font-bold">
+                    <i data-lucide="tent" class="w-4 h-4"></i>
+                </div>
+                <h4 class="font-bold text-white text-sm" data-i18n="navShelters">Relief Shelters</h4>
+                <p class="text-[11px] text-slate-400">Find operational relief camps with food & water capacity</p>
+            </button>
+
+            <button onclick="switchTab('hospitals')" class="bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-2xl p-5 text-left transition space-y-2">
+                <div class="w-8 h-8 rounded-lg bg-blue-950 text-blue-400 flex items-center justify-center font-bold">
+                    <i data-lucide="cross" class="w-4 h-4"></i>
+                </div>
+                <h4 class="font-bold text-white text-sm" data-i18n="navHospitals">Trauma Hospitals</h4>
+                <p class="text-[11px] text-slate-400">Check live bed availability & ambulance fleet</p>
+            </button>
+
+            <button onclick="switchTab('contacts')" class="bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-2xl p-5 text-left transition space-y-2">
+                <div class="w-8 h-8 rounded-lg bg-red-950 text-red-400 flex items-center justify-center font-bold">
+                    <i data-lucide="phone" class="w-4 h-4"></i>
+                </div>
+                <h4 class="font-bold text-white text-sm" data-i18n="navContacts">Emergency Hotlines</h4>
+                <p class="text-[11px] text-slate-400">National 112, NDRF 1078, SDRF and medical contacts</p>
+            </button>
+        </div>
     </main>
 
-    <!-- PAGE 2: AI SOLUTIONS ENGINE (RESOLUTIONS) -->
-    <section id="page-resolutions" class="page-content flex-grow hidden">
+    <!-- ============================================================= -->
+    <!-- SECTION 2: REPORT DISASTER COMPREHENSIVE FORM (SECTION 4 & 6) -->
+    <!-- ============================================================= -->
+    <section id="page-report" class="page-content flex-grow hidden">
+        <div class="max-w-3xl mx-auto px-4 py-8 w-full space-y-6">
+            <div class="border-b border-slate-800 pb-4">
+                <div class="inline-flex items-center space-x-2 bg-purple-950/70 border border-purple-700/50 px-3 py-1 rounded-full text-xs text-purple-300 font-bold mb-2">
+                    <i data-lucide="shield-alert" class="w-4 h-4"></i>
+                    <span>Citizen Emergency Intake</span>
+                </div>
+                <h1 class="text-3xl font-black text-white" data-i18n="navReport">Report Disaster / Emergency Incident</h1>
+                <p class="text-xs text-slate-400 mt-1">Automatic GPS tagging, multimedia evidence validation, and instant AI risk scoring.</p>
+            </div>
+
+            <form id="full-disaster-form" onsubmit="handleFullReportSubmit(event)" class="space-y-5 text-xs bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <!-- Disaster Type Selection (Section 4) -->
+                <div>
+                    <label class="block font-bold text-slate-300 uppercase mb-1.5" data-i18n="categoryLabel">Emergency Disaster Type</label>
+                    <select id="report-category" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:border-purple-500 focus:outline-none" required>
+                        <option value="Flood">Flood (Flash Flood / River Overflow)</option>
+                        <option value="Landslide">Landslide (Slope Failure / Mudflow)</option>
+                        <option value="Earthquake">Earthquake (Structural Tremors)</option>
+                        <option value="Cyclone">Cyclone (Severe Gale / Storm Surge)</option>
+                        <option value="Fire">Fire (Urban / Wildfire / Industrial)</option>
+                        <option value="Lightning">Lightning Strike</option>
+                        <option value="Building collapse">Building / Infrastructure Collapse</option>
+                        <option value="Road accident">Road Accident / Highway Pileup</option>
+                        <option value="Medical emergency">Medical Emergency / Traumatic Injury</option>
+                        <option value="Other">Other Emergency</option>
+                    </select>
+                </div>
+
+                <!-- Number of People Affected -->
+                <div>
+                    <label class="block font-bold text-slate-300 uppercase mb-1.5" data-i18n="victimsLabel">Number of People Affected</label>
+                    <input type="number" id="report-count" value="1" min="1" max="5000" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none" required>
+                </div>
+
+                <!-- Short Description -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block font-bold text-slate-300 uppercase" data-i18n="detailsLabel">Emergency Description & Landmark</label>
+                        <button type="button" onclick="voiceEngine.toggle()" class="text-purple-400 hover:text-purple-300 font-semibold underline flex items-center space-x-1">
+                            <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+                            <span>Speech Dictate</span>
+                        </button>
+                    </div>
+                    <textarea id="report-details" rows="3" required placeholder="Describe condition, rising water levels, injuries, or prominent street landmarks..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none"></textarea>
+                </div>
+
+                <!-- Physical Address / Landmark -->
+                <div>
+                    <label class="block font-bold text-slate-300 uppercase mb-1.5" data-i18n="landmarkLabel">Physical Address / Landmark (Optional)</label>
+                    <input type="text" id="report-address" placeholder="e.g. Near Hazratganj Metro Gate 2, Lucknow" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none">
+                </div>
+
+                <!-- Voice Audio Recording Feature (Section 5) -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-purple-800/50 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-200 text-xs flex items-center space-x-1.5">
+                            <i data-lucide="mic" class="w-4 h-4 text-purple-400"></i>
+                            <span data-i18n="voiceSosTitle">Voice SOS Audio Intake</span>
+                        </span>
+                        <span class="text-[10px] text-purple-400 font-semibold">Optional Voice Evidence</span>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button type="button" id="btn-start-voice-rec" onclick="voiceEngine.startAudioRecording()" class="bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-3.5 rounded-lg text-xs flex items-center space-x-1.5 transition">
+                            <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+                            <span data-i18n="startVoiceRec">Record Voice SOS</span>
+                        </button>
+                        <button type="button" id="btn-stop-voice-rec" onclick="voiceEngine.stopAudioRecording()" class="hidden bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-3.5 rounded-lg text-xs flex items-center space-x-1.5 transition animate-pulse">
+                            <i data-lucide="square" class="w-3.5 h-3.5"></i>
+                            <span data-i18n="stopVoiceRec">Stop Recording</span>
+                        </button>
+                    </div>
+
+                    <div id="voice-recording-status"></div>
+                    <div id="voice-player-container" class="hidden"></div>
+                </div>
+
+                <!-- Photo / Video Evidence with AI Analysis (Section 6) -->
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                    <label class="block font-bold text-slate-300 uppercase" data-i18n="evidenceLabel">Attach Photo / Video Evidence</label>
+                    <input type="file" id="report-evidence" accept="image/*,video/*" onchange="handleEvidenceFileSelect(this)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-900 file:text-purple-200 hover:file:bg-purple-800">
+
+                    <!-- AI-Assisted Image Preview & Analysis Card -->
+                    <div id="evidence-preview-card" class="hidden p-3 bg-slate-900 rounded-xl border border-purple-800/50 space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-bold text-white flex items-center space-x-1">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-400"></i>
+                                <span>AI-Assisted Evidence Analysis</span>
+                            </span>
+                            <span id="evidence-confidence-badge" class="text-[10px] font-bold bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-700">84% Confidence</span>
+                        </div>
+                        <div id="evidence-image-holder" class="max-h-40 overflow-hidden rounded-lg"></div>
+                        <p id="evidence-ai-summary" class="text-[11px] text-slate-300"></p>
+                        <p class="text-[10px] text-slate-500 italic">* Disclaimer: AI-assisted analysis provides advisory detection only and is not 100% accurate.</p>
+                    </div>
+                </div>
+
+                <!-- GPS Location Pill -->
+                <div class="p-3 bg-purple-950/40 border border-purple-800/40 rounded-xl text-[11px] text-purple-200 flex items-center justify-between">
+                    <span class="flex items-center space-x-1.5">
+                        <i data-lucide="crosshair" class="w-4 h-4 text-emerald-400"></i>
+                        <span>Automatic GPS coordinates will be captured and verified on dispatch.</span>
+                    </span>
+                    <span id="report-gps-tag" class="font-mono text-emerald-400 font-bold">Lucknow Grid</span>
+                </div>
+
+                <button type="submit" id="report-submit-btn" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-black py-4 rounded-xl uppercase text-sm shadow-xl transition flex items-center justify-center space-x-2">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    <span data-i18n="submitBeacon">Dispatch Beacon to Command HQ</span>
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- SECTION 3: LIVE RISK & WEATHER ENGINE (SECTIONS 7, 8, 9) -->
+    <!-- ============================================================= -->
+    <section id="page-risk" class="page-content flex-grow hidden">
         <div class="max-w-7xl mx-auto px-4 py-8 w-full space-y-8">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
                     <div class="inline-flex items-center space-x-2 bg-emerald-950/60 border border-emerald-500/40 px-3 py-1 rounded-full text-xs text-emerald-300 mb-2 font-bold">
                         <i data-lucide="sparkles" class="w-4 h-4"></i>
-                        <span>Live Telemetry Feeds Active</span>
+                        <span>AI Multi-Disaster Engine Active</span>
                     </div>
-                    <h1 class="text-3xl font-black text-white">Disaster Risk & AI Solutions Engine</h1>
-                    <p class="text-xs text-slate-400 mt-1">Real-time meteorology telemetry, rule-based flood triage, and hospital bed allocation</p>
+                    <h1 class="text-3xl font-black text-white" data-i18n="riskTitle">Multi-Disaster Risk Engine & Live Weather</h1>
+                    <p class="text-xs text-slate-400 mt-1">Modular risk analysis for flood, landslide, earthquake, cyclone, fire, and structural vulnerabilities.</p>
                 </div>
-                <div>
+                <div class="flex items-center space-x-2">
                     <button onclick="fetchRealtimeWeatherData()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-emerald-400 px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-2 shadow transition">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                         <span>Refresh Telemetry</span>
@@ -194,201 +433,137 @@
                 </div>
             </div>
 
-            <!-- Implemented Features Suite -->
-            <div class="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+            <!-- 2-COLUMN LAYOUT: MODULAR RISK ENGINE & LIVE WEATHER TELEMETRY -->
+            <div class="grid lg:grid-cols-12 gap-6">
 
-                <!-- 1. Real Time Weather Telemetry (WeatherAPI.com & Open-Meteo Integration) -->
-                <div class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 rounded-xl bg-emerald-900/40 border border-emerald-500/50 flex items-center justify-center text-emerald-400 text-lg">
-                                    📡
-                                </div>
-                                <div>
-                                    <h3 class="font-bold text-white text-base">Live Weather Telemetry</h3>
-                                    <p class="text-xs text-slate-400">WeatherAPI.com & Satellite Grid</p>
-                                </div>
-                            </div>
-                            <span id="active-provider-badge" class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700">Open-Meteo</span>
-                        </div>
-                        <p class="text-xs text-slate-300 leading-relaxed mb-3">Live atmospheric telemetry fetched from WeatherAPI.com & meteorological satellites for flood, rainfall, and wind speed triage.</p>
-
-                        <!-- WeatherAPI.com Key Input -->
-                        <div class="mb-3 p-2.5 bg-slate-950/80 rounded-xl border border-slate-800">
-                            <label class="block text-[10px] text-slate-400 font-bold uppercase mb-1">WeatherAPI.com Key (Optional Override)</label>
-                            <div class="flex items-center space-x-1.5">
-                                <input type="text" id="weatherapi-key-input" placeholder="Enter WeatherAPI.com key..." class="flex-grow bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none">
-                                <button onclick="fetchRealtimeWeatherData()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-2.5 py-1 rounded-lg transition whitespace-nowrap">
-                                    Sync
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-4 gap-1.5 text-center my-3">
-                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
-                                <span class="text-[8px] text-slate-400 block uppercase font-bold">Temp</span>
-                                <span id="iot-temp" class="text-xs font-black text-emerald-400">-- °C</span>
-                            </div>
-                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
-                                <span class="text-[8px] text-slate-400 block uppercase font-bold">Rainfall</span>
-                                <span id="iot-rain" class="text-xs font-black text-emerald-400">-- mm/h</span>
-                            </div>
-                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
-                                <span class="text-[8px] text-slate-400 block uppercase font-bold">Wind</span>
-                                <span id="iot-wind" class="text-xs font-black text-emerald-400">-- km/h</span>
-                            </div>
-                            <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
-                                <span class="text-[8px] text-slate-400 block uppercase font-bold">Humidity</span>
-                                <span id="iot-humidity" class="text-xs font-black text-emerald-400">-- %</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div id="telemetry-status" class="text-[11px] text-slate-400 bg-slate-950 p-2.5 rounded-lg border border-slate-800 mt-2">
-                        Querying live weather satellite telemetry...
-                    </div>
-                </div>
-
-                <!-- 2. Rule-Based Flood & Risk Detection -->
-                <div class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center space-x-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-900/40 border border-emerald-500/50 flex items-center justify-center text-emerald-400 text-lg">
+                <!-- LEFT: MODULAR RISK EVALUATOR (SECTION 7 & 8) -->
+                <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400 text-lg">
                                 ⚖️
                             </div>
                             <div>
-                                <h3 class="font-bold text-white text-base">Disaster Risk Analysis</h3>
-                                <p class="text-xs text-slate-400">Rule-Based Flood & Structural Scoring</p>
+                                <h3 class="font-bold text-white text-base">Multi-Disaster Risk Evaluator</h3>
+                                <p class="text-xs text-slate-400">Modular mathematical scoring (0-100) with explainable rationale</p>
                             </div>
                         </div>
-                        <p class="text-xs text-slate-300 leading-relaxed mb-4">Computes transparent risk tiering based on localized precipitation volume, terrain elevation, and reported structure integrity.</p>
-                        
-                        <button onclick="runRuleBasedRiskCalculator()" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-emerald-400 py-2.5 rounded-xl text-xs font-bold transition">
-                            Run Risk Assessment
-                        </button>
                     </div>
-                    <div id="satellite-output" class="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl border border-slate-800 mt-2">
-                        Assessment engine ready. Click above to analyze current zone parameters.
-                    </div>
-                </div>
 
-                <!-- 3. Safe Route Recommendation -->
-                <div class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center space-x-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-900/40 border border-emerald-500/50 flex items-center justify-center text-emerald-400 text-lg">
-                                🗺️
-                            </div>
+                    <!-- Disaster Type Selector -->
+                    <div class="grid sm:grid-cols-2 gap-3 text-xs">
+                        <div>
+                            <label class="block text-slate-400 font-bold mb-1">Select Disaster Scenario</label>
+                            <select id="eval-disaster-type" onchange="runModularRiskAssessment()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                                <option value="Flood">Flood (Gomti River Basin)</option>
+                                <option value="Landslide">Landslide (Slope / Elevation)</option>
+                                <option value="Earthquake">Earthquake (Seismic Vulnerability)</option>
+                                <option value="Cyclone">Cyclone (Wind & Surge)</option>
+                                <option value="Fire">Fire (Thermal & Combustion)</option>
+                                <option value="Lightning">Lightning Hazard</option>
+                                <option value="Structural collapse">Structural Collapse</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 font-bold mb-1">Victims / Density Affected</label>
+                            <input type="number" id="eval-people-count" value="5" min="1" max="1000" onchange="runModularRiskAssessment()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <!-- Risk Output Display Card -->
+                    <div id="risk-engine-result" class="bg-slate-950 border border-purple-800/60 rounded-xl p-5 space-y-4">
+                        <div class="flex items-center justify-between">
                             <div>
-                                <h3 class="font-bold text-white text-base">Safe Route Recommendation</h3>
-                                <p class="text-xs text-slate-400">Hazard Evasion & Shelter Guidance</p>
+                                <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider" data-i18n="overallRisk">OVERALL RISK SCORE</span>
+                                <div class="flex items-baseline space-x-2 mt-1">
+                                    <span id="risk-score-val" class="text-3xl sm:text-4xl font-black text-amber-400">72</span>
+                                    <span class="text-slate-500 text-sm font-bold">/ 100</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span id="risk-level-badge" class="text-xs font-black uppercase px-3 py-1 rounded-full bg-amber-950 text-amber-300 border border-amber-700">
+                                    HIGH RISK
+                                </span>
+                                <p id="risk-confidence-text" class="text-[10px] text-slate-400 mt-1">Confidence: 86%</p>
                             </div>
                         </div>
-                        <p class="text-xs text-slate-300 leading-relaxed mb-4">Navigates around active inundation boundaries, collapsed infrastructure, and bridges exceeding safety tolerances.</p>
-                    </div>
-                    <div>
-                        <button onclick="switchTab('map')" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center space-x-1.5 shadow transition">
-                            <i data-lucide="navigation-2" class="w-4 h-4"></i>
-                            <span>Launch Tactical Map →</span>
-                        </button>
+
+                        <!-- Progress Bar -->
+                        <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden">
+                            <div id="risk-score-bar" class="h-2.5 bg-amber-500 rounded-full transition-all duration-500" style="width: 72%;"></div>
+                        </div>
+
+                        <!-- Factors Grid -->
+                        <div id="risk-factors-container" class="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-[11px]">
+                            <!-- Populated dynamically -->
+                        </div>
+
+                        <!-- Explainable AI Rationale (Section 7) -->
+                        <div class="p-3 bg-slate-900 rounded-lg border border-slate-800 space-y-1">
+                            <span class="text-[10px] font-bold uppercase text-purple-300">Why this score was generated:</span>
+                            <p id="risk-reason-text" class="text-xs text-slate-200 leading-relaxed">
+                                Risk elevated due to active rainfall intensity, low-lying riverfront basin terrain, and multiple reported trapped persons.
+                            </p>
+                        </div>
+
+                        <!-- Recommended Action -->
+                        <div class="p-3 bg-purple-950/40 rounded-lg border border-purple-800/40 text-xs">
+                            <span class="font-bold text-purple-300 block mb-0.5">Recommended Field Action:</span>
+                            <span id="risk-action-text" class="text-purple-200">Dispatch SDRF flood evacuation boats and stage emergency shelter transit.</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 4. Voice SOS Intake (Web Speech API & AI Audio Dispatch) -->
-                <div class="bg-slate-900 border border-purple-500/30 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                <!-- RIGHT: LIVE WEATHER TELEMETRY (SECTION 9) -->
+                <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between space-y-4">
                     <div>
-                        <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
                             <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 rounded-xl bg-purple-900/40 border border-purple-500/50 flex items-center justify-center text-purple-400 text-lg">
-                                    🎙️
+                                <div class="w-10 h-10 rounded-xl bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 text-lg">
+                                    📡
                                 </div>
                                 <div>
-                                    <h3 class="font-bold text-white text-base">Voice SOS Intake</h3>
-                                    <p class="text-xs text-slate-400">AI Voice Audio & Instant Dispatch</p>
+                                    <h3 class="font-bold text-white text-base" data-i18n="weatherTitle">Live Meteorology Telemetry</h3>
+                                    <p class="text-xs text-slate-400">Atmospheric Feeds & Satellite Grid</p>
                                 </div>
                             </div>
-                            <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-700">Zero Delay</span>
-                        </div>
-                        <p class="text-xs text-slate-300 leading-relaxed mb-3">Pre-recorded AI emergency audio intake with instant 1-click beacon dispatch to first responder units.</p>
-
-                        <!-- Stored Pre-recorded AI Emergency Voice Audio -->
-                        <div class="bg-slate-950 p-3 rounded-xl border border-purple-800/40 mb-3 space-y-2">
-                            <div class="flex items-center justify-between text-xs">
-                                <span class="font-bold text-slate-300 flex items-center space-x-1.5">
-                                    <i data-lucide="volume-2" class="w-3.5 h-3.5 text-purple-400"></i>
-                                    <span>AI Emergency Audio</span>
-                                </span>
-                                <span class="text-[10px] text-purple-300 font-semibold italic">"It's an emergency, I need help"</span>
-                            </div>
-                            <audio controls src="assets/emergency_voice.wav" class="w-full h-8 rounded opacity-90 focus:outline-none"></audio>
-                            <button type="button" onclick="voiceEngine.playEmergencyAudio()" class="w-full bg-slate-900 hover:bg-slate-800 border border-purple-700/60 text-purple-300 text-xs py-1.5 px-3 rounded-lg font-bold flex items-center justify-center space-x-1.5 transition">
-                                <i data-lucide="play" class="w-3 h-3 fill-current"></i>
-                                <span>Play AI Voice Prompt</span>
-                            </button>
+                            <!-- Transparent Source Label (Section 9) -->
+                            <span id="weather-source-badge" class="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700">
+                                LIVE DATA
+                            </span>
                         </div>
 
-                        <!-- Instant 1-Click Send Voice SOS Button (Zero Delay) -->
-                        <button id="btn-instant-voice-sos" onclick="voiceEngine.instantSendVoiceSOS()" class="w-full bg-red-600 hover:bg-red-500 text-white font-extrabold py-3 rounded-xl text-xs flex items-center justify-center space-x-2 shadow-lg shadow-red-950/60 border border-red-400/40 transition transform active:scale-95 mb-2">
-                            <i data-lucide="zap" class="w-4 h-4 fill-current"></i>
-                            <span>⚡ SEND INSTANT VOICE SOS (ZERO DELAY)</span>
-                        </button>
-                        
-                        <!-- Hands-free speech recognition toggle -->
-                        <button id="btn-voice-rec" onclick="voiceEngine.toggle()" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-purple-300 font-bold py-2 rounded-xl text-xs flex items-center justify-center space-x-1.5 transition">
-                            <i data-lucide="mic" class="w-3.5 h-3.5"></i>
-                            <span id="voice-btn-text">Record Custom Voice SOS (Hands-Free)</span>
-                        </button>
-                    </div>
-                    <div id="voice-transcription" class="text-xs text-slate-300 bg-slate-950 p-2.5 rounded-xl border border-slate-800 mt-2">
-                        Ready. Click "SEND INSTANT VOICE SOS" for immediate dispatch, or use microphone to dictate.
-                    </div>
-                </div>
+                        <!-- Metrics Grid -->
+                        <div class="grid grid-cols-2 gap-3 text-center my-4">
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-400 block uppercase font-bold">Temperature</span>
+                                <span id="iot-temp" class="text-lg font-black text-emerald-400">-- °C</span>
+                            </div>
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-400 block uppercase font-bold">Precipitation</span>
+                                <span id="iot-rain" class="text-lg font-black text-emerald-400">-- mm/h</span>
+                            </div>
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-400 block uppercase font-bold">Wind Speed</span>
+                                <span id="iot-wind" class="text-lg font-black text-emerald-400">-- km/h</span>
+                            </div>
+                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                                <span class="text-[10px] text-slate-400 block uppercase font-bold">Humidity</span>
+                                <span id="iot-humidity" class="text-lg font-black text-emerald-400">-- %</span>
+                            </div>
+                        </div>
 
-                <!-- 5. Shelter & Bed Matching -->
-                <div class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center space-x-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-900/40 border border-emerald-500/50 flex items-center justify-center text-emerald-400 text-lg">
-                                🏫
+                        <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1">
+                            <div class="flex justify-between text-slate-300">
+                                <span>Condition: <strong id="weather-condition-text" class="text-white">Clear</strong></span>
+                                <span class="text-slate-400 text-[11px]" id="weather-updated-time">Updated: Just now</span>
                             </div>
-                            <div>
-                                <h3 class="font-bold text-white text-base">Shelter & Resource Matching</h3>
-                                <p class="text-xs text-slate-400">Live Bed & Relief Packet Telemetry</p>
-                            </div>
-                        </div>
-                        <p class="text-xs text-slate-300 leading-relaxed mb-4">Matches displaced victims with nearby operational camps and trauma centers based on remaining capacity.</p>
-                    </div>
-                    <div>
-                        <button onclick="allocateSmartHospital()" class="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-emerald-300 font-bold py-2.5 rounded-xl text-xs transition">
-                            Query Nearest Shelter Capacity
-                        </button>
-                        <div id="hospital-output" class="text-xs text-slate-300 bg-slate-950 p-2.5 rounded-xl border border-slate-800 mt-2">
-                            Select match to view current database availability.
+                            <p class="text-[11px] text-slate-400" id="telemetry-status">Connected to Open-Meteo & Weather API backend proxy.</p>
                         </div>
                     </div>
-                </div>
 
-                <!-- 6. Multi-Agent Engine Sync -->
-                <div class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center space-x-3 mb-4">
-                            <div class="w-10 h-10 rounded-xl bg-emerald-900/40 border border-emerald-500/50 flex items-center justify-center text-emerald-400 text-lg">
-                                🔄
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-base">Multi-Agent Coordination</h3>
-                                <p class="text-xs text-slate-400">Dispatch, Field Squad & Citizen Sync</p>
-                            </div>
-                        </div>
-                        <p class="text-xs text-slate-300 leading-relaxed mb-4">Maintains synchronized state cycles between first responders, shelter logistics coordinators, and affected citizens.</p>
-                    </div>
-                    <div>
-                        <button onclick="runMultiAgentCycle()" class="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs shadow transition">
-                            Execute Coordination Sync Cycle
-                        </button>
-                        <div id="multi-agent-output" class="text-xs text-slate-300 bg-slate-950 p-2.5 rounded-xl border border-slate-800 mt-2">
-                            Coordination mesh: Standby.
-                        </div>
+                    <div class="p-3 bg-purple-950/40 border border-purple-800/40 rounded-xl text-[11px] text-purple-200">
+                        🛡️ API keys are securely managed via backend environment variables and are never exposed in frontend scripts.
                     </div>
                 </div>
 
@@ -396,37 +571,14 @@
         </div>
     </section>
 
-    <!-- PAGE 3: MY REPORTS SECTION -->
-    <section id="page-reports" class="page-content flex-grow hidden">
-        <div class="max-w-7xl mx-auto px-4 py-8 w-full">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-                <div>
-                    <h1 class="text-3xl font-black text-white">Active Dispatch Signals</h1>
-                    <p class="text-xs text-slate-400 mt-1">Live status of your submitted emergency beacons (Showing your latest 5 reports)</p>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <button onclick="fetchCitizenReports()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
-                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-purple-400"></i>
-                        <span>Refresh List</span>
-                    </button>
-                    <button onclick="document.getElementById('sos-modal').classList.remove('hidden')" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-2 shadow-lg transition">
-                        <i data-lucide="plus" class="w-4 h-4"></i>
-                        <span>File New SOS Signal</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Dynamic Grid Rendered via fetchCitizenReports() -->
-            <div id="reports-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
-        </div>
-    </section>
-
-    <!-- PAGE 4: LIVE MAP SECTION -->
+    <!-- ============================================================= -->
+    <!-- SECTION 4: TACTICAL GIS MAP (SECTION 10 & 11) -->
+    <!-- ============================================================= -->
     <section id="page-map" class="page-content flex-grow hidden">
         <div class="max-w-7xl mx-auto px-4 py-6 w-full space-y-4">
             <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div>
-                    <h1 class="text-3xl font-black text-white">Tactical Rescue Map & Shelter Grid</h1>
+                    <h1 class="text-3xl font-black text-white" data-i18n="navMap">Tactical GIS Map & Safe Corridors</h1>
                     <p class="text-xs text-slate-400 mt-1" id="gps-status-text">Connecting to GPS satellites...</p>
                 </div>
                 
@@ -445,7 +597,7 @@
                 <div class="flex items-center space-x-2 flex-wrap gap-2">
                     <button onclick="toggleRiskZones()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-purple-300 px-3 py-1.5 rounded-lg text-xs font-bold shadow flex items-center space-x-1.5 transition">
                         <i data-lucide="layers" class="w-4 h-4"></i>
-                        <span>Toggle Risk Zones</span>
+                        <span>Risk Zones</span>
                     </button>
                     <button onclick="recenterMap()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow flex items-center space-x-1.5 transition">
                         <i data-lucide="crosshair" class="w-4 h-4 text-purple-400"></i>
@@ -457,14 +609,39 @@
                 </div>
             </div>
 
-            <!-- Leaflet Map Container -->
-            <div class="bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-xl relative" style="height: 540px;">
+            <!-- Layer Toggle Checkboxes (Section 10) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center gap-3 text-xs">
+                <span class="text-slate-400 font-bold uppercase text-[10px] tracking-wider">Layers:</span>
+                <label class="flex items-center space-x-1.5 cursor-pointer">
+                    <input type="checkbox" checked onchange="toggleLayer('incidents')" class="accent-purple-600">
+                    <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span><span>Incidents</span></span>
+                </label>
+                <label class="flex items-center space-x-1.5 cursor-pointer">
+                    <input type="checkbox" checked onchange="toggleLayer('shelters')" class="accent-purple-600">
+                    <span class="flex items-center space-x-1"><span>🏠</span><span>Shelters</span></span>
+                </label>
+                <label class="flex items-center space-x-1.5 cursor-pointer">
+                    <input type="checkbox" checked onchange="toggleLayer('hospitals')" class="accent-purple-600">
+                    <span class="flex items-center space-x-1"><span>🏥</span><span>Hospitals</span></span>
+                </label>
+                <label class="flex items-center space-x-1.5 cursor-pointer">
+                    <input type="checkbox" checked onchange="toggleLayer('teams')" class="accent-purple-600">
+                    <span class="flex items-center space-x-1"><span>🚑</span><span>Rescue Squads</span></span>
+                </label>
+                <label class="flex items-center space-x-1.5 cursor-pointer">
+                    <input type="checkbox" checked onchange="toggleLayer('hazards')" class="accent-purple-600">
+                    <span class="flex items-center space-x-1"><span>🚧</span><span>Hazards / Flood Zones</span></span>
+                </label>
+            </div>
+
+            <!-- Tactical Map Container -->
+            <div class="bg-slate-950 rounded-2xl overflow-hidden border border-slate-800 shadow-xl relative" style="height: 560px;">
                 <div id="main-map"></div>
 
-                <div id="route-info-box" class="hidden absolute top-4 left-4 z-[1000] bg-slate-900/95 backdrop-blur-md p-3.5 rounded-xl border border-purple-500/50 shadow-2xl text-xs space-y-1">
+                <div id="route-info-box" class="hidden absolute top-4 left-4 z-[1000] bg-slate-900/95 backdrop-blur-md p-3.5 rounded-xl border border-purple-500/50 shadow-2xl text-xs space-y-1 max-w-sm">
                     <div class="flex items-center space-x-1 text-purple-400 font-bold">
                         <i data-lucide="navigation-2" class="w-4 h-4"></i>
-                        <span>Active Safe Corridor</span>
+                        <span data-i18n="safeRouteTitle">Recommended Safe Route</span>
                     </div>
                     <p id="route-distance" class="text-white font-extrabold text-sm"></p>
                 </div>
@@ -472,39 +649,325 @@
         </div>
     </section>
 
-    <!-- SOS DISPATCH MODAL -->
+    <!-- ============================================================= -->
+    <!-- SECTION 5: SHELTERS DIRECTORY (SECTION 17) -->
+    <!-- ============================================================= -->
+    <section id="page-shelters" class="page-content flex-grow hidden">
+        <div class="max-w-7xl mx-auto px-4 py-8 w-full space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h1 class="text-3xl font-black text-white" data-i18n="sheltersTitle">Emergency Relief Shelters</h1>
+                    <p class="text-xs text-slate-400 mt-1">Operational relief camps, capacity occupancy, food & water supply levels.</p>
+                </div>
+                <button onclick="fetchSheltersDirectory()" class="bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Refresh Shelters</span>
+                </button>
+            </div>
+
+            <div id="shelters-directory-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- SECTION 6: HOSPITALS & TRAUMA DIRECTORY (SECTION 18) -->
+    <!-- ============================================================= -->
+    <section id="page-hospitals" class="page-content flex-grow hidden">
+        <div class="max-w-7xl mx-auto px-4 py-8 w-full space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h1 class="text-3xl font-black text-white" data-i18n="hospitalsTitle">Emergency Hospitals & Trauma Centers</h1>
+                    <p class="text-xs text-slate-400 mt-1">Live trauma center availability, ICU beds, emergency fleet & contact numbers.</p>
+                </div>
+                <button onclick="fetchHospitalsDirectory()" class="bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Refresh Hospitals</span>
+                </button>
+            </div>
+
+            <div id="hospitals-directory-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- SECTION 7: EMERGENCY CONTACTS & HOTLINES (SECTION 2) -->
+    <!-- ============================================================= -->
+    <section id="page-contacts" class="page-content flex-grow hidden">
+        <div class="max-w-5xl mx-auto px-4 py-8 w-full space-y-6">
+            <div class="border-b border-slate-800 pb-4">
+                <div class="inline-flex items-center space-x-2 bg-red-950/70 border border-red-700/50 px-3 py-1 rounded-full text-xs text-red-300 font-bold mb-2">
+                    <i data-lucide="phone-call" class="w-4 h-4"></i>
+                    <span>24x7 Emergency Hotlines</span>
+                </div>
+                <h1 class="text-3xl font-black text-white" data-i18n="navContacts">Emergency Contacts & Support Hotlines</h1>
+                <p class="text-xs text-slate-400 mt-1">National and state disaster management authority contact numbers.</p>
+            </div>
+
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                <div class="bg-slate-900 border border-red-800/60 rounded-2xl p-5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black uppercase text-red-400">National Emergency</span>
+                        <span class="text-xs font-mono font-bold bg-red-950 text-red-300 px-2 py-0.5 rounded border border-red-800">112</span>
+                    </div>
+                    <h3 class="text-lg font-black text-white">112 All-in-One Helpline</h3>
+                    <p class="text-slate-400 text-xs">Police, Fire & Medical unified emergency response service.</p>
+                    <a href="tel:112" class="inline-block w-full text-center bg-red-600 hover:bg-red-500 text-white font-bold py-2 rounded-xl mt-2 transition">Call 112</a>
+                </div>
+
+                <div class="bg-slate-900 border border-purple-800/60 rounded-2xl p-5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black uppercase text-purple-400">NDRF Headquarters</span>
+                        <span class="text-xs font-mono font-bold bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-800">1078</span>
+                    </div>
+                    <h3 class="text-lg font-black text-white">National Disaster Response</h3>
+                    <p class="text-slate-400 text-xs">NDRF 24/7 disaster control room and rescue deployment.</p>
+                    <a href="tel:1078" class="inline-block w-full text-center bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 rounded-xl mt-2 transition">Call 1078</a>
+                </div>
+
+                <div class="bg-slate-900 border border-emerald-800/60 rounded-2xl p-5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black uppercase text-emerald-400">UP Disaster Relief</span>
+                        <span class="text-xs font-mono font-bold bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800">1070</span>
+                    </div>
+                    <h3 class="text-lg font-black text-white">State Relief Commissioner</h3>
+                    <p class="text-slate-400 text-xs">State Emergency Operation Center (SEOC Lucknow).</p>
+                    <a href="tel:1070" class="inline-block w-full text-center bg-emerald-700 hover:bg-emerald-600 text-white font-bold py-2 rounded-xl mt-2 transition">Call 1070</a>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black uppercase text-blue-400">Medical Ambulance</span>
+                        <span class="text-xs font-mono font-bold bg-blue-950 text-blue-300 px-2 py-0.5 rounded border border-blue-800">108 / 102</span>
+                    </div>
+                    <h3 class="text-lg font-black text-white">Emergency Medical Transit</h3>
+                    <p class="text-slate-400 text-xs">State trauma dispatch and primary health transit.</p>
+                    <a href="tel:108" class="inline-block w-full text-center bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl mt-2 transition">Call 108</a>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black uppercase text-orange-400">Fire Services</span>
+                        <span class="text-xs font-mono font-bold bg-orange-950 text-orange-300 px-2 py-0.5 rounded border border-orange-800">101</span>
+                    </div>
+                    <h3 class="text-lg font-black text-white">Fire Brigade Dispatch</h3>
+                    <p class="text-slate-400 text-xs">Structural fires, gas leaks and chemical hazard containment.</p>
+                    <a href="tel:101" class="inline-block w-full text-center bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl mt-2 transition">Call 101</a>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-black uppercase text-purple-400">Women Helpline</span>
+                        <span class="text-xs font-mono font-bold bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-800">1090</span>
+                    </div>
+                    <h3 class="text-lg font-black text-white">Emergency Women Safety</h3>
+                    <p class="text-slate-400 text-xs">24/7 dedicated distress and safety hotline.</p>
+                    <a href="tel:1090" class="inline-block w-full text-center bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl mt-2 transition">Call 1090</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- SECTION 8: MY REPORTS & TRACKING (SECTION 3 & 14) -->
+    <!-- ============================================================= -->
+    <section id="page-reports" class="page-content flex-grow hidden">
+        <div class="max-w-7xl mx-auto px-4 py-8 w-full">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h1 class="text-3xl font-black text-white" data-i18n="trackingTitle">Active Emergency Signals & Tracking</h1>
+                    <p class="text-xs text-slate-400 mt-1">Live status of your submitted emergency beacons with milestone checklist.</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="fetchCitizenReports()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-purple-400"></i>
+                        <span>Refresh List</span>
+                    </button>
+                    <button onclick="openSosModal()" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-2 shadow-lg transition">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>File New SOS Signal</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dynamic Grid Rendered via fetchCitizenReports() -->
+            <div id="reports-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- SECTION 9: HELP & DISASTER SAFETY GUIDE (SECTION 31 & 32) -->
+    <!-- ============================================================= -->
+    <section id="page-help" class="page-content flex-grow hidden">
+        <div class="max-w-5xl mx-auto px-4 py-8 w-full space-y-6">
+            <div class="border-b border-slate-800 pb-4">
+                <h1 class="text-3xl font-black text-white" data-i18n="navHelp">Disaster Safety & Preparedness Guide</h1>
+                <p class="text-xs text-slate-400 mt-1">Standard operating procedures, offline emergency protocols, and first-aid instructions.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6 text-xs">
+                <!-- Flood Safety Guide -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+                    <div class="flex items-center space-x-2 text-blue-400 font-bold text-sm">
+                        <span>🌊</span>
+                        <span>Flood Safety Checklist</span>
+                    </div>
+                    <ul class="space-y-2 text-slate-300 list-disc list-inside leading-relaxed">
+                        <li>Move immediately to higher ground or upper building levels.</li>
+                        <li>Do not walk, swim, or drive through moving flood waters. Turn around, don't drown.</li>
+                        <li>Disconnect electrical appliances and main breaker if safe to do so.</li>
+                        <li>Drink boiled or bottled water only; avoid tap or flood runoff.</li>
+                        <li>Keep your mobile phone charged and store emergency phone numbers offline.</li>
+                    </ul>
+                </div>
+
+                <!-- Fire Safety Guide -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+                    <div class="flex items-center space-x-2 text-red-400 font-bold text-sm">
+                        <span>🔥</span>
+                        <span>Fire & Smoke Evacuation</span>
+                    </div>
+                    <ul class="space-y-2 text-slate-300 list-disc list-inside leading-relaxed">
+                        <li>Stay low to the floor where air is cleaner; crawl under smoke.</li>
+                        <li>Feel doors with the back of your hand before opening. If hot, do not open.</li>
+                        <li>Never use elevators during a fire evacuation; use emergency fire stairs.</li>
+                        <li>Stop, Drop, and Roll if clothing catches fire.</li>
+                        <li>Call 112 or 101 once safely outside.</li>
+                    </ul>
+                </div>
+
+                <!-- Earthquake Safety -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+                    <div class="flex items-center space-x-2 text-amber-400 font-bold text-sm">
+                        <span>⛰️</span>
+                        <span>Earthquake Protocol</span>
+                    </div>
+                    <ul class="space-y-2 text-slate-300 list-disc list-inside leading-relaxed">
+                        <li><strong>DROP, COVER, AND HOLD ON:</strong> Drop under sturdy furniture and hold on.</li>
+                        <li>Stay away from glass windows, exterior walls, and tall loose furniture.</li>
+                        <li>If outdoors, move to an open area away from power lines and trees.</li>
+                        <li>Expect aftershocks and prepare for structural inspections before re-entering.</li>
+                    </ul>
+                </div>
+
+                <!-- Offline Emergency Protocol -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+                    <div class="flex items-center space-x-2 text-emerald-400 font-bold text-sm">
+                        <span>📶</span>
+                        <span>Offline & Poor Connectivity Mode</span>
+                    </div>
+                    <ul class="space-y-2 text-slate-300 list-disc list-inside leading-relaxed">
+                        <li>When cellular or internet connection is lost, SOS beacons are cached locally on your device.</li>
+                        <li>Keep the browser tab open; the application will automatically transmit the beacon the moment connectivity returns.</li>
+                        <li>Use SMS or voice telephony to 112 as an immediate fallback if cellular voice is functional.</li>
+                        <li>Conserve device battery by enabling extreme power saving mode.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- SECTION 10: ABOUT & ARCHITECTURE (SECTION 44) -->
+    <!-- ============================================================= -->
+    <section id="page-about" class="page-content flex-grow hidden">
+        <div class="max-w-4xl mx-auto px-4 py-8 w-full space-y-6 text-xs text-slate-300">
+            <div class="border-b border-slate-800 pb-4">
+                <h1 class="text-3xl font-black text-white" data-i18n="navAbout">About AI Disaster Rescue Coordinator</h1>
+                <p class="text-xs text-slate-400 mt-1">Platform architecture, artificial intelligence disclosures, and college/SIH project overview.</p>
+            </div>
+
+            <!-- Core Workflow Diagram (Section 1) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h3 class="text-base font-bold text-white uppercase tracking-wider">End-to-End System Workflow</h3>
+                <div class="flex flex-wrap items-center justify-between gap-2 text-center text-[11px] font-mono">
+                    <span class="bg-slate-950 p-2.5 rounded-lg border border-purple-800 text-purple-300 font-bold">CITIZEN</span>
+                    <span class="text-purple-400 font-bold">→</span>
+                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-white">SOS / REPORT</span>
+                    <span class="text-purple-400 font-bold">→</span>
+                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-emerald-400">GPS TELEMETRY</span>
+                    <span class="text-purple-400 font-bold">→</span>
+                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-white">BACKEND API</span>
+                    <span class="text-purple-400 font-bold">→</span>
+                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-purple-300">AI RISK ENGINE</span>
+                    <span class="text-purple-400 font-bold">→</span>
+                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-amber-400">AUTHORITY HQ</span>
+                    <span class="text-purple-400 font-bold">→</span>
+                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-blue-400">TEAM ASSIGNMENT</span>
+                    <span class="text-purple-400 font-bold">→</span>
+                    <span class="bg-slate-950 p-2.5 rounded-lg border border-emerald-800 text-emerald-400 font-bold">RESOLUTION</span>
+                </div>
+            </div>
+
+            <!-- Transparency Disclosures (Sections 7, 8, 9, 38) -->
+            <div class="grid sm:grid-cols-2 gap-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+                    <h4 class="font-bold text-white text-sm">AI Engine Model Transparency</h4>
+                    <p class="leading-relaxed text-slate-300">
+                        The risk engine combines multi-criteria meteorology telemetry (rainfall, elevation, wind speeds) with victim headcount weights and heuristic computer vision. AI vision and risk assessments provide advisory assistance and are explicitly not 100% accurate.
+                    </p>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+                    <h4 class="font-bold text-white text-sm">Emergency Authority Disclaimer</h4>
+                    <p class="leading-relaxed text-slate-300">
+                        This software is developed as an academic and hackathon coordination demonstration platform. No real 112, 911, or NDRF dispatch integrations are claimed unless authorized. All simulated components are labeled as DEMO DATA.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ============================================================= -->
+    <!-- EMERGENCY SOS MODAL (SECTION 3 & 4) -->
+    <!-- ============================================================= -->
     <div id="sos-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 text-slate-200 rounded-2xl max-w-xl w-full p-6 border border-purple-800/80 shadow-2xl space-y-4">
+        <div class="bg-slate-900 text-slate-200 rounded-2xl max-w-xl w-full p-6 border border-red-800/80 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center space-x-2">
                     <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
-                    <h3 class="font-black text-white text-lg">Dispatch Emergency SOS Beacon</h3>
+                    <h3 class="font-black text-white text-lg" data-i18n="sosModalTitle">Dispatch Emergency SOS Beacon</h3>
                 </div>
                 <button onclick="document.getElementById('sos-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">
                     <i data-lucide="x" class="w-6 h-6"></i>
                 </button>
             </div>
 
+            <!-- Instant Voice SOS Shortcut (Section 5) -->
+            <button type="button" onclick="voiceEngine.instantSendVoiceSOS()" class="w-full bg-red-600 hover:bg-red-500 text-white font-extrabold py-3 rounded-xl text-xs flex items-center justify-center space-x-2 shadow-lg shadow-red-950 border border-red-400/40 transition transform active:scale-95">
+                <i data-lucide="zap" class="w-4 h-4 fill-current"></i>
+                <span data-i18n="instantVoiceSos">⚡ SEND INSTANT VOICE SOS (ZERO DELAY)</span>
+            </button>
+
+            <div class="flex items-center my-2 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                <span class="flex-grow border-t border-slate-800"></span>
+                <span class="px-2">or specify emergency details</span>
+                <span class="flex-grow border-t border-slate-800"></span>
+            </div>
+
             <form id="sos-form" onsubmit="handleSosSubmit(event)" class="space-y-4 text-xs">
                 <div>
-                    <label class="block font-bold text-slate-300 uppercase mb-1">Emergency Category</label>
+                    <label class="block font-bold text-slate-300 uppercase mb-1" data-i18n="categoryLabel">Emergency Category</label>
                     <select id="sos-category" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:border-purple-500 focus:outline-none">
+                        <option value="Flood">Flood / Waterlogging</option>
+                        <option value="Landslide">Landslide</option>
+                        <option value="Earthquake">Earthquake</option>
+                        <option value="Cyclone">Cyclone / Gale</option>
+                        <option value="Fire">Fire / Burn Hazard</option>
+                        <option value="Lightning">Lightning</option>
+                        <option value="Building collapse">Building Collapse</option>
+                        <option value="Road accident">Road Accident</option>
                         <option value="Medical Emergency">Medical Emergency / Traumatic Injury</option>
-                        <option value="Trapped / Collapse">Trapped in Floodwater / Structural Collapse</option>
-                        <option value="Evacuation Request">Immediate Evacuation Needed</option>
-                        <option value="Severe Hazard / Fire">Fire / Chemical / Electrical Hazard</option>
-                        <option value="Relief Supplies Required">Relief Food / Water / Baby Nutrition Required</option>
+                        <option value="Other">Other Emergency</option>
                     </select>
                 </div>
 
                 <div>
-                    <label class="block font-bold text-slate-300 uppercase mb-1">Victims / People Affected</label>
+                    <label class="block font-bold text-slate-300 uppercase mb-1" data-i18n="victimsLabel">Victims / People Affected</label>
                     <input type="number" id="sos-count" value="1" min="1" max="500" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" required>
                 </div>
 
                 <div>
                     <div class="flex items-center justify-between mb-1">
-                        <label class="block font-bold text-slate-300 uppercase">Situation Details & Landmarks</label>
+                        <label class="block font-bold text-slate-300 uppercase" data-i18n="detailsLabel">Situation Details & Landmarks</label>
                         <button type="button" onclick="voiceEngine.toggle()" class="text-purple-400 hover:text-purple-300 font-semibold underline flex items-center space-x-1">
                             <i data-lucide="mic" class="w-3 h-3"></i>
                             <span>Voice Dictate</span>
@@ -514,21 +977,63 @@
                 </div>
 
                 <div>
-                    <label class="block font-bold text-slate-300 uppercase mb-1">Physical Address / Nearby Landmark (Optional)</label>
+                    <label class="block font-bold text-slate-300 uppercase mb-1" data-i18n="landmarkLabel">Physical Address / Nearby Landmark (Optional)</label>
                     <input type="text" id="sos-address" placeholder="e.g. Near Hazratganj Metro Gate 2, Lucknow" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none">
                 </div>
 
                 <div>
-                    <label class="block font-bold text-slate-300 uppercase mb-1">Attach Photo / Video Evidence (Optional)</label>
+                    <label class="block font-bold text-slate-300 uppercase mb-1" data-i18n="evidenceLabel">Attach Photo / Video Evidence (Optional)</label>
                     <input type="file" id="sos-evidence" accept="image/*,video/*" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-900 file:text-purple-200 hover:file:bg-purple-800">
                 </div>
 
                 <div class="p-3 bg-purple-950/40 border border-purple-800/40 rounded-xl text-[11px] text-purple-200">
-                    📡 Your coordinates will be transmitted alongside this dispatch to allow NDRF/field units to route safely.
+                    📡 High-precision GPS coordinates will be captured and verified to enable NDRF/field squads to route safely.
                 </div>
 
-                <button type="submit" id="sos-submit-btn" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-black py-3.5 rounded-xl uppercase text-sm shadow-xl transition">
+                <button type="submit" id="sos-submit-btn" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-xl uppercase text-sm shadow-xl transition">
                     Dispatch Beacon to Command HQ
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- CITIZEN PROFILE MODAL (SECTION 23) -->
+    <div id="citizen-profile-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 text-slate-200 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="font-black text-white text-base">Citizen Emergency Profile</h3>
+                <button onclick="document.getElementById('citizen-profile-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form onsubmit="saveCitizenProfile(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-300 font-bold mb-1">Full Name</label>
+                    <input type="text" id="prof-name" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" required>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-bold mb-1">Primary Phone Number</label>
+                    <input type="tel" id="prof-phone" placeholder="+91 9876543210" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-bold mb-1">Emergency Relative Contact</label>
+                    <input type="tel" id="prof-em-phone" placeholder="+91 9876543211" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-bold mb-1">Blood Group</label>
+                    <select id="prof-blood" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                        <option value="O+">O+ Positive</option>
+                        <option value="O-">O- Negative</option>
+                        <option value="A+">A+ Positive</option>
+                        <option value="A-">A- Negative</option>
+                        <option value="B+">B+ Positive</option>
+                        <option value="B-">B- Negative</option>
+                        <option value="AB+">AB+ Positive</option>
+                        <option value="AB-">AB- Negative</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl uppercase text-xs transition">
+                    Save Profile Information
                 </button>
             </form>
         </div>
@@ -539,20 +1044,37 @@
         <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
             <div>
                 <p class="font-bold text-slate-300">RESCUE AI &bull; AI Disaster Rescue Coordinator</p>
-                <p class="text-[11px] text-slate-500 mt-0.5">Automated Triage, Meteorology Telemetry & Volunteer Command Platform</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Automated Triage, Meteorology Telemetry & Emergency Command Coordination</p>
             </div>
-            <div class="text-[11px] text-slate-500">
-                <span>Emergency Hotline: <strong>112</strong></span> | 
-                <span>NDRF Helpline: <strong>1078</strong></span>
+            <div class="text-[11px] text-slate-500 space-y-1 sm:text-right">
+                <div>
+                    <span>Emergency Hotline: <strong>112</strong></span> | 
+                    <span>NDRF Helpline: <strong>1078</strong></span>
+                </div>
+                <div>
+                    <a href="privacy-policy.html" class="text-purple-400 hover:text-purple-300 underline font-medium">Privacy Policy</a> &bull;
+                    <a href="authority.html" class="text-slate-400 hover:text-slate-300">Authority Console</a>
+                </div>
             </div>
         </div>
     </footer>
 
     <!-- App Scripts (Modular Production Architecture) -->
+    <script src="js/config.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/api.js"></script>
     <script src="js/socket.js"></script>
     <script src="js/voice-sos.js"></script>
     <script src="js/citizen-map.js"></script>
     <script src="js/citizen-app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js').catch(err => {
+                    console.log('[PWA] Service worker registration ignored:', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

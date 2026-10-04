@@ -1,0 +1,42 @@
+{
+  "name": "RESCUE AI — Disaster Rescue Coordinator",
+  "short_name": "RESCUE AI",
+  "description": "24/7 AI-Assisted Disaster Rescue, Citizen SOS Beacon & Emergency Coordination Platform",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0B0F19",
+  "theme_color": "#7E22CE",
+  "categories": ["medical", "utilities", "weather", "lifestyle"],
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Emergency SOS",
+      "short_name": "SOS",
+      "description": "Immediately broadcast an emergency SOS beacon",
+      "url": "./index.html#sos",
+      "icons": [{ "src": "assets/icon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Nearest Shelters",
+      "short_name": "Shelters",
+      "description": "Find nearby safe relief camps and shelters",
+      "url": "./index.html#shelters",
+      "icons": [{ "src": "assets/icon.png", "sizes": "192x192" }]
+    }
+  ]
+}

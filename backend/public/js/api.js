@@ -8,14 +8,28 @@ function resolveApiBaseUrl() {
     if (window.API_BASE_URL !== undefined && window.API_BASE_URL !== '') {
         return window.API_BASE_URL;
     }
+    const customUrl = localStorage.getItem('rescue_ai_custom_api_url');
+    if (customUrl) {
+        return customUrl.replace(/\/$/, '');
+    }
+    const isNativeCapacitor = Boolean(
+        (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
+        (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:')
+    );
+    if (isNativeCapacitor && window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) {
+        return window.RESCUE_CONFIG.SERVER_URL.replace(/\/$/, '');
+    }
     if (typeof window !== 'undefined' && window.location) {
         if (window.location.protocol === 'file:') {
-            return 'http://localhost:5000';
+            return (window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) || 'http://localhost:5000';
         }
         if (window.location.port === '5000' || window.location.port === '') {
             return '';
         }
         if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
+            if (isNativeCapacitor && window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) {
+                return window.RESCUE_CONFIG.SERVER_URL.replace(/\/$/, '');
+            }
             return 'http://localhost:5000';
         }
         return window.location.origin;
@@ -143,6 +157,10 @@ const api = {
 
     post(endpoint, body, headers = {}) {
         return this.request(endpoint, { method: 'POST', body, headers });
+    },
+
+    postMultipart(endpoint, formData, headers = {}) {
+        return this.request(endpoint, { method: 'POST', body: formData, headers });
     },
 
     patch(endpoint, body, headers = {}) {

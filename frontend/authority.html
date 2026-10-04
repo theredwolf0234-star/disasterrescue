@@ -32,9 +32,9 @@
 </head>
 <body class="min-h-screen flex flex-col antialiased selection:bg-purple-600 selection:text-white bg-[#0B0F19] text-slate-200">
 
-    <!-- MANDATORY EMERGENCY DISCLAIMER -->
+    <!-- MANDATORY EMERGENCY DISCLAIMER (SECTION 3 & 38) -->
     <aside aria-label="Official Coordination Notice" class="bg-purple-950/80 border-b border-purple-800/40 text-purple-200 px-4 py-1.5 text-[10px] text-center font-medium">
-        <span>AUTHORITY COMMAND HQ &bull; Official Incident Coordination Interface &bull; Real-Time Emergency Triage Grid</span>
+        <span>AUTHORITY COMMAND HQ &bull; Official Incident Coordination Interface &bull; Real-Time Emergency Triage Grid &bull; Demo Coordination System</span>
     </aside>
 
     <!-- TOP SYSTEM STATUS BAR -->
@@ -73,16 +73,32 @@
                 </div>
             </div>
 
-            <!-- VIEW NAVIGATION SWITCHER (TACTICAL VS MASTER DATABASE) -->
-            <div class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800">
-                <button id="nav-btn-tactical" onclick="switchAuthorityView('tactical')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition bg-purple-700 text-white shadow-md">
+            <!-- VIEW NAVIGATION SWITCHER (ALL 6 AUTHORITY SECTIONS) -->
+            <div class="hidden lg:flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs">
+                <button id="nav-btn-tactical" onclick="switchAuthorityView('tactical')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition bg-purple-700 text-white shadow-md">
                     <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
                     <span>Tactical Grid</span>
                 </button>
-                <button id="nav-btn-database" onclick="switchAuthorityView('database')" class="px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+                <button id="nav-btn-teams" onclick="switchAuthorityView('teams')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
+                    <i data-lucide="truck" class="w-3.5 h-3.5 text-emerald-400"></i>
+                    <span>Rescue Fleets</span>
+                </button>
+                <button id="nav-btn-resources" onclick="switchAuthorityView('resources')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
+                    <i data-lucide="package-check" class="w-3.5 h-3.5 text-blue-400"></i>
+                    <span>Logistics</span>
+                </button>
+                <button id="nav-btn-clusters" onclick="switchAuthorityView('clusters')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
+                    <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span>Clusters</span>
+                </button>
+                <button id="nav-btn-analytics" onclick="switchAuthorityView('analytics')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
+                    <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-purple-400"></i>
+                    <span>Analytics</span>
+                </button>
+                <button id="nav-btn-database" onclick="switchAuthorityView('database')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
                     <i data-lucide="database" class="w-3.5 h-3.5 text-purple-400"></i>
                     <span>Database</span>
-                    <span id="nav-db-badge" class="text-[10px] bg-purple-950 text-purple-300 px-1.5 py-0.2 rounded border border-purple-800 font-mono">9 Tables</span>
+                    <span id="nav-db-badge" class="text-[9px] bg-purple-950 text-purple-300 px-1 py-0.2 rounded border border-purple-800 font-mono">9+ Tables</span>
                 </button>
             </div>
 
@@ -102,13 +118,25 @@
                 </button>
             </div>
         </div>
+
+        <!-- Mobile / Tablet Authority Switcher Strip -->
+        <div class="lg:hidden flex items-center overflow-x-auto py-2 border-t border-slate-800/80 px-4 text-xs gap-2">
+            <button onclick="switchAuthorityView('tactical')" class="px-2.5 py-1 rounded bg-purple-700 text-white font-bold whitespace-nowrap">Tactical</button>
+            <button onclick="switchAuthorityView('teams')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Teams</button>
+            <button onclick="switchAuthorityView('resources')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Logistics</button>
+            <button onclick="switchAuthorityView('clusters')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Clusters</button>
+            <button onclick="switchAuthorityView('analytics')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Analytics</button>
+            <button onclick="switchAuthorityView('database')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Database</button>
+        </div>
     </header>
 
     <!-- COMMAND DASHBOARD CONTENT -->
     <main class="flex-grow p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
 
+        <!-- ============================================================= -->
         <!-- VIEW 1: TACTICAL OPERATIONS GRID (MAP, QUEUE, SHELTERS) -->
-        <div id="view-tactical" class="space-y-8">
+        <!-- ============================================================= -->
+        <div id="view-tactical" class="authority-subview space-y-8">
             <!-- METRICS OVERVIEW CARDS (5 Counters) -->
             <div class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-md">
@@ -160,11 +188,12 @@
                     <div class="flex items-center justify-between mb-3">
                         <div class="flex items-center space-x-2">
                             <i data-lucide="map-pin" class="w-4 h-4 text-purple-400"></i>
-                            <h2 class="font-black text-white text-base">Mapbox Tactical Operations Grid</h2>
+                            <h2 class="font-black text-white text-base">Tactical Operations GIS Grid</h2>
                         </div>
                         <div class="flex items-center space-x-2 text-[10px]">
                             <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span><span>Critical</span></span>
                             <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block"></span><span>High</span></span>
+                            <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span><span>Hospital</span></span>
                             <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span><span>Shelter</span></span>
                             <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span><span>Resolved</span></span>
                         </div>
@@ -233,9 +262,108 @@
             </section>
         </div>
 
-        <!-- VIEW 2: MASTER DATABASE EXPLORER -->
-        <div id="view-database" class="hidden space-y-6">
+        <!-- ============================================================= -->
+        <!-- VIEW 2: RESCUE TEAMS MANAGEMENT (SECTION 15) -->
+        <!-- ============================================================= -->
+        <div id="view-teams" class="authority-subview hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-2xl font-black text-white flex items-center space-x-2">
+                        <i data-lucide="truck" class="w-6 h-6 text-emerald-400"></i>
+                        <span>Rescue Team Management & Deployment Fleet</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Monitor specialized response squads (NDRF, SDRF, Fire, Medical), equipment, and availability.</p>
+                </div>
+                <button onclick="fetchRescueTeamsList()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Refresh Fleet</span>
+                </button>
+            </div>
 
+            <div id="rescue-teams-list-grid" class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Dynamically rendered by renderRescueTeamsFleet() -->
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- VIEW 3: LOGISTICS & RESOURCES INVENTORY (SECTION 16) -->
+        <!-- ============================================================= -->
+        <div id="view-resources" class="authority-subview hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-2xl font-black text-white flex items-center space-x-2">
+                        <i data-lucide="package-check" class="w-6 h-6 text-blue-400"></i>
+                        <span>Emergency Logistics & Resource Management</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Track deployment and available inventory for ambulances, fire vehicles, boats, and supplies.</p>
+                </div>
+                <button onclick="fetchResourcesInventory()" class="bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Refresh Inventory</span>
+                </button>
+            </div>
+
+            <div id="resources-inventory-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Dynamically rendered by renderResourcesInventory() -->
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- VIEW 4: INCIDENT CLUSTERS & MERGE (SECTION 19 & 20) -->
+        <!-- ============================================================= -->
+        <div id="view-clusters" class="authority-subview hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-2xl font-black text-white flex items-center space-x-2">
+                        <i data-lucide="layers" class="w-6 h-6 text-amber-400"></i>
+                        <span>AI Duplicate & Incident Cluster Detection</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Spatial grouping of nearby emergency reports (&le; 2 km radius) to identify unified disaster epicenters.</p>
+                </div>
+                <button onclick="fetchIncidentClusters()" class="bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Scan Clusters</span>
+                </button>
+            </div>
+
+            <div id="clusters-container" class="space-y-4">
+                <!-- Dynamically rendered by renderIncidentClusters() -->
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- VIEW 5: ANALYTICS & REPORT GENERATION (SECTION 26 & 27) -->
+        <!-- ============================================================= -->
+        <div id="view-analytics" class="authority-subview hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-2xl font-black text-white flex items-center space-x-2">
+                        <i data-lucide="bar-chart-2" class="w-6 h-6 text-purple-400"></i>
+                        <span>Authority Command Analytics & Dossier Reports</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Aggregated response time KPIs, disaster distribution, and official CSV/dossier exports.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="exportIncidentsCsv()" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow transition">
+                        <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                        <span>Export Incidents CSV</span>
+                    </button>
+                    <button onclick="fetchAnalyticsSummary()" class="bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Refresh Metrics</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="analytics-content-holder" class="space-y-6">
+                <!-- Dynamically rendered by renderAnalyticsDashboard() -->
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- VIEW 6: MASTER DATABASE EXPLORER (SECTION 22) -->
+        <!-- ============================================================= -->
+        <div id="view-database" class="authority-subview hidden space-y-6">
             <!-- DATABASE HERO & CONTROLS HEADER -->
             <div class="bg-gradient-to-r from-slate-900 via-purple-950/40 to-slate-900 border border-purple-900/50 rounded-2xl p-6 shadow-2xl space-y-4">
                 <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -285,7 +413,7 @@
                     </div>
                     <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
                         <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Active Relational Tables</span>
-                        <span id="db-tables-count-badge" class="font-extrabold text-emerald-400 text-sm">9 Relational Tables</span>
+                        <span id="db-tables-count-badge" class="font-extrabold text-emerald-400 text-sm">14 Relational Tables</span>
                     </div>
                 </div>
             </div>
@@ -368,7 +496,6 @@
                 </div>
 
             </div>
-
         </div>
 
     </main>

@@ -23,6 +23,11 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const auditRoutes = require('./routes/auditRoutes');
 const geocodeRoutes = require('./routes/geocodeRoutes');
 const databaseRoutes = require('./routes/databaseRoutes');
+const hospitalRoutes = require('./routes/hospitalRoutes');
+const resourceRoutes = require('./routes/resourceRoutes');
+const safeRouteRoutes = require('./routes/safeRouteRoutes');
+const clusterRoutes = require('./routes/clusterRoutes');
+const riskRoutes = require('./routes/riskRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -70,10 +75,9 @@ app.use('/api/auth', strictLimiter);
 const uploadsPath = path.resolve(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath, { maxAge: '1d' }));
 
-// 7. Robust Frontend Static Asset Resolution (Monorepo, Sibling, or Nested public/ dir)
+// 7. Robust Frontend Static Asset Resolution (Monorepo root frontend/)
 function getFrontendDir() {
     const candidates = [
-        path.resolve(__dirname, '../public'),        // Inside backend/public
         path.resolve(__dirname, '../../frontend'),   // Monorepo root /frontend
         path.resolve(__dirname, '../frontend'),      // Nested backend/frontend
         path.resolve(process.cwd(), 'frontend'),     // cwd/frontend
@@ -85,20 +89,26 @@ function getFrontendDir() {
             return dir;
         }
     }
-    return path.resolve(__dirname, '../public');
+    return path.resolve(__dirname, '../../frontend');
 }
 
 const frontendPath = getFrontendDir();
 app.use(express.static(frontendPath));
-app.use(express.static(path.resolve(__dirname, '../public')));
-app.use(express.static(path.resolve(__dirname, '../../frontend')));
 
-// 8. Health Check Endpoint
+// 8. Health Check Endpoints
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        service: 'AI Disaster Rescue Coordinator'
+    });
+});
+
 app.get('/api/health', async (req, res) => {
     try {
         await db.get('SELECT 1');
         res.json({
             status: 'ok',
+            service: 'AI Disaster Rescue Coordinator',
             database: 'connected',
             environment: NODE_ENV,
             timestamp: new Date().toISOString()
@@ -106,6 +116,7 @@ app.get('/api/health', async (req, res) => {
     } catch (err) {
         res.status(503).json({
             status: 'error',
+            service: 'AI Disaster Rescue Coordinator',
             database: 'disconnected',
             environment: NODE_ENV,
             timestamp: new Date().toISOString(),
@@ -119,7 +130,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/sos', incidentRoutes); // Direct backward-compatible alias
 app.use('/api/shelters', shelterRoutes);
+app.use('/api/hospitals', hospitalRoutes);
+app.use('/api/resources', resourceRoutes);
 app.use('/api/rescue-teams', rescueTeamRoutes);
+app.use('/api/routes', safeRouteRoutes);
+app.use('/api/clusters', clusterRoutes);
+app.use('/api/risk', riskRoutes);
 app.use('/api/weather', weatherRoutes);
 app.use('/api/geocode', geocodeRoutes);
 app.use('/api/notifications', notificationRoutes);

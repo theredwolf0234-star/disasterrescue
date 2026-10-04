@@ -387,9 +387,9 @@ async function runTests() {
         assert.strictEqual(res.status, 200);
         assert.strictEqual(res.body.success, true);
         assert.ok(res.body.data.engine);
-        assert.strictEqual(res.body.data.totalTables, 9);
+        assert.ok(res.body.data.totalTables >= 9, 'Must have at least 9 relational tables');
         assert.ok(res.body.data.totalRecords > 0);
-        assert.strictEqual(res.body.data.tables.length, 9);
+        assert.ok(res.body.data.tables.length >= 9, 'Must return at least 9 tables metadata');
     });
 
     // 18. Safe Table Projection (No password_hash)
@@ -414,6 +414,75 @@ async function runTests() {
 
         assert.strictEqual(res.status, 403);
         assert.strictEqual(res.body.errorCode, 'FORBIDDEN');
+    });
+
+    // 20. GET /health
+    await test('20. GET /health returns standard health check specification', async () => {
+        const res = await makeRequest('GET', '/health');
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.status, 'ok');
+        assert.strictEqual(res.body.service, 'AI Disaster Rescue Coordinator');
+    });
+
+    // 21. GET /api/hospitals
+    await test('21. GET /api/hospitals returns hospital listings with beds and coordinates', async () => {
+        const res = await makeRequest('GET', '/api/hospitals');
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.ok(Array.isArray(res.body.data));
+        assert.ok(res.body.data.length >= 4, 'Should return at least 4 hospitals');
+        assert.ok(res.body.data[0].name);
+        assert.ok(res.body.data[0].available_beds !== undefined);
+    });
+
+    // 22. GET /api/resources
+    await test('22. GET /api/resources returns resource inventory', async () => {
+        const res = await makeRequest('GET', '/api/resources', null, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.ok(Array.isArray(res.body.data));
+        assert.ok(res.body.data.length >= 5, 'Should return resources categories');
+    });
+
+    // 23. GET /api/routes/safe-route
+    await test('23. GET /api/routes/safe-route calculates route with hazard avoidance', async () => {
+        const res = await makeRequest('GET', '/api/routes/safe-route?originLat=26.8467&originLng=80.9462&destLat=26.8600&destLng=80.9300');
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.ok(res.body.data.distanceKm > 0);
+        assert.ok(res.body.data.etaMinutes > 0);
+        assert.ok(Array.isArray(res.body.data.waypoints));
+        assert.ok(res.body.data.routeRisk);
+    });
+
+    // 24. POST /api/risk/evaluate
+    await test('24. POST /api/risk/evaluate computes modular risk score and factors', async () => {
+        const res = await makeRequest('POST', '/api/risk/evaluate', {
+            disasterType: 'Flood',
+            latitude: 26.8467,
+            longitude: 80.9462,
+            peopleAffected: 6
+        });
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.ok(typeof res.body.data.score === 'number');
+        assert.ok(['LOW', 'MODERATE', 'HIGH', 'CRITICAL'].includes(res.body.data.level));
+        assert.ok(res.body.data.reason);
+        assert.ok(res.body.data.recommendedAction);
+    });
+
+    // 25. GET /api/incidents/analytics/summary
+    await test('25. GET /api/incidents/analytics/summary provides aggregated statistics', async () => {
+        const res = await makeRequest('GET', '/api/incidents/analytics/summary', null, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.ok(res.body.data.totalIncidents !== undefined);
+        assert.ok(Array.isArray(res.body.data.byDisaster));
+        assert.ok(res.body.data.fleetSummary);
     });
 
     console.log(`\n======================================================`);

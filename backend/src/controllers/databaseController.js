@@ -74,6 +74,46 @@ const ALLOWED_TABLES = {
         columns: ['id', 'latitude', 'longitude', 'temperature', 'rainfall', 'wind_speed', 'humidity', 'condition', 'provider', 'fetched_at'],
         selectSql: `SELECT id, latitude, longitude, temperature, rainfall, wind_speed, humidity, condition, provider, fetched_at FROM weather_reports`,
         searchColumns: ['id', 'condition', 'provider']
+    },
+    hospitals: {
+        label: 'Trauma Centers & Hospitals',
+        icon: 'activity',
+        description: 'Designated emergency hospitals, ICU beds, available standard beds, and ambulance fleet',
+        columns: ['id', 'name', 'latitude', 'longitude', 'address', 'emergency_status', 'total_beds', 'available_beds', 'icu_beds', 'available_ambulances', 'contact_phone', 'trauma_level', 'created_at'],
+        selectSql: `SELECT id, name, latitude, longitude, address, emergency_status, total_beds, available_beds, icu_beds, available_ambulances, contact_phone, trauma_level, created_at FROM hospitals`,
+        searchColumns: ['id', 'name', 'address', 'emergency_status', 'trauma_level']
+    },
+    resources: {
+        label: 'Emergency Resource Fleet',
+        icon: 'package',
+        description: 'Inventory of ambulances, rescue boats, fire engines, surgical kits, and rations',
+        columns: ['id', 'category', 'resource_name', 'total_units', 'available_units', 'deployed_units', 'unit_description', 'location_hub', 'updated_at'],
+        selectSql: `SELECT id, category, resource_name, total_units, available_units, deployed_units, unit_description, location_hub, updated_at FROM resources`,
+        searchColumns: ['id', 'category', 'resource_name', 'location_hub']
+    },
+    media: {
+        label: 'Disaster Evidence Media',
+        icon: 'image',
+        description: 'Photos, videos, and voice recordings uploaded with incidents, including AI vision analysis tags',
+        columns: ['id', 'incident_id', 'file_url', 'file_type', 'file_name', 'file_size', 'created_at'],
+        selectSql: `SELECT id, incident_id, file_url, file_type, file_name, file_size, created_at FROM media`,
+        searchColumns: ['id', 'incident_id', 'file_name', 'file_type']
+    },
+    risk_analysis: {
+        label: 'AI Disaster Risk Engine Records',
+        icon: 'cpu',
+        description: 'Modular multi-disaster hazard evaluations, risk scores (0-100), factors, and actionable guidance',
+        columns: ['id', 'incident_id', 'disaster_type', 'risk_score', 'risk_level', 'reason', 'confidence', 'recommended_action', 'created_at'],
+        selectSql: `SELECT id, incident_id, disaster_type, risk_score, risk_level, reason, confidence, recommended_action, created_at FROM risk_analysis`,
+        searchColumns: ['id', 'incident_id', 'disaster_type', 'risk_level', 'reason']
+    },
+    incident_clusters: {
+        label: 'Incident Geospatial Clusters',
+        icon: 'layers',
+        description: 'Geospatially aggregated incident clusters for coordinated multi-casualty disaster response',
+        columns: ['id', 'cluster_name', 'disaster_type', 'centroid_lat', 'centroid_lng', 'radius_km', 'incident_count', 'total_victims', 'priority', 'status', 'created_at'],
+        selectSql: `SELECT id, cluster_name, disaster_type, centroid_lat, centroid_lng, radius_km, incident_count, total_victims, priority, status, created_at FROM incident_clusters`,
+        searchColumns: ['id', 'cluster_name', 'disaster_type', 'priority', 'status']
     }
 };
 
