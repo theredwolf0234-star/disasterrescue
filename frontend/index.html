@@ -39,7 +39,7 @@
     <!-- Custom Production Styles -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="text-slate-200 antialiased min-h-screen flex flex-col selection:bg-purple-600 selection:text-white bg-[#0B0F19]">
+<body class="text-slate-200 antialiased min-h-screen flex flex-col selection:bg-purple-600 selection:text-white bg-[#0B0F19] theme-bright">
 
     <!-- MANDATORY DEMO NOTICE BANNER (SECTION 3 & 38) -->
     <aside aria-label="Demo Emergency System Notice" class="bg-amber-950/80 border-b border-amber-700/60 text-amber-200 px-4 py-1.5 text-[11px] text-center font-bold flex items-center justify-center space-x-2">
@@ -57,27 +57,27 @@
     <header class="sticky top-0 bg-[#0B0F19]/95 backdrop-blur-md border-b border-slate-800 z-50 shadow-md">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
-                <button onclick="switchTab('home')" class="flex items-center space-x-3 focus:outline-none">
-                    <div class="relative flex items-center justify-center w-10 h-10 rounded-xl bg-purple-700 text-white font-bold shadow-lg shadow-purple-900/50 border border-purple-500/30">
-                        <i data-lucide="navigation" class="w-5 h-5 fill-current transform rotate-45"></i>
+                <button onclick="switchTab('home')" class="flex items-center space-x-2.5 focus:outline-none flex-shrink-0">
+                    <div class="relative flex items-center justify-center w-9 h-9 rounded-xl bg-purple-700 text-white font-bold shadow-lg shadow-purple-900/50 border border-purple-500/30">
+                        <i data-lucide="navigation" class="w-4 h-4 fill-current transform rotate-45"></i>
                     </div>
                     <div class="text-left">
                         <div class="flex items-center space-x-1.5">
                             <span class="font-black text-lg md:text-xl tracking-tight text-white">RESCUE<span class="text-purple-400">AI</span></span>
-                            <span class="text-[10px] font-extrabold uppercase bg-slate-800 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800/50" data-i18n="grid247">24/7 Grid</span>
+                            <span class="text-[9px] font-extrabold uppercase bg-slate-800 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800/50" data-i18n="grid247">24/7</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 font-medium hidden sm:block" data-i18n="tagline">AI Disaster Rescue Coordinator</p>
+                        <p class="text-[9px] text-slate-400 font-medium hidden sm:block" data-i18n="tagline">Disaster Coordinator</p>
                     </div>
                 </button>
 
-                <!-- Desktop Navigation Tabs (Sections 2: Home, SOS, Report, Risk, Map, Shelters, Hospitals, Contacts, Reports, Help, About) -->
-                <nav class="hidden xl:flex items-center space-x-1 bg-slate-900 p-1.5 rounded-xl border border-slate-800 text-xs">
+                <!-- Compact Desktop Navigation Tabs (Never flows off screen) -->
+                <nav class="hidden lg:flex items-center space-x-1 bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs">
                     <button id="nav-home" onclick="switchTab('home')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-white bg-slate-800 border border-slate-700 flex items-center space-x-1 transition">
                         <i data-lucide="home" class="w-3.5 h-3.5 text-purple-400"></i>
                         <span data-i18n="navHome">Home</span>
                     </button>
-                    <button id="nav-sos" onclick="openSosModal()" class="nav-btn px-2.5 py-1.5 rounded-lg font-bold text-red-400 hover:text-red-300 transition flex items-center space-x-1">
-                        <i data-lucide="siren" class="w-3.5 h-3.5 text-red-500 animate-pulse"></i>
+                    <button id="nav-sos" onclick="openSosModal()" class="nav-btn px-3 py-1.5 rounded-lg font-extrabold text-white bg-red-600 hover:bg-red-500 shadow-md shadow-red-950 transition flex items-center space-x-1">
+                        <i data-lucide="siren" class="w-3.5 h-3.5 animate-pulse"></i>
                         <span data-i18n="navSos">SOS</span>
                     </button>
                     <button id="nav-report" onclick="switchTab('report')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
@@ -92,36 +92,53 @@
                         <i data-lucide="map-pin" class="w-3.5 h-3.5 text-purple-400"></i>
                         <span data-i18n="navMap">Map</span>
                     </button>
-                    <button id="nav-shelters" onclick="switchTab('shelters')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
-                        <i data-lucide="tent" class="w-3.5 h-3.5 text-purple-400"></i>
-                        <span data-i18n="navShelters">Shelters</span>
-                    </button>
-                    <button id="nav-hospitals" onclick="switchTab('hospitals')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
-                        <i data-lucide="cross" class="w-3.5 h-3.5 text-blue-400"></i>
-                        <span data-i18n="navHospitals">Hospitals</span>
-                    </button>
                     <button id="nav-reports" onclick="switchTab('reports')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
                         <i data-lucide="clipboard-list" class="w-3.5 h-3.5 text-emerald-400"></i>
                         <span data-i18n="navReports">My Reports</span>
                     </button>
-                    <button id="nav-contacts" onclick="switchTab('contacts')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
-                        <i data-lucide="phone-call" class="w-3.5 h-3.5 text-red-400"></i>
-                        <span data-i18n="navContacts">Hotlines</span>
-                    </button>
-                    <button id="nav-help" onclick="switchTab('help')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
-                        <i data-lucide="help-circle" class="w-3.5 h-3.5 text-slate-400"></i>
-                        <span data-i18n="navHelp">Guide</span>
-                    </button>
-                    <button id="nav-about" onclick="switchTab('about')" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
-                        <i data-lucide="info" class="w-3.5 h-3.5 text-purple-400"></i>
-                        <span data-i18n="navAbout">About</span>
-                    </button>
+
+                    <!-- More Dropdown (Shelters, Hospitals, Hotlines, Guide, About) -->
+                    <div class="relative inline-block text-left" id="more-menu-container">
+                        <button id="nav-more-btn" type="button" onclick="toggleMoreMenu(event)" class="nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1">
+                            <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-purple-400"></i>
+                            <span>More</span>
+                            <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+                        </button>
+                        <div id="nav-more-menu" class="hidden absolute right-0 mt-2 w-48 rounded-xl shadow-2xl bg-white text-slate-900 border border-slate-200 p-2 z-50 space-y-1">
+                            <button type="button" onclick="switchTab('shelters'); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-100 flex items-center space-x-2 text-slate-800">
+                                <i data-lucide="tent" class="w-4 h-4 text-purple-600"></i>
+                                <span data-i18n="navShelters">Relief Shelters</span>
+                            </button>
+                            <button type="button" onclick="switchTab('hospitals'); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-100 flex items-center space-x-2 text-slate-800">
+                                <i data-lucide="cross" class="w-4 h-4 text-blue-600"></i>
+                                <span data-i18n="navHospitals">Hospitals</span>
+                            </button>
+                            <button type="button" onclick="switchTab('contacts'); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-100 flex items-center space-x-2 text-slate-800">
+                                <i data-lucide="phone-call" class="w-4 h-4 text-red-600"></i>
+                                <span data-i18n="navContacts">Emergency Hotlines</span>
+                            </button>
+                            <button type="button" onclick="switchTab('help'); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-100 flex items-center space-x-2 text-slate-800">
+                                <i data-lucide="help-circle" class="w-4 h-4 text-slate-600"></i>
+                                <span data-i18n="navHelp">Triage Guide</span>
+                            </button>
+                            <button type="button" onclick="switchTab('about'); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold hover:bg-slate-100 flex items-center space-x-2 text-slate-800">
+                                <i data-lucide="info" class="w-4 h-4 text-purple-600"></i>
+                                <span data-i18n="navAbout">About Platform</span>
+                            </button>
+                        </div>
+                    </div>
                 </nav>
 
-                <!-- Right Actions: Language Switcher, Profile/Auth, Authority Portal Link -->
-                <div class="flex items-center space-x-2">
+                <!-- Right Actions: Theme Toggle, Language Switcher, Profile/Auth, Authority Portal Link -->
+                <div class="flex items-center space-x-1.5 flex-shrink-0">
+                    <!-- Bright / Dark Theme Switcher -->
+                    <button id="theme-toggle-btn" type="button" onclick="toggleTheme()" title="Toggle Bright/Dark Theme" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-amber-400 px-2 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
+                        <span id="theme-toggle-icon">☀️</span>
+                        <span id="theme-toggle-text" class="hidden xl:inline text-[11px]">Bright</span>
+                    </button>
+
                     <!-- Bilingual Language Switcher (Section 29) -->
-                    <button id="lang-toggle-btn" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-purple-300 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
+                    <button id="lang-toggle-btn" type="button" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-purple-300 px-2 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
                         <span>🌐 हिंदी</span>
                     </button>
 
@@ -129,57 +146,61 @@
                     <div id="nav-auth-container"></div>
 
                     <!-- Authority Portal Link -->
-                    <a href="authority.html" target="_blank" class="bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
+                    <a href="authority.html" target="_blank" class="bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
                         <i data-lucide="shield" class="w-3.5 h-3.5 text-purple-400"></i>
-                        <span class="hidden sm:inline" data-i18n="commandPortal">Command Portal</span>
+                        <span class="hidden sm:inline" data-i18n="commandPortal">Command</span>
                     </a>
                 </div>
             </div>
 
-            <!-- Mobile / Tablet Navigation Strip (Responsive < 1280px) -->
-            <div class="xl:hidden flex items-center overflow-x-auto py-2 border-t border-slate-800/80 text-[11px] gap-2 scrollbar-none">
-                <button onclick="switchTab('home')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="home" class="w-3 h-3 text-purple-400"></i>
+            <!-- Mobile Navigation Bar (Clean 5 items, ZERO overflow or flowing off screen) -->
+            <div id="mobile-nav-bar" class="lg:hidden flex items-center justify-around py-1.5 border-t border-slate-800 text-[11px] bg-slate-900/95 backdrop-blur-md">
+                <button type="button" onclick="switchTab('home')" class="px-2 py-1 rounded font-semibold text-slate-300 flex flex-col items-center">
+                    <i data-lucide="home" class="w-4 h-4 text-purple-400 mb-0.5"></i>
                     <span data-i18n="navHome">Home</span>
                 </button>
-                <button onclick="openSosModal()" class="px-2.5 py-1 rounded bg-red-950/70 border border-red-800 text-red-300 font-bold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="siren" class="w-3 h-3 text-red-400"></i>
+                <button type="button" onclick="openSosModal()" class="px-3 py-1 rounded-lg bg-red-600 text-white font-extrabold flex flex-col items-center shadow-lg shadow-red-950">
+                    <i data-lucide="siren" class="w-4 h-4 animate-pulse mb-0.5"></i>
                     <span data-i18n="navSos">SOS</span>
                 </button>
-                <button onclick="switchTab('report')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="file-plus-2" class="w-3 h-3 text-purple-400"></i>
+                <button type="button" onclick="switchTab('report')" class="px-2 py-1 rounded font-semibold text-slate-300 flex flex-col items-center">
+                    <i data-lucide="file-plus-2" class="w-4 h-4 text-purple-400 mb-0.5"></i>
                     <span data-i18n="navReport">Report</span>
                 </button>
-                <button onclick="switchTab('risk')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="activity" class="w-3 h-3 text-amber-400"></i>
-                    <span data-i18n="navLiveRisk">Live Risk</span>
-                </button>
-                <button onclick="switchTab('map')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="map-pin" class="w-3 h-3 text-purple-400"></i>
+                <button type="button" onclick="switchTab('map')" class="px-2 py-1 rounded font-semibold text-slate-300 flex flex-col items-center">
+                    <i data-lucide="map-pin" class="w-4 h-4 text-purple-400 mb-0.5"></i>
                     <span data-i18n="navMap">Map</span>
                 </button>
-                <button onclick="switchTab('shelters')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="tent" class="w-3 h-3 text-purple-400"></i>
+                <button type="button" onclick="toggleMobileMoreMenu(event)" class="px-2 py-1 rounded font-semibold text-slate-300 flex flex-col items-center">
+                    <i data-lucide="layout-grid" class="w-4 h-4 text-purple-400 mb-0.5"></i>
+                    <span>More</span>
+                </button>
+            </div>
+
+            <!-- Mobile Dropdown Menu for More Options -->
+            <div id="mobile-more-menu" class="hidden lg:hidden bg-slate-900 border-t border-slate-800 p-3 grid grid-cols-3 gap-2 text-center text-xs">
+                <button type="button" onclick="switchTab('risk'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
+                    <i data-lucide="activity" class="w-4 h-4 text-amber-400 mb-1"></i>
+                    <span data-i18n="navLiveRisk">Live Risk</span>
+                </button>
+                <button type="button" onclick="switchTab('reports'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
+                    <i data-lucide="clipboard-list" class="w-4 h-4 text-emerald-400 mb-1"></i>
+                    <span data-i18n="navReports">My Reports</span>
+                </button>
+                <button type="button" onclick="switchTab('shelters'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
+                    <i data-lucide="tent" class="w-4 h-4 text-purple-400 mb-1"></i>
                     <span data-i18n="navShelters">Shelters</span>
                 </button>
-                <button onclick="switchTab('hospitals')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="cross" class="w-3 h-3 text-blue-400"></i>
+                <button type="button" onclick="switchTab('hospitals'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
+                    <i data-lucide="cross" class="w-4 h-4 text-blue-400 mb-1"></i>
                     <span data-i18n="navHospitals">Hospitals</span>
                 </button>
-                <button onclick="switchTab('reports')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="clipboard-list" class="w-3 h-3 text-emerald-400"></i>
-                    <span data-i18n="navReports">Reports</span>
-                </button>
-                <button onclick="switchTab('contacts')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="phone-call" class="w-3 h-3 text-red-400"></i>
+                <button type="button" onclick="switchTab('contacts'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
+                    <i data-lucide="phone-call" class="w-4 h-4 text-red-400 mb-1"></i>
                     <span data-i18n="navContacts">Hotlines</span>
                 </button>
-                <button onclick="switchTab('help')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="help-circle" class="w-3 h-3 text-slate-400"></i>
-                    <span data-i18n="navHelp">Help</span>
-                </button>
-                <button onclick="switchTab('about')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
-                    <i data-lucide="info" class="w-3 h-3 text-purple-400"></i>
+                <button type="button" onclick="switchTab('about'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
+                    <i data-lucide="info" class="w-4 h-4 text-purple-400 mb-1"></i>
                     <span data-i18n="navAbout">About</span>
                 </button>
             </div>
@@ -876,27 +897,7 @@
                 <p class="text-xs text-slate-400 mt-1">Platform architecture, artificial intelligence disclosures, and college/SIH project overview.</p>
             </div>
 
-            <!-- Core Workflow Diagram (Section 1) -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
-                <h3 class="text-base font-bold text-white uppercase tracking-wider">End-to-End System Workflow</h3>
-                <div class="flex flex-wrap items-center justify-between gap-2 text-center text-[11px] font-mono">
-                    <span class="bg-slate-950 p-2.5 rounded-lg border border-purple-800 text-purple-300 font-bold">CITIZEN</span>
-                    <span class="text-purple-400 font-bold">→</span>
-                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-white">SOS / REPORT</span>
-                    <span class="text-purple-400 font-bold">→</span>
-                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-emerald-400">GPS TELEMETRY</span>
-                    <span class="text-purple-400 font-bold">→</span>
-                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-white">BACKEND API</span>
-                    <span class="text-purple-400 font-bold">→</span>
-                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-purple-300">AI RISK ENGINE</span>
-                    <span class="text-purple-400 font-bold">→</span>
-                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-amber-400">AUTHORITY HQ</span>
-                    <span class="text-purple-400 font-bold">→</span>
-                    <span class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-blue-400">TEAM ASSIGNMENT</span>
-                    <span class="text-purple-400 font-bold">→</span>
-                    <span class="bg-slate-950 p-2.5 rounded-lg border border-emerald-800 text-emerald-400 font-bold">RESOLUTION</span>
-                </div>
-            </div>
+
 
             <!-- Transparency Disclosures (Sections 7, 8, 9, 38) -->
             <div class="grid sm:grid-cols-2 gap-4">

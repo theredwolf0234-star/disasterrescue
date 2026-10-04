@@ -62,6 +62,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof I18N !== 'undefined') {
         I18N.apply();
     }
+
+    // 8. Initialize Bright Light Theme by default
+    initTheme();
 });
 
 // -------------------------------------------------------------
@@ -292,6 +295,66 @@ function citizenLogout() {
 }
 
 // -------------------------------------------------------------
+// -------------------------------------------------------------
+// THEME SYSTEM (BRIGHT LIGHT AS DEFAULT WITH SAME BACKGROUND)
+// -------------------------------------------------------------
+function initTheme() {
+    const saved = localStorage.getItem('rescue_theme') || 'bright';
+    applyTheme(saved);
+}
+
+function toggleTheme() {
+    const isBright = document.body.classList.contains('theme-bright');
+    const next = isBright ? 'dark' : 'bright';
+    localStorage.setItem('rescue_theme', next);
+    applyTheme(next);
+    showToast(`Switched to ${next === 'bright' ? 'Bright Light' : 'Dark Grid'} Theme`, 'info');
+}
+
+function applyTheme(theme) {
+    const icon = document.getElementById('theme-toggle-icon');
+    const text = document.getElementById('theme-toggle-text');
+    if (theme === 'bright') {
+        document.body.classList.add('theme-bright');
+        if (icon) icon.innerText = '☀️';
+        if (text) text.innerText = 'Bright';
+    } else {
+        document.body.classList.remove('theme-bright');
+        if (icon) icon.innerText = '🌙';
+        if (text) text.innerText = 'Dark';
+    }
+}
+
+// -------------------------------------------------------------
+// MORE DROPDOWN MENU
+// -------------------------------------------------------------
+function toggleMoreMenu(event) {
+    if (event) event.stopPropagation();
+    const menu = document.getElementById('nav-more-menu');
+    if (!menu) return;
+    menu.classList.toggle('hidden');
+}
+
+function toggleMobileMoreMenu(event) {
+    if (event) event.stopPropagation();
+    const menu = document.getElementById('mobile-more-menu');
+    if (!menu) return;
+    menu.classList.toggle('hidden');
+}
+
+// Close more dropdowns on outside click
+document.addEventListener('click', (e) => {
+    const desktopMenu = document.getElementById('nav-more-menu');
+    const mobileMenu = document.getElementById('mobile-more-menu');
+    if (desktopMenu && !desktopMenu.contains(e.target) && !e.target.closest('#nav-more-btn')) {
+        desktopMenu.classList.add('hidden');
+    }
+    if (mobileMenu && !mobileMenu.contains(e.target) && !e.target.closest('#mobile-nav-bar')) {
+        mobileMenu.classList.add('hidden');
+    }
+});
+
+// -------------------------------------------------------------
 // NAVIGATION TAB SWITCHER (ALL 14 SECTIONS)
 // -------------------------------------------------------------
 function switchTab(tabId) {
@@ -300,13 +363,26 @@ function switchTab(tabId) {
     if (target) target.classList.remove('hidden');
 
     document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.className = "nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-slate-400 hover:text-white transition flex items-center space-x-1";
+        btn.classList.remove('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
+        btn.classList.add('text-slate-400');
     });
 
     const activeBtn = document.getElementById(`nav-${tabId}`);
     if (activeBtn) {
-        activeBtn.className = "nav-btn px-2.5 py-1.5 rounded-lg font-semibold text-white bg-slate-800 border border-slate-700 flex items-center space-x-1 transition";
+        activeBtn.classList.remove('text-slate-400');
+        activeBtn.classList.add('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
+    } else {
+        // If tab is in More menu, highlight the More button
+        const moreBtn = document.getElementById('nav-more-btn');
+        if (moreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about'].includes(tabId)) {
+            moreBtn.classList.remove('text-slate-400');
+            moreBtn.classList.add('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
+        }
     }
+
+    // Auto-close dropdowns
+    document.getElementById('nav-more-menu')?.classList.add('hidden');
+    document.getElementById('mobile-more-menu')?.classList.add('hidden');
 
     if (tabId === 'map') {
         setTimeout(() => {
@@ -1342,3 +1418,6 @@ window.switchCitizenAuthTab = switchCitizenAuthTab;
 window.handleCitizenLogin = handleCitizenLogin;
 window.handleCitizenRegister = handleCitizenRegister;
 window.citizenLogout = citizenLogout;
+window.toggleTheme = toggleTheme;
+window.toggleMoreMenu = toggleMoreMenu;
+window.toggleMobileMoreMenu = toggleMobileMoreMenu;
