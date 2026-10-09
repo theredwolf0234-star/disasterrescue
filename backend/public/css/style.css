@@ -168,11 +168,63 @@ body {
     to { transform: translateY(0); opacity: 1; }
 }
 
-/* Mobile responsiveness helper classes */
-@media (max-width: 640px) {
+/* Mobile responsiveness & Native Smartphone Optimizations */
+:root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+}
+
+body {
+    padding-top: var(--sat);
+}
+
+.safe-area-bottom {
+    padding-bottom: max(var(--sab), 10px);
+}
+
+@media (max-width: 1023px) {
+    /* Main pages bottom padding so content is never covered by bottom nav bar */
+    .page-content {
+        padding-bottom: calc(5rem + max(var(--sab), 10px)) !important;
+    }
+    
+    /* Toast notifications positioned above bottom nav */
+    #toast-container {
+        bottom: calc(4.75rem + max(var(--sab), 10px)) !important;
+        right: 1rem !important;
+        left: 1rem !important;
+        align-items: center !important;
+    }
+
     #main-map, #authority-map {
         min-height: 380px;
     }
+}
+
+/* Hide APK download buttons when running inside the native mobile app */
+.native-app-mode .apk-download-cta,
+.native-app-mode #hero-apk-download-btn,
+.native-app-mode .apk-download-card {
+    display: none !important;
+}
+
+/* Pulse animation for SOS floating action button */
+@keyframes sos-glow {
+    0%, 100% { box-shadow: 0 0 15px rgba(220, 38, 38, 0.7); }
+    50% { box-shadow: 0 0 28px rgba(239, 68, 68, 0.95); }
+}
+
+.sos-pulse-glow {
+    animation: sos-glow 1.8s infinite ease-in-out;
+}
+
+/* Fast splash animation */
+@keyframes splash-pulse {
+    0%, 100% { opacity: 0.6; transform: scale(0.98); }
+    50% { opacity: 1; transform: scale(1.02); }
+}
+.splash-pulse {
+    animation: splash-pulse 1.2s infinite ease-in-out;
 }
 
 

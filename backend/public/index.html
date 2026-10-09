@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
     <title>RESCUE AI | AI Disaster Rescue Coordinator</title>
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Standalone Offline Tailwind CSS (Loads instantly in < 20ms from local storage) -->
+    <link rel="stylesheet" href="css/tailwind.min.css">
 
-    <!-- Local Core Design System & Dark Theme Fallback -->
-    <link rel="stylesheet" href="css/style.css">
+    <!-- Local Core Design System & Mobile Safe Area Styles -->
+    <link rel="stylesheet" href="css/style.css?v=20261009-v6">
     <style>
         html, body {
             background-color: #0B0F19 !important;
@@ -18,23 +18,33 @@
             padding: 0;
             min-height: 100vh;
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
         .hidden { display: none !important; }
     </style>
 
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Fast Local Vendor Libraries (Instant zero-network loading) -->
+    <script src="vendor/lucide.min.js"></script>
+    <link rel="stylesheet" href="vendor/leaflet.css">
+    <script src="vendor/leaflet.js"></script>
+    <script src="vendor/socket.io.min.js"></script>
 
-    <!-- Leaflet CSS & JS (Open-Source Dark Emergency Mapping) -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <!-- Fallbacks if opened directly in web browser without local vendor files -->
+    <script>
+        if (typeof lucide === 'undefined') {
+            document.write('<script src="https://unpkg.com/lucide@latest"><\/script>');
+        }
+        if (typeof io === 'undefined') {
+            document.write('<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"><\/script>');
+        }
+    </script>
+
+    <!-- Tailwind JIT fallback for arbitrary styles if online -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
     <!-- Mapbox GL JS (Vector Map Engine & Directions) -->
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
-
-    <!-- Socket.IO Client -->
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,7 +52,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
     <!-- Mobile & PWA Optimization -->
-    <meta name="theme-color" content="#7E22CE">
+    <meta name="theme-color" content="#0B0F19">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="RESCUE AI">
@@ -77,10 +87,40 @@
         })();
     </script>
 
-    <!-- Custom Production Styles with version query string -->
-    <link rel="stylesheet" href="css/style.css?v=20261009-v5">
 </head>
 <body class="text-slate-200 antialiased min-h-screen flex flex-col selection:bg-purple-600 selection:text-white bg-[#0B0F19]">
+    <!-- Instant Native Splash Overlay (Disappears smoothly on DOM load) -->
+    <div id="instant-app-splash" style="position:fixed;inset:0;background:#0B0F19;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.2s ease-out;pointer-events:none;">
+        <div style="width:58px;height:58px;border-radius:18px;background:linear-gradient(135deg,#7C3AED,#6D28D9);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(124,58,237,0.45);margin-bottom:16px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+        </div>
+        <div style="font-weight:900;font-size:20px;color:#FFFFFF;letter-spacing:0.5px;">RESCUE<span style="color:#A78BFA">AI</span></div>
+        <div style="font-size:11px;color:#94A3B8;margin-top:4px;font-weight:700;letter-spacing:1px;text-transform:uppercase;">Disaster Coordinator</div>
+        <div style="width:64px;height:3px;background:#1E293B;border-radius:2px;overflow:hidden;margin-top:20px;">
+            <div style="width:100%;height:100%;background:#7C3AED;animation:splashProgress 0.7s ease-in-out infinite;"></div>
+        </div>
+    </div>
+    <style>
+        @keyframes splashProgress {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
+    <script>
+        function dismissSplash() {
+            var splash = document.getElementById('instant-app-splash');
+            if (splash) {
+                splash.style.opacity = '0';
+                setTimeout(function() { splash.remove(); }, 200);
+            }
+        }
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(dismissSplash, 50);
+        } else {
+            window.addEventListener('DOMContentLoaded', dismissSplash);
+            window.addEventListener('load', dismissSplash);
+        }
+    </script>
     <script>
         document.body.classList.remove('theme-bright');
         try { localStorage.removeItem('rescue_theme'); } catch(e) {}
@@ -180,81 +220,25 @@
                 <!-- Right Actions: Language Switcher, Profile/Auth, Authority Portal Link -->
                 <div class="flex items-center space-x-1.5 flex-shrink-0">
                     <!-- Bilingual Language Switcher (Section 29) -->
-                    <button id="lang-toggle-btn" type="button" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-purple-300 px-2 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
+                    <button id="lang-toggle-btn" type="button" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-purple-300 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
                         <span>🌐 हिंदी</span>
                     </button>
 
                     <!-- Citizen Auth State Container -->
                     <div id="nav-auth-container"></div>
 
-                    <!-- Authority Portal Link -->
-                    <a href="authority.html" target="_blank" class="bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
+                    <!-- Authority Portal Link (Desktop only in top nav, mobile via bottom More menu) -->
+                    <a href="authority.html" target="_blank" class="hidden md:flex bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition items-center space-x-1 shadow">
                         <i data-lucide="shield" class="w-3.5 h-3.5 text-purple-400"></i>
-                        <span class="hidden sm:inline" data-i18n="commandPortal">Command</span>
+                        <span data-i18n="commandPortal">Command</span>
                     </a>
 
-                    <!-- Android APK Download Button -->
-                    <button type="button" onclick="openApkModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow shadow-emerald-950">
+                    <!-- Android APK Download Button (Desktop only, hidden inside mobile app) -->
+                    <button type="button" onclick="openApkModal()" class="apk-download-cta hidden md:flex bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition items-center space-x-1 shadow shadow-emerald-950">
                         <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
-                        <span class="hidden sm:inline">Get App</span>
+                        <span>Get App</span>
                     </button>
                 </div>
-            </div>
-
-            <!-- Mobile Navigation Bar (Clean 5 items, ZERO overflow or flowing off screen) -->
-            <div id="mobile-nav-bar" class="lg:hidden flex items-center justify-around py-1.5 border-t border-slate-800 text-[11px] bg-slate-900/95 backdrop-blur-md">
-                <button type="button" onclick="switchTab('home')" class="px-2 py-1 rounded font-semibold text-slate-300 flex flex-col items-center">
-                    <i data-lucide="home" class="w-4 h-4 text-purple-400 mb-0.5"></i>
-                    <span data-i18n="navHome">Home</span>
-                </button>
-                <button type="button" onclick="openSosModal()" class="px-3 py-1 rounded-lg bg-red-600 text-white font-extrabold flex flex-col items-center shadow-lg shadow-red-950">
-                    <i data-lucide="siren" class="w-4 h-4 animate-pulse mb-0.5"></i>
-                    <span data-i18n="navSos">SOS</span>
-                </button>
-                <button type="button" onclick="switchTab('report')" class="px-2 py-1 rounded font-semibold text-slate-300 flex flex-col items-center">
-                    <i data-lucide="file-plus-2" class="w-4 h-4 text-purple-400 mb-0.5"></i>
-                    <span data-i18n="navReport">Report</span>
-                </button>
-                <button type="button" onclick="switchTab('map')" class="px-2 py-1 rounded font-semibold text-slate-300 flex flex-col items-center">
-                    <i data-lucide="map-pin" class="w-4 h-4 text-purple-400 mb-0.5"></i>
-                    <span data-i18n="navMap">Map</span>
-                </button>
-                <button type="button" onclick="toggleMobileMoreMenu(event)" class="px-2 py-1 rounded font-semibold text-slate-300 flex flex-col items-center">
-                    <i data-lucide="layout-grid" class="w-4 h-4 text-purple-400 mb-0.5"></i>
-                    <span>More</span>
-                </button>
-            </div>
-
-            <!-- Mobile Dropdown Menu for More Options -->
-            <div id="mobile-more-menu" class="hidden lg:hidden bg-slate-900 border-t border-slate-800 p-3 grid grid-cols-3 gap-2 text-center text-xs">
-                <button type="button" onclick="switchTab('risk'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
-                    <i data-lucide="activity" class="w-4 h-4 text-amber-400 mb-1"></i>
-                    <span data-i18n="navLiveRisk">Live Risk</span>
-                </button>
-                <button type="button" onclick="switchTab('reports'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
-                    <i data-lucide="clipboard-list" class="w-4 h-4 text-emerald-400 mb-1"></i>
-                    <span data-i18n="navReports">My Reports</span>
-                </button>
-                <button type="button" onclick="switchTab('shelters'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
-                    <i data-lucide="tent" class="w-4 h-4 text-purple-400 mb-1"></i>
-                    <span data-i18n="navShelters">Shelters</span>
-                </button>
-                <button type="button" onclick="switchTab('hospitals'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
-                    <i data-lucide="cross" class="w-4 h-4 text-blue-400 mb-1"></i>
-                    <span data-i18n="navHospitals">Hospitals</span>
-                </button>
-                <button type="button" onclick="switchTab('contacts'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
-                    <i data-lucide="phone-call" class="w-4 h-4 text-red-400 mb-1"></i>
-                    <span data-i18n="navContacts">Hotlines</span>
-                </button>
-                <button type="button" onclick="switchTab('app'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-emerald-950/80 border border-emerald-800 text-emerald-300 flex flex-col items-center">
-                    <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400 mb-1"></i>
-                    <span>Mobile App</span>
-                </button>
-                <button type="button" onclick="switchTab('about'); toggleMobileMoreMenu();" class="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-300 flex flex-col items-center">
-                    <i data-lucide="info" class="w-4 h-4 text-purple-400 mb-1"></i>
-                    <span data-i18n="navAbout">About</span>
-                </button>
             </div>
         </div>
     </header>
@@ -263,9 +247,9 @@
     <!-- SECTION 1: HOME PAGE -->
     <!-- ============================================================= -->
     <main id="page-home" class="page-content flex-grow">
-        <div class="hero-disaster-bg relative text-white py-16 sm:py-24 lg:py-28 border-b border-slate-800">
+        <div class="hero-disaster-bg relative text-white py-14 sm:py-24 lg:py-28 border-b border-slate-800">
             <div class="max-w-5xl mx-auto px-4 text-center flex flex-col items-center">
-                <div class="inline-flex items-center space-x-2 bg-slate-900/90 backdrop-blur border border-purple-500/40 rounded-full px-4 py-1.5 text-xs text-slate-200 mb-6 shadow-xl">
+                <div class="inline-flex items-center space-x-2 bg-slate-900/90 backdrop-blur border border-purple-500/40 rounded-full px-3.5 py-1.5 text-xs text-slate-200 mb-6 shadow-xl">
                     <span class="relative flex h-2.5 w-2.5">
                       <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
@@ -279,21 +263,21 @@
                     AI Disaster Rescue Coordinator
                 </h1>
 
-                <p class="text-slate-300 text-xs sm:text-base font-bold tracking-[0.2em] uppercase mt-5 drop-shadow-md" data-i18n="motto">
+                <p class="text-slate-300 text-xs sm:text-base font-bold tracking-[0.2em] uppercase mt-4 sm:mt-5 drop-shadow-md" data-i18n="motto">
                     BE READY <span class="text-purple-400">•</span> STAY SAFE <span class="text-purple-400">•</span> RECOVER TOGETHER
                 </p>
 
-                <!-- SOS Emergency Callout & App Download Buttons -->
-                <div class="mt-8 flex flex-col sm:flex-row gap-3 w-full sm:w-auto max-w-2xl">
-                    <button onclick="openSosModal()" class="bg-red-600 hover:bg-red-500 text-white font-extrabold px-6 py-4 rounded-2xl shadow-2xl shadow-red-950 border border-red-400/50 transition transform hover:scale-105 flex items-center justify-center space-x-2.5 text-sm sm:text-base">
+                <!-- SOS Emergency Callout & App Actions -->
+                <div class="mt-7 sm:mt-8 flex flex-col sm:flex-row gap-3 w-full sm:w-auto max-w-xl">
+                    <button onclick="openSosModal()" class="w-full sm:w-auto flex-1 bg-red-600 hover:bg-red-500 text-white font-black px-6 py-4 rounded-2xl shadow-2xl shadow-red-950 border border-red-400/50 transition transform active:scale-95 hover:scale-105 flex items-center justify-center space-x-2.5 text-sm sm:text-base">
                         <i data-lucide="siren" class="w-5 h-5 animate-pulse"></i>
                         <span data-i18n="dispatchSosBtn">DISPATCH SOS BEACON</span>
                     </button>
-                    <button onclick="switchTab('risk')" class="bg-purple-800 hover:bg-purple-700 text-white font-bold px-6 py-4 rounded-2xl border border-purple-500/50 transition flex items-center justify-center space-x-2 text-sm sm:text-base shadow-xl">
+                    <button onclick="switchTab('risk')" class="w-full sm:w-auto flex-1 bg-purple-800 hover:bg-purple-700 text-white font-bold px-6 py-4 rounded-2xl border border-purple-500/50 transition active:scale-95 flex items-center justify-center space-x-2 text-sm sm:text-base shadow-xl">
                         <i data-lucide="cpu" class="w-5 h-5"></i>
                         <span data-i18n="aiSolutionsBtn">AI SOLUTIONS</span>
                     </button>
-                    <button onclick="openApkModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-4 rounded-2xl border border-emerald-400/50 transition flex items-center justify-center space-x-2 text-sm sm:text-base shadow-xl shadow-emerald-950/40">
+                    <button id="hero-apk-download-btn" onclick="openApkModal()" class="apk-download-cta w-full sm:w-auto flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-4 rounded-2xl border border-emerald-400/50 transition active:scale-95 flex items-center justify-center space-x-2 text-sm sm:text-base shadow-xl shadow-emerald-950/40">
                         <i data-lucide="smartphone" class="w-5 h-5"></i>
                         <span>GET ANDROID APP</span>
                     </button>
@@ -1792,23 +1776,96 @@
         </div>
     </footer>
 
+    <!-- MOBILE MORE OPTIONS DRAWER (SLIDES UP FROM BOTTOM BAR) -->
+    <div id="mobile-more-backdrop" class="hidden lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs" onclick="toggleMobileMoreMenu()"></div>
+    <div id="mobile-more-menu" class="hidden lg:hidden fixed bottom-[76px] left-3 right-3 max-w-md mx-auto z-50 bg-slate-900/98 backdrop-blur-2xl border border-slate-700/80 rounded-2xl p-3.5 shadow-2xl shadow-black/80 grid grid-cols-4 gap-2 text-center text-xs">
+        <button type="button" onclick="switchTab('risk'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
+            <i data-lucide="activity" class="w-4 h-4 text-amber-400 mb-1"></i>
+            <span class="text-[10px] font-medium" data-i18n="navLiveRisk">Live Risk</span>
+        </button>
+        <button type="button" onclick="switchTab('reports'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
+            <i data-lucide="clipboard-list" class="w-4 h-4 text-emerald-400 mb-1"></i>
+            <span class="text-[10px] font-medium" data-i18n="navReports">My Reports</span>
+        </button>
+        <button type="button" onclick="switchTab('shelters'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
+            <i data-lucide="tent" class="w-4 h-4 text-purple-400 mb-1"></i>
+            <span class="text-[10px] font-medium" data-i18n="navShelters">Shelters</span>
+        </button>
+        <button type="button" onclick="switchTab('hospitals'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
+            <i data-lucide="cross" class="w-4 h-4 text-blue-400 mb-1"></i>
+            <span class="text-[10px] font-medium" data-i18n="navHospitals">Hospitals</span>
+        </button>
+        <button type="button" onclick="switchTab('contacts'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
+            <i data-lucide="phone-call" class="w-4 h-4 text-red-400 mb-1"></i>
+            <span class="text-[10px] font-medium" data-i18n="navContacts">Hotlines</span>
+        </button>
+        <button type="button" onclick="switchTab('help'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
+            <i data-lucide="help-circle" class="w-4 h-4 text-amber-300 mb-1"></i>
+            <span class="text-[10px] font-medium" data-i18n="navHelp">Triage</span>
+        </button>
+        <a href="authority.html" target="_blank" class="p-2.5 rounded-xl bg-purple-950/80 border border-purple-800 text-purple-200 flex flex-col items-center active:bg-purple-900">
+            <i data-lucide="shield" class="w-4 h-4 text-purple-400 mb-1"></i>
+            <span class="text-[10px] font-medium" data-i18n="commandPortal">Command</span>
+        </a>
+        <button type="button" onclick="switchTab('about'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
+            <i data-lucide="info" class="w-4 h-4 text-slate-400 mb-1"></i>
+            <span class="text-[10px] font-medium" data-i18n="navAbout">About</span>
+        </button>
+    </div>
+
+    <!-- BOTTOM NAVIGATION BAR FOR ALL ANDROID & IOS SMARTPHONES -->
+    <nav id="mobile-nav-bar" class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0B0F19]/95 backdrop-blur-2xl border-t border-slate-800/90 px-3 pt-2 pb-[max(env(safe-area-inset-bottom),10px)] flex items-center justify-around shadow-2xl">
+        <button type="button" onclick="switchTab('home')" class="nav-tab-btn flex-1 flex flex-col items-center justify-center py-1 text-purple-400 active:scale-95 transition" id="mob-tab-home">
+            <i data-lucide="home" class="w-5 h-5 mb-0.5"></i>
+            <span class="text-[10px] font-bold" data-i18n="navHome">Home</span>
+        </button>
+        <button type="button" onclick="switchTab('report')" class="nav-tab-btn flex-1 flex flex-col items-center justify-center py-1 text-slate-400 active:scale-95 transition" id="mob-tab-report">
+            <i data-lucide="file-plus-2" class="w-5 h-5 mb-0.5"></i>
+            <span class="text-[10px] font-semibold" data-i18n="navReport">Report</span>
+        </button>
+        <!-- Center Floating Emergency SOS Button -->
+        <button type="button" onclick="openSosModal()" class="flex-none -mt-6 mx-1.5 flex flex-col items-center justify-center group focus:outline-none" title="Emergency SOS Dispatch">
+            <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-red-600 via-rose-600 to-red-500 text-white font-black flex items-center justify-center shadow-xl shadow-red-950 border-4 border-[#0B0F19] active:scale-90 transition-transform sos-pulse-glow">
+                <i data-lucide="siren" class="w-6 h-6 text-white animate-pulse"></i>
+            </div>
+            <span class="text-[10px] font-black text-red-400 tracking-wider mt-0.5" data-i18n="navSos">SOS</span>
+        </button>
+        <button type="button" onclick="switchTab('map')" class="nav-tab-btn flex-1 flex flex-col items-center justify-center py-1 text-slate-400 active:scale-95 transition" id="mob-tab-map">
+            <i data-lucide="map-pin" class="w-5 h-5 mb-0.5"></i>
+            <span class="text-[10px] font-semibold" data-i18n="navMap">Map</span>
+        </button>
+        <button type="button" onclick="toggleMobileMoreMenu(event)" class="nav-tab-btn flex-1 flex flex-col items-center justify-center py-1 text-slate-400 active:scale-95 transition" id="mob-tab-more">
+            <i data-lucide="layout-grid" class="w-5 h-5 mb-0.5"></i>
+            <span class="text-[10px] font-semibold">More</span>
+        </button>
+    </nav>
+
     <!-- App Scripts (Modular Production Architecture) -->
-    <script src="js/config.js?v=20261009-v5"></script>
-    <script src="js/i18n.js?v=20261009-v5"></script>
-    <script src="js/api.js?v=20261009-v5"></script>
-    <script src="js/socket.js?v=20261009-v5"></script>
-    <script src="js/voice-sos.js?v=20261009-v5"></script>
-    <script src="js/citizen-map.js?v=20261009-v5"></script>
-    <script src="js/citizen-app.js?v=20261009-v5"></script>
+    <script src="js/config.js?v=20261009-v6"></script>
+    <script src="js/i18n.js?v=20261009-v6"></script>
+    <script src="js/api.js?v=20261009-v6"></script>
+    <script src="js/socket.js?v=20261009-v6"></script>
+    <script src="js/voice-sos.js?v=20261009-v6"></script>
+    <script src="js/citizen-map.js?v=20261009-v6"></script>
+    <script src="js/citizen-app.js?v=20261009-v6"></script>
     <script>
         const isNativeApp = Boolean(
             (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
             window.location.protocol === 'capacitor:' ||
-            window.location.hostname === 'localhost'
+            (window.location.protocol === 'http:' && window.location.hostname === 'localhost' && window.location.port === '') ||
+            (window.location.protocol === 'https:' && window.location.hostname === 'localhost')
         );
+
+        if (isNativeApp) {
+            document.body.classList.add('native-app-mode');
+            document.querySelectorAll('.apk-download-cta').forEach(function(el) {
+                el.style.display = 'none';
+            });
+        }
+
         if ('serviceWorker' in navigator) {
             if (isNativeApp) {
-                // In native Capacitor Android app, unregister any stale service workers
+                // In native Capacitor Android/iOS app, unregister any stale service workers
                 navigator.serviceWorker.getRegistrations().then(regs => {
                     for (let reg of regs) reg.unregister();
                 }).catch(() => {});

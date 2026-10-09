@@ -3,10 +3,6 @@
 	"appName": "AISTER - AI Disaster Rescue Coordinator",
 	"webDir": "frontend",
 	"bundledWebRuntime": false,
-	"server": {
-		"url": "https://disaster-rescuecoordinator.onrender.com",
-		"cleartext": true
-	},
 	"android": {
 		"allowMixedContent": true,
 		"captureInput": true,

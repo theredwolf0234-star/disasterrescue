@@ -1,6 +1,6 @@
 {
-  "name": "RESCUE AI — Disaster Rescue Coordinator",
-  "short_name": "RESCUE AI",
+  "name": "AISTER — AI Disaster Rescue Coordinator",
+  "short_name": "AISTER",
   "description": "24/7 AI-Assisted Disaster Rescue, Citizen SOS Beacon & Emergency Coordination Platform",
   "start_url": "./index.html",
   "scope": "./",

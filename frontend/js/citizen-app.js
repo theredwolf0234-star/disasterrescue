@@ -348,19 +348,27 @@ function toggleMoreMenu(event) {
 function toggleMobileMoreMenu(event) {
     if (event) event.stopPropagation();
     const menu = document.getElementById('mobile-more-menu');
+    const backdrop = document.getElementById('mobile-more-backdrop');
     if (!menu) return;
+    const isOpening = menu.classList.contains('hidden');
     menu.classList.toggle('hidden');
+    if (backdrop) backdrop.classList.toggle('hidden', !isOpening);
+    if (isOpening && typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 }
 
 // Close more dropdowns on outside click
 document.addEventListener('click', (e) => {
     const desktopMenu = document.getElementById('nav-more-menu');
     const mobileMenu = document.getElementById('mobile-more-menu');
+    const backdrop = document.getElementById('mobile-more-backdrop');
     if (desktopMenu && !desktopMenu.contains(e.target) && !e.target.closest('#nav-more-btn')) {
         desktopMenu.classList.add('hidden');
     }
-    if (mobileMenu && !mobileMenu.contains(e.target) && !e.target.closest('#mobile-nav-bar')) {
+    if (mobileMenu && !mobileMenu.contains(e.target) && !e.target.closest('#mob-tab-more')) {
         mobileMenu.classList.add('hidden');
+        if (backdrop) backdrop.classList.add('hidden');
     }
 });
 
@@ -372,6 +380,7 @@ function switchTab(tabId) {
     const target = document.getElementById(`page-${tabId}`);
     if (target) target.classList.remove('hidden');
 
+    // Desktop nav highlighting
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.classList.remove('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
         btn.classList.add('text-slate-400');
@@ -382,17 +391,35 @@ function switchTab(tabId) {
         activeBtn.classList.remove('text-slate-400');
         activeBtn.classList.add('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
     } else {
-        // If tab is in More menu, highlight the More button
         const moreBtn = document.getElementById('nav-more-btn');
-        if (moreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about', 'app'].includes(tabId)) {
+        if (moreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about', 'app', 'risk', 'reports'].includes(tabId)) {
             moreBtn.classList.remove('text-slate-400');
             moreBtn.classList.add('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
+        }
+    }
+
+    // Mobile bottom nav highlighting
+    document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+        btn.classList.remove('text-purple-400', 'font-bold');
+        btn.classList.add('text-slate-400');
+    });
+
+    const mobActiveBtn = document.getElementById(`mob-tab-${tabId}`);
+    if (mobActiveBtn) {
+        mobActiveBtn.classList.remove('text-slate-400');
+        mobActiveBtn.classList.add('text-purple-400', 'font-bold');
+    } else {
+        const mobMoreBtn = document.getElementById('mob-tab-more');
+        if (mobMoreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about', 'app', 'risk', 'reports'].includes(tabId)) {
+            mobMoreBtn.classList.remove('text-slate-400');
+            mobMoreBtn.classList.add('text-purple-400', 'font-bold');
         }
     }
 
     // Auto-close dropdowns
     document.getElementById('nav-more-menu')?.classList.add('hidden');
     document.getElementById('mobile-more-menu')?.classList.add('hidden');
+    document.getElementById('mobile-more-backdrop')?.classList.add('hidden');
 
     if (tabId === 'map') {
         setTimeout(() => {
