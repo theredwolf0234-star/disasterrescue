@@ -11,8 +11,10 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Enforce dark background on the activity window immediately
+        // Enforce dark background on the activity window and system bars immediately
         getWindow().getDecorView().setBackgroundColor(Color.parseColor("#0B0F19"));
+        getWindow().setStatusBarColor(Color.parseColor("#0B0F19"));
+        getWindow().setNavigationBarColor(Color.parseColor("#0B0F19"));
 
         if (bridge != null && bridge.getWebView() != null) {
             WebView webView = bridge.getWebView();

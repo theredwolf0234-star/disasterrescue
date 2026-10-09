@@ -168,18 +168,60 @@ body {
     to { transform: translateY(0); opacity: 1; }
 }
 
-/* Mobile responsiveness & Native Smartphone Optimizations */
+/* Mobile Responsiveness & Native Smartphone Safe Area Architecture */
 :root {
     --sat: env(safe-area-inset-top, 0px);
     --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --safe-area-top: var(--sat, 0px);
 }
 
+/* Standalone PWA & Native Android/iOS App Safe Area Handling:
+   When running inside Capacitor Android or standalone mode, if env() returns 0px,
+   fallback to 36px (standard Android status bar height) until JS detects exact height */
+html.native-app-mode,
+body.native-app-mode,
+.native-app-mode {
+    --safe-area-top: max(var(--sat, 0px), 36px);
+}
+
+@media (display-mode: standalone) {
+    :root {
+        --safe-area-top: max(var(--sat, 0px), 36px);
+    }
+}
+
+/* Reset body padding-top so sticky header aligns cleanly with the physical top of the display */
 body {
-    padding-top: var(--sat);
+    padding-top: 0 !important;
+}
+
+/* App Header Safe Area Integration:
+   The dark header background seamlessly floods the status bar to top: 0,
+   while header contents are pushed safely below clock, notch, camera, and icons */
+header.app-header,
+header.sticky,
+header {
+    padding-top: var(--safe-area-top, var(--sat, 0px)) !important;
+    padding-left: var(--sal, 0px);
+    padding-right: var(--sar, 0px);
+    transition: padding-top 0.2s ease-out;
+}
+
+body > aside:first-child {
+    padding-top: max(var(--safe-area-top, 0px), 0.375rem) !important;
 }
 
 .safe-area-bottom {
-    padding-bottom: max(var(--sab), 10px);
+    padding-bottom: max(var(--sab, 0px), 10px);
+}
+
+@media (max-width: 640px) {
+    header .max-w-7xl {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
 }
 
 @media (max-width: 1023px) {

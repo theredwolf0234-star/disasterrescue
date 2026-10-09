@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="css/tailwind.min.css">
 
     <!-- Local Core Design System & Mobile Safe Area Styles -->
-    <link rel="stylesheet" href="css/style.css?v=20261009-v6">
+    <link rel="stylesheet" href="css/style.css?v=20261009-v8">
     <style>
         html, body {
             background-color: #0B0F19 !important;
@@ -60,7 +60,7 @@
     <link rel="apple-touch-icon" href="assets/icon.png">
     <link rel="manifest" href="manifest.json">
 
-    <!-- Immediate Anti-Cache & Bright Theme Purge Script -->
+    <!-- Immediate Anti-Cache, Bright Theme Purge & Native Status Bar Script -->
     <script>
         (function() {
             try {
@@ -84,6 +84,43 @@
                     });
                 }
             } catch(e) {}
+
+            // Immediate Native Mobile App Detection (runs before first paint)
+            var isCapNative = Boolean(
+                (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
+                window.location.protocol === 'capacitor:' ||
+                window.location.protocol === 'file:' ||
+                (window.location.protocol === 'http:' && window.location.hostname === 'localhost' && window.location.port === '') ||
+                (window.location.protocol === 'https:' && window.location.hostname === 'localhost')
+            );
+            if (isCapNative) {
+                document.documentElement.classList.add('native-app-mode');
+            }
+
+            // Sync exact pixel height from native Status Bar plugin if available
+            function syncNativeStatusBar() {
+                try {
+                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
+                        var sb = window.Capacitor.Plugins.StatusBar;
+                        try {
+                            sb.setStyle({ style: 'DARK' });
+                            sb.setBackgroundColor({ color: '#0B0F19' });
+                        } catch(e) {}
+
+                        sb.getInfo().then(function(info) {
+                            if (info && typeof info.height === 'number' && info.height > 0) {
+                                document.documentElement.style.setProperty('--safe-area-top', info.height + 'px');
+                            }
+                        }).catch(function() {});
+                    }
+                } catch(e) {}
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', syncNativeStatusBar);
+            } else {
+                syncNativeStatusBar();
+            }
         })();
     </script>
 
@@ -127,15 +164,9 @@
     </script>
 
 
-    <!-- OFFLINE RETRY BANNER (SECTION 32) -->
-    <div id="offline-network-banner" class="hidden bg-red-950/90 border-b border-red-700 text-red-200 px-4 py-2 text-xs text-center font-bold flex items-center justify-center space-x-2">
-        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
-        <span id="offline-banner-text" data-i18n="offlineNotice">Network unavailable. Retrying... Saved reports will sync automatically when online.</span>
-    </div>
-
     <!-- NAVBAR -->
-    <header class="sticky top-0 bg-[#0B0F19]/95 backdrop-blur-md border-b border-slate-800 z-50 shadow-md">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header class="app-header sticky top-0 bg-[#0B0F19]/95 backdrop-blur-md border-b border-slate-800 z-50 shadow-md">
+        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <button onclick="switchTab('home')" class="flex items-center space-x-2.5 focus:outline-none flex-shrink-0">
                     <div class="relative flex items-center justify-center w-9 h-9 rounded-xl bg-purple-700 text-white font-bold shadow-lg shadow-purple-900/50 border border-purple-500/30">
@@ -240,8 +271,12 @@
                     </button>
                 </div>
             </div>
-        </div>
     </header>
+    <!-- OFFLINE RETRY BANNER (SECTION 32) -->
+    <div id="offline-network-banner" class="hidden bg-red-950/90 border-b border-red-700 text-red-200 px-4 py-2 text-xs text-center font-bold flex items-center justify-center space-x-2">
+        <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
+        <span id="offline-banner-text" data-i18n="offlineNotice">Network unavailable. Retrying... Saved reports will sync automatically when online.</span>
+    </div>
 
     <!-- ============================================================= -->
     <!-- SECTION 1: HOME PAGE -->
@@ -1852,15 +1887,24 @@
         const isNativeApp = Boolean(
             (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
             window.location.protocol === 'capacitor:' ||
+            window.location.protocol === 'file:' ||
             (window.location.protocol === 'http:' && window.location.hostname === 'localhost' && window.location.port === '') ||
             (window.location.protocol === 'https:' && window.location.hostname === 'localhost')
         );
 
         if (isNativeApp) {
+            document.documentElement.classList.add('native-app-mode');
             document.body.classList.add('native-app-mode');
             document.querySelectorAll('.apk-download-cta').forEach(function(el) {
                 el.style.display = 'none';
             });
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
+                window.Capacitor.Plugins.StatusBar.getInfo().then(function(info) {
+                    if (info && typeof info.height === 'number' && info.height > 0) {
+                        document.documentElement.style.setProperty('--safe-area-top', info.height + 'px');
+                    }
+                }).catch(function() {});
+            }
         }
 
         if ('serviceWorker' in navigator) {
