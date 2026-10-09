@@ -485,6 +485,41 @@ async function runTests() {
         assert.ok(res.body.data.fleetSummary);
     });
 
+    // 26. GET /api/incidents/:id/timeline
+    await test('26. GET /api/incidents/:id/timeline returns chronological updates', async () => {
+        const res = await makeRequest('GET', `/api/incidents/${citizen1IncidentId}/timeline`, null, {
+            'Authorization': `Bearer ${citizen1Token}`
+        });
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.ok(Array.isArray(res.body.data));
+    });
+
+    // 27. POST /api/rescue-teams/:id/location
+    await test('27. POST /api/rescue-teams/:id/location updates responder GPS telemetry', async () => {
+        const res = await makeRequest('POST', '/api/rescue-teams/TEAM_NDRF_01/location', {
+            latitude: 26.8520,
+            longitude: 80.9450,
+            accuracy: 8.5,
+            batteryLevel: 92
+        }, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.strictEqual(res.body.data.teamId, 'TEAM_NDRF_01');
+    });
+
+    // 28. GET /api/rescue-teams/:id/location
+    await test('28. GET /api/rescue-teams/:id/location returns latest telemetry record', async () => {
+        const res = await makeRequest('GET', '/api/rescue-teams/TEAM_NDRF_01/location', null, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.strictEqual(res.body.data.team_id, 'TEAM_NDRF_01');
+    });
+
     console.log(`\n======================================================`);
     console.log(`Tests Summary: ${passed} passed, ${failed} failed.`);
     console.log(`======================================================\n`);

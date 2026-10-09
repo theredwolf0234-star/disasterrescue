@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
         I18N.apply();
     }
 
-    // 8. Initialize Bright Light Theme by default
+    // 8. Initialize Dark Emergency Theme
     initTheme();
 });
 
@@ -296,33 +296,27 @@ function citizenLogout() {
 
 // -------------------------------------------------------------
 // -------------------------------------------------------------
-// THEME SYSTEM (BRIGHT LIGHT AS DEFAULT WITH SAME BACKGROUND)
+// THEME SYSTEM (DARK EMERGENCY GRID AS DEFAULT)
 // -------------------------------------------------------------
 function initTheme() {
-    const saved = localStorage.getItem('rescue_theme') || 'bright';
-    applyTheme(saved);
+    // Clear legacy bright theme override if previously stored in browser
+    if (localStorage.getItem('rescue_theme') === 'bright') {
+        localStorage.removeItem('rescue_theme');
+    }
+    applyTheme('dark');
 }
 
 function toggleTheme() {
-    const isBright = document.body.classList.contains('theme-bright');
-    const next = isBright ? 'dark' : 'bright';
-    localStorage.setItem('rescue_theme', next);
-    applyTheme(next);
-    showToast(`Switched to ${next === 'bright' ? 'Bright Light' : 'Dark Grid'} Theme`, 'info');
+    document.body.classList.remove('theme-bright');
+    localStorage.setItem('rescue_theme', 'dark');
 }
 
 function applyTheme(theme) {
+    document.body.classList.remove('theme-bright');
     const icon = document.getElementById('theme-toggle-icon');
     const text = document.getElementById('theme-toggle-text');
-    if (theme === 'bright') {
-        document.body.classList.add('theme-bright');
-        if (icon) icon.innerText = '☀️';
-        if (text) text.innerText = 'Bright';
-    } else {
-        document.body.classList.remove('theme-bright');
-        if (icon) icon.innerText = '🌙';
-        if (text) text.innerText = 'Dark';
-    }
+    if (icon) icon.innerText = '🌙';
+    if (text) text.innerText = 'Dark';
 }
 
 // -------------------------------------------------------------

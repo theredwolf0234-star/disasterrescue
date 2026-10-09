@@ -892,6 +892,129 @@ async function getAnalyticsSummary(req, res, next) {
     }
 }
 
+// GET /api/incidents/:id/timeline
+async function getIncidentTimeline(req, res, next) {
+    try {
+        const { id } = req.params;
+        const incident = await db.get(`SELECT id, user_id FROM incidents WHERE id = ?`, [id]);
+        if (!incident) {
+            return res.status(404).json({ success: false, message: 'Incident not found.', errorCode: 'NOT_FOUND' });
+        }
+
+        const isAuthorityOrAdmin = req.user && ['AUTHORITY', 'ADMIN', 'OPERATOR', 'RESPONDER'].includes(req.user.role);
+        const isOwner = req.user && incident.user_id && req.user.id === incident.user_id;
+        if (!isAuthorityOrAdmin && !isOwner) {
+            return res.status(403).json({
+                success: false,
+                message: 'Access forbidden: You can only view timeline for your own incidents.',
+                errorCode: 'FORBIDDEN'
+            });
+        }
+
+        const timeline = await db.query(
+            `SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at ASC`,
+            [id]
+        );
+
+        res.json({
+            success: true,
+            incidentId: id,
+            count: timeline.length,
+            data: timeline
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// POST /api/incidents/:id/evidence
+async function uploadIncidentEvidence(req, res, next) {
+    try {
+        const { id } = req.params;
+        const incident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [id]);
+        if (!incident) {
+            return res.status(404).json({ success: false, message: 'Incident not found.', errorCode: 'NOT_FOUND' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No evidence media file provided.',
+                errorCode: 'VALIDATION_ERROR'
+            });
+        }
+
+        const finalEvidenceUrl = `/uploads/${req.file.filename}`;
+        const isAudio = req.file.mimetype.startsWith('audio/') || ['.wav', '.mp3', '.webm', '.ogg'].some(ext => req.file.filename.endsWith(ext));
+        const isVideo = req.file.mimetype.startsWith('video/');
+        const fileType = isAudio ? 'audio' : isVideo ? 'video' : 'image';
+
+        let aiVisionData = null;
+        try {
+            aiVisionData = await analyzeDisasterMedia({
+                filePath: req.file.path,
+                fileMime: req.file.mimetype,
+                fileName: req.file.originalname,
+                category: incident.category,
+                details: incident.details
+            });
+        } catch (mediaErr) {
+            console.warn('[Incident Evidence] AI analysis error:', mediaErr.message);
+        }
+
+        const mediaId = generateUUID('MED');
+        await db.run(
+            `INSERT INTO media (id, incident_id, file_url, file_type, file_name, file_size, ai_analysis_json, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+            [
+                mediaId,
+                id,
+                finalEvidenceUrl,
+                fileType,
+                req.file.originalname,
+                req.file.size,
+                JSON.stringify(aiVisionData)
+            ]
+        );
+
+        if (!incident.evidence_url) {
+            await db.run(`UPDATE incidents SET evidence_url = ? WHERE id = ?`, [finalEvidenceUrl, id]);
+        }
+        if (isAudio && !incident.audio_url) {
+            await db.run(`UPDATE incidents SET audio_url = ? WHERE id = ?`, [finalEvidenceUrl, id]);
+        }
+
+        const updateId = generateUUID('UPD');
+        await db.run(
+            `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, note, created_at)
+             VALUES (?, ?, ?, ?, ?, datetime('now'))`,
+            [
+                updateId,
+                id,
+                req.user ? req.user.id : 'CITIZEN',
+                req.user ? req.user.role : 'CITIZEN',
+                `Evidence uploaded (${fileType}): ${req.file.originalname}`
+            ]
+        );
+
+        res.status(201).json({
+            success: true,
+            message: 'Evidence attached to incident successfully.',
+            data: {
+                id: mediaId,
+                incidentId: id,
+                fileUrl: finalEvidenceUrl,
+                fileType,
+                fileName: req.file.originalname,
+                fileSize: req.file.size,
+                aiAnalysis: aiVisionData
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
 module.exports = {
     createIncident,
     getIncidents,
@@ -903,5 +1026,8 @@ module.exports = {
     getIncidentStats,
     getIncidentReport,
     exportIncidentsCsv,
-    getAnalyticsSummary
+    getAnalyticsSummary,
+    getIncidentTimeline,
+    uploadIncidentEvidence
 };
+

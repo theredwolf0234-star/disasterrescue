@@ -96,12 +96,24 @@ const frontendPath = getFrontendDir();
 app.use(express.static(frontendPath));
 
 // 8. Health Check Endpoints
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        service: 'AI Disaster Rescue Coordinator'
-    });
+app.get('/health', async (req, res) => {
+    try {
+        await db.get('SELECT 1');
+        res.json({
+            status: 'ok',
+            database: 'connected',
+            service: 'AI Disaster Rescue Coordinator'
+        });
+    } catch (err) {
+        res.status(503).json({
+            status: 'error',
+            database: 'disconnected',
+            service: 'AI Disaster Rescue Coordinator',
+            error: err.message
+        });
+    }
 });
+
 
 app.get('/api/health', async (req, res) => {
     try {

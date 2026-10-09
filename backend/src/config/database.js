@@ -356,6 +356,21 @@ async function createTables() {
         )
     `);
 
+    // 15. team_locations (Responder Periodic Telemetry)
+    await run(`
+        CREATE TABLE IF NOT EXISTS team_locations (
+            id ${idType},
+            team_id ${textType} NOT NULL,
+            latitude ${numType} NOT NULL,
+            longitude ${numType} NOT NULL,
+            accuracy ${numType},
+            battery_level ${numType},
+            timestamp ${textType} DEFAULT (${tsDefault}),
+            created_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
+
     // Migrations for incidents table
     try { await run(`ALTER TABLE incidents ADD COLUMN risk_score ${intType} DEFAULT 70`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN risk_factors ${textType}`); } catch (e) {}

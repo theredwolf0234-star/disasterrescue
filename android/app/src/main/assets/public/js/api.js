@@ -159,6 +159,10 @@ const api = {
         return this.request(endpoint, { method: 'POST', body, headers });
     },
 
+    postMultipart(endpoint, formData, headers = {}) {
+        return this.request(endpoint, { method: 'POST', body: formData, headers });
+    },
+
     patch(endpoint, body, headers = {}) {
         return this.request(endpoint, { method: 'PATCH', body, headers });
     },

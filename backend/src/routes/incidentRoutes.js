@@ -20,8 +20,14 @@ router.get('/:id', verifyToken, incidentController.getIncidentById);
 // Incident comprehensive report (PDF/Markdown format)
 router.get('/:id/report', verifyToken, incidentController.getIncidentReport);
 
+// Incident timeline history (Citizen for own, Authority/Admin for all)
+router.get('/:id/timeline', verifyToken, incidentController.getIncidentTimeline);
+
 // Submit new emergency SOS beacon (Citizen authenticated or guest emergency dispatch)
 router.post('/', optionalToken, uploadEvidence.single('evidence'), incidentController.createIncident);
+
+// Upload additional media evidence for an existing incident
+router.post('/:id/evidence', optionalToken, uploadEvidence.single('evidence'), incidentController.uploadIncidentEvidence);
 
 // Update incident status (Restricted to AUTHORITY and ADMIN)
 router.patch('/:id', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.updateIncident);
@@ -37,3 +43,4 @@ router.post('/:id/assign', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), in
 router.post('/:id/notes', verifyToken, incidentController.addIncidentNote);
 
 module.exports = router;
+

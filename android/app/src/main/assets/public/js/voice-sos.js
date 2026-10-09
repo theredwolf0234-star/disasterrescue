@@ -1,27 +1,40 @@
 /**
- * Single, Robust Vanilla Web Speech API Voice SOS Module for RESCUE AI
+ * Comprehensive Voice SOS Module for RESCUE AI
  * Features:
+ * - Real MediaRecorder microphone recording (start, stop, preview playback, blob export)
+ * - Automatic attachment of recorded voice audio to incident dispatch (evidence payload)
  * - Pre-recorded / synthesized AI voice audio: "It's an emergency, I need help."
  * - Instant 1-Click Send Voice SOS (zero delay dispatch)
- * - Live microphone SpeechRecognition continuous transcription
+ * - SpeechRecognition live continuous transcription (where supported)
+ * - Clear error handling when microphone access is denied or unavailable
  */
 
 class VoiceSOSEngine {
     constructor() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        this.isSupported = !!SpeechRec;
-        this.recognition = this.isSupported ? new SpeechRec() : null;
-        this.isRecording = false;
+        this.isSpeechSupported = !!SpeechRec;
+        this.recognition = this.isSpeechSupported ? new SpeechRec() : null;
+        this.isTranscribing = false;
         this.fullTranscript = '';
-        this.audioPlayer = new Audio('assets/emergency_voice.wav');
 
-        if (this.isSupported) {
+        // MediaRecorder real audio recording state
+        this.mediaRecorder = null;
+        this.audioChunks = [];
+        this.recordedAudioBlob = null;
+        this.recordedAudioUrl = null;
+        this.isAudioRecording = false;
+        this.recordingTimer = null;
+        this.recordingSeconds = 0;
+
+        this.aiAudioPlayer = new Audio('assets/emergency_voice.wav');
+
+        if (this.isSpeechSupported) {
             this.recognition.continuous = true;
             this.recognition.interimResults = true;
             this.recognition.lang = 'en-US';
 
             this.recognition.onstart = () => {
-                this.isRecording = true;
+                this.isTranscribing = true;
                 this.updateUI();
             };
 
@@ -42,15 +55,198 @@ class VoiceSOSEngine {
                 if (event.error === 'not-allowed') {
                     showToast('Microphone access was denied. Please allow microphone permissions in your browser.', 'error');
                 }
-                this.isRecording = false;
+                this.isTranscribing = false;
                 this.updateUI();
             };
 
             this.recognition.onend = () => {
-                this.isRecording = false;
+                this.isTranscribing = false;
                 this.updateUI();
             };
         }
+    }
+
+    /**
+     * Start live audio recording via navigator.mediaDevices.getUserMedia & MediaRecorder
+     */
+    async startAudioRecording() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showToast('Audio recording is not supported in this browser.', 'error');
+            return;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            this.audioChunks = [];
+
+            let mimeType = 'audio/webm';
+            if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                if (MediaRecorder.isTypeSupported('audio/mp4')) mimeType = 'audio/mp4';
+                else if (MediaRecorder.isTypeSupported('audio/ogg')) mimeType = 'audio/ogg';
+                else mimeType = '';
+            }
+
+            const options = mimeType ? { mimeType } : {};
+            this.mediaRecorder = new MediaRecorder(stream, options);
+
+            this.mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) {
+                    this.audioChunks.push(e.data);
+                }
+            };
+
+            this.mediaRecorder.onstop = () => {
+                const finalMime = mimeType || 'audio/webm';
+                this.recordedAudioBlob = new Blob(this.audioChunks, { type: finalMime });
+                if (this.recordedAudioUrl) URL.revokeObjectURL(this.recordedAudioUrl);
+                this.recordedAudioUrl = URL.createObjectURL(this.recordedAudioBlob);
+
+                // Stop all tracks in stream
+                stream.getTracks().forEach(track => track.stop());
+
+                this.renderRecordedAudioPlayer();
+                showToast(`Voice recording captured (${this.recordingSeconds}s). Ready for dispatch.`, 'success');
+            };
+
+            this.mediaRecorder.start(250); // Slice every 250ms
+            this.isAudioRecording = true;
+            this.recordingSeconds = 0;
+
+            this.updateAudioRecordingUI(true);
+
+            this.recordingTimer = setInterval(() => {
+                this.recordingSeconds++;
+                this.updateRecordingTimerUI();
+            }, 1000);
+
+            // Also start speech-to-text dictation if supported
+            if (this.isSpeechSupported && !this.isTranscribing) {
+                try { this.recognition.start(); } catch (_) {}
+            }
+
+        } catch (err) {
+            console.error('[Voice SOS] Microphone permission error:', err);
+            let msg = 'Unable to access microphone. Please enable microphone permissions in your browser.';
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                msg = 'Microphone permission denied by user. Please grant access in browser settings.';
+            } else if (err.name === 'NotFoundError') {
+                msg = 'No microphone device found on this system.';
+            }
+            showToast(msg, 'error');
+            this.renderAudioError(msg);
+        }
+    }
+
+    /**
+     * Stop live audio recording
+     */
+    stopAudioRecording() {
+        if (this.mediaRecorder && this.isAudioRecording) {
+            this.mediaRecorder.stop();
+            this.isAudioRecording = false;
+        }
+
+        if (this.recordingTimer) {
+            clearInterval(this.recordingTimer);
+            this.recordingTimer = null;
+        }
+
+        if (this.isSpeechSupported && this.isTranscribing) {
+            try { this.recognition.stop(); } catch (_) {}
+        }
+
+        this.updateAudioRecordingUI(false);
+    }
+
+    updateRecordingTimerUI() {
+        const timerEl = document.getElementById('voice-recording-timer');
+        if (timerEl) {
+            const mins = String(Math.floor(this.recordingSeconds / 60)).padStart(2, '0');
+            const secs = String(this.recordingSeconds % 60).padStart(2, '0');
+            timerEl.textContent = `REC ${mins}:${secs}`;
+        }
+    }
+
+    updateAudioRecordingUI(isRec) {
+        const startBtn = document.getElementById('btn-start-voice-rec');
+        const stopBtn = document.getElementById('btn-stop-voice-rec');
+        const statusEl = document.getElementById('voice-recording-status');
+
+        if (startBtn && stopBtn) {
+            if (isRec) {
+                startBtn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+            } else {
+                startBtn.classList.remove('hidden');
+                stopBtn.classList.add('hidden');
+            }
+        }
+
+        if (statusEl) {
+            if (isRec) {
+                statusEl.innerHTML = `
+                    <div class="flex items-center space-x-2 text-red-400 font-bold animate-pulse">
+                        <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                        <span id="voice-recording-timer">REC 00:00</span>
+                        <span class="text-xs text-slate-300 font-normal">• Speak your emergency details clearly...</span>
+                    </div>
+                `;
+            } else if (this.recordedAudioBlob) {
+                statusEl.innerHTML = `
+                    <div class="text-xs text-emerald-400 font-semibold flex items-center space-x-1.5">
+                        <span>✓ Audio captured (${(this.recordedAudioBlob.size / 1024).toFixed(1)} KB)</span>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    renderRecordedAudioPlayer() {
+        const container = document.getElementById('voice-player-container');
+        if (!container || !this.recordedAudioUrl) return;
+
+        container.innerHTML = `
+            <div class="bg-slate-950 p-3 rounded-xl border border-purple-800/60 space-y-2 mt-2">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-bold text-slate-200 flex items-center space-x-1">
+                        <i data-lucide="headphones" class="w-3.5 h-3.5 text-purple-400"></i>
+                        <span>Recorded Voice SOS Preview</span>
+                    </span>
+                    <button type="button" onclick="voiceEngine.clearRecording()" class="text-red-400 hover:text-red-300 text-[11px] underline">Discard</button>
+                </div>
+                <audio controls src="${this.recordedAudioUrl}" class="w-full h-8 rounded opacity-90 focus:outline-none"></audio>
+                <p class="text-[10px] text-slate-400">✓ This audio recording will be automatically uploaded with your SOS beacon.</p>
+            </div>
+        `;
+        container.classList.remove('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+
+    renderAudioError(msg) {
+        const statusEl = document.getElementById('voice-recording-status');
+        if (statusEl) {
+            statusEl.innerHTML = `
+                <div class="p-2.5 bg-red-950/60 border border-red-800 text-red-300 rounded-xl text-xs">
+                    ⚠️ ${msg}
+                </div>
+            `;
+        }
+    }
+
+    clearRecording() {
+        this.recordedAudioBlob = null;
+        if (this.recordedAudioUrl) {
+            URL.revokeObjectURL(this.recordedAudioUrl);
+            this.recordedAudioUrl = null;
+        }
+        const container = document.getElementById('voice-player-container');
+        if (container) {
+            container.innerHTML = '';
+            container.classList.add('hidden');
+        }
+        const statusEl = document.getElementById('voice-recording-status');
+        if (statusEl) statusEl.innerHTML = '';
+        showToast('Voice recording cleared.', 'info');
     }
 
     /**
@@ -59,9 +255,7 @@ class VoiceSOSEngine {
     playEmergencyAudio() {
         showToast("Playing AI Emergency Voice: \"It's an emergency, I need help.\"", 'info');
 
-        // Try playing recorded WAV file
-        this.audioPlayer.play().catch(() => {
-            // Fallback to browser SpeechSynthesis if audio autoplay is restricted
+        this.aiAudioPlayer.play().catch(() => {
             if ('speechSynthesis' in window) {
                 const utterance = new SpeechSynthesisUtterance("It's an emergency, I need help.");
                 utterance.rate = 0.95;
@@ -73,7 +267,6 @@ class VoiceSOSEngine {
 
     /**
      * Instant 1-Click Voice SOS Dispatch
-     * Dispatches emergency signal immediately with pre-recorded voice transcript without delay.
      */
     async instantSendVoiceSOS() {
         const btn = document.getElementById('btn-instant-voice-sos');
@@ -90,23 +283,31 @@ class VoiceSOSEngine {
                 `;
             }
 
-            // Play the emergency audio
             this.playEmergencyAudio();
 
-            // Obtain coordinates
             const coords = typeof getUserCoordinates === 'function' ? getUserCoordinates() : [26.8467, 80.9462];
-
             const voiceText = "VOICE SOS TRANSMISSION: It's an emergency, I need help. Immediate emergency assistance and medical rescue triage requested.";
 
-            const payload = {
-                category: 'Medical Emergency',
-                count: 1,
-                details: voiceText,
-                latitude: coords[0],
-                longitude: coords[1]
-            };
-
-            const res = await api.post('/api/incidents', payload);
+            let res;
+            if (this.recordedAudioBlob) {
+                const formData = new FormData();
+                formData.append('category', 'Medical Emergency');
+                formData.append('count', '1');
+                formData.append('details', voiceText + (this.fullTranscript ? ` (Dictated: ${this.fullTranscript})` : ''));
+                formData.append('latitude', coords[0].toString());
+                formData.append('longitude', coords[1].toString());
+                formData.append('evidence', this.recordedAudioBlob, 'voice-sos.webm');
+                res = await api.postMultipart('/api/incidents', formData);
+            } else {
+                const payload = {
+                    category: 'Medical Emergency',
+                    count: 1,
+                    details: voiceText,
+                    latitude: coords[0],
+                    longitude: coords[1]
+                };
+                res = await api.post('/api/incidents', payload);
+            }
 
             if (!res.success) throw new Error(res.message || 'Failed to dispatch voice SOS');
 
@@ -114,17 +315,14 @@ class VoiceSOSEngine {
             window.activeIncidentId = incident.id;
             showToast(`⚡ Instant Voice SOS Dispatched! Incident ID: ${incident.id}`, 'success');
 
-            // Render on active reports and map
             if (typeof fetchCitizenReports === 'function') {
                 await fetchCitizenReports();
             }
 
-            // Show confirmation popup with incident ID
             if (typeof showDispatchSuccessModal === 'function') {
                 showDispatchSuccessModal(incident);
             }
 
-            // Switch to reports tab
             if (typeof switchTab === 'function') {
                 switchTab('reports');
             }
@@ -141,12 +339,14 @@ class VoiceSOSEngine {
     }
 
     toggle() {
-        if (!this.isSupported) {
-            showToast('Voice speech recognition is not supported in this browser. Please use Chrome, Edge, or enter text manually.', 'warning');
+        if (!this.isSpeechSupported) {
+            showToast('Speech recognition not supported. You can use the Voice Recorder to record audio directly.', 'info');
+            if (!this.isAudioRecording) this.startAudioRecording();
+            else this.stopAudioRecording();
             return;
         }
 
-        if (this.isRecording) {
+        if (this.isTranscribing) {
             this.stop();
         } else {
             this.start();
@@ -154,101 +354,39 @@ class VoiceSOSEngine {
     }
 
     start() {
-        if (!this.isSupported || this.isRecording) return;
+        if (!this.isSpeechSupported) return;
         try {
+            this.fullTranscript = '';
             this.recognition.start();
         } catch (e) {
-            console.error('[Voice SOS] Failed to start:', e);
+            console.warn('[Voice SOS] Start error:', e);
         }
     }
 
     stop() {
-        if (!this.isSupported || !this.isRecording) return;
+        if (!this.isSpeechSupported) return;
         try {
             this.recognition.stop();
         } catch (e) {
-            console.error('[Voice SOS] Failed to stop:', e);
-        }
-    }
-
-    clear() {
-        this.fullTranscript = '';
-        this.renderTranscript('');
-    }
-
-    applyToDetails() {
-        if (!this.fullTranscript.trim()) {
-            showToast('No speech has been transcribed yet.', 'warning');
-            return;
-        }
-
-        const detailsInput = document.getElementById('sos-details');
-        if (detailsInput) {
-            const current = detailsInput.value.trim();
-            detailsInput.value = current ? `${current}\n[Voice Audio]: ${this.fullTranscript}` : this.fullTranscript;
-            showToast('Transcribed speech applied to emergency situation details.', 'success');
-        }
-
-        // Open SOS modal if not already open
-        const modal = document.getElementById('sos-modal');
-        if (modal) modal.classList.remove('hidden');
-    }
-
-    renderTranscript(text) {
-        const box = document.getElementById('voice-transcription');
-        if (!box) return;
-
-        if (text) {
-            box.innerHTML = `
-                <div class="flex items-center justify-between mb-1 text-[11px] text-purple-300 font-bold">
-                    <span>Captured Transcript:</span>
-                    <button onclick="voiceEngine.clear()" class="text-red-400 hover:text-red-300 text-[10px] underline">Clear</button>
-                </div>
-                <p class="text-white font-medium text-xs leading-relaxed italic">"${text}"</p>
-                <div class="mt-2.5 flex items-center space-x-2">
-                    <button onclick="voiceEngine.applyToDetails()" class="flex-grow bg-purple-700 hover:bg-purple-600 text-white font-bold py-1.5 px-3 rounded-lg text-[11px] flex items-center justify-center space-x-1 transition shadow">
-                        <span>Insert into SOS Form →</span>
-                    </button>
-                    <button onclick="voiceEngine.instantSendVoiceSOS()" class="bg-red-700 hover:bg-red-600 text-white font-extrabold py-1.5 px-3 rounded-lg text-[11px] flex items-center justify-center space-x-1 transition shadow">
-                        <span>⚡ Send Now</span>
-                    </button>
-                </div>
-            `;
-        } else {
-            box.innerHTML = `
-                <div class="text-[11px] text-slate-400">
-                    <p>Pre-recorded AI distress phrase stored: <strong class="text-purple-300">"It's an emergency, I need help."</strong></p>
-                    <div class="mt-2 flex items-center space-x-2">
-                        <button onclick="voiceEngine.playEmergencyAudio()" class="text-purple-400 hover:text-purple-300 text-[11px] font-bold underline flex items-center space-x-1">
-                            <span>▶ Listen to Audio</span>
-                        </button>
-                        <span class="text-slate-600">|</span>
-                        <button onclick="voiceEngine.instantSendVoiceSOS()" class="text-red-400 hover:text-red-300 text-[11px] font-bold underline flex items-center space-x-1">
-                            <span>⚡ Dispatch Audio SOS Immediately</span>
-                        </button>
-                    </div>
-                </div>
-            `;
+            console.warn('[Voice SOS] Stop error:', e);
         }
     }
 
     updateUI() {
-        const btn = document.getElementById('btn-voice-rec');
-        const textSpan = document.getElementById('voice-btn-text');
-        if (!btn || !textSpan) return;
-
-        if (!this.isSupported) {
-            textSpan.innerText = 'Voice Not Supported In Browser';
-            btn.classList.add('opacity-50', 'cursor-not-allowed');
-            return;
+        const btnText = document.getElementById('voice-btn-text');
+        if (btnText) {
+            btnText.innerText = this.isTranscribing ? 'Listening... Speak details' : 'Record Custom Voice SOS (Hands-Free)';
         }
+    }
 
-        if (this.isRecording) {
-            textSpan.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500 animate-ping inline-block mr-1.5"></span>Recording... (Click to Stop)';
-            btn.className = 'w-full bg-red-950/80 border border-red-600 text-red-200 font-bold py-2 rounded-xl text-xs mb-2 flex items-center justify-center transition shadow-lg shadow-red-950/50';
-        } else {
-            textSpan.innerText = this.fullTranscript ? 'Continue Recording Speech' : 'Record Custom Voice SOS (Hands-Free)';
-            btn.className = 'w-full bg-slate-950 hover:bg-slate-800 border border-slate-700 text-purple-300 font-bold py-2 rounded-xl text-xs mb-2 flex items-center justify-center space-x-1.5 transition';
+    renderTranscript(text) {
+        const transEl = document.getElementById('voice-transcription');
+        if (transEl) {
+            transEl.innerHTML = `<span class="text-purple-300 font-semibold">🎙️ Transcribed:</span> ${text}`;
+        }
+        const textarea = document.getElementById('sos-details');
+        if (textarea && text) {
+            textarea.value = text;
         }
     }
 }

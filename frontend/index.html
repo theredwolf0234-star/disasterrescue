@@ -39,7 +39,7 @@
     <!-- Custom Production Styles -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="text-slate-200 antialiased min-h-screen flex flex-col selection:bg-purple-600 selection:text-white bg-[#0B0F19] theme-bright">
+<body class="text-slate-200 antialiased min-h-screen flex flex-col selection:bg-purple-600 selection:text-white bg-[#0B0F19]">
 
     <!-- MANDATORY DEMO NOTICE BANNER (SECTION 3 & 38) -->
     <aside aria-label="Demo Emergency System Notice" class="bg-amber-950/80 border-b border-amber-700/60 text-amber-200 px-4 py-1.5 text-[11px] text-center font-bold flex items-center justify-center space-x-2">
@@ -129,14 +129,8 @@
                     </div>
                 </nav>
 
-                <!-- Right Actions: Theme Toggle, Language Switcher, Profile/Auth, Authority Portal Link -->
+                <!-- Right Actions: Language Switcher, Profile/Auth, Authority Portal Link -->
                 <div class="flex items-center space-x-1.5 flex-shrink-0">
-                    <!-- Bright / Dark Theme Switcher -->
-                    <button id="theme-toggle-btn" type="button" onclick="toggleTheme()" title="Toggle Bright/Dark Theme" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-amber-400 px-2 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
-                        <span id="theme-toggle-icon">☀️</span>
-                        <span id="theme-toggle-text" class="hidden xl:inline text-[11px]">Bright</span>
-                    </button>
-
                     <!-- Bilingual Language Switcher (Section 29) -->
                     <button id="lang-toggle-btn" type="button" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-purple-300 px-2 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
                         <span>🌐 हिंदी</span>

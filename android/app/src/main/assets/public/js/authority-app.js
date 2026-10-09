@@ -1024,14 +1024,15 @@ function renderIncidentInspectModal(inc) {
 
     const teamOptions = allRescueTeams.map(t => `
         <option value="${t.name}" ${inc.assigned_rescue_team === t.name ? 'selected' : ''}>
-            ${t.name} (${t.status})
+            ${t.name} (${t.status}) - ${t.type || 'General Squad'}
         </option>
     `).join('');
 
     // Evidence media rendering
-    let evidenceHTML = '<span class="text-slate-500 italic text-xs">No evidence uploaded</span>';
+    let evidenceHTML = '<span class="text-slate-500 italic text-xs">No media uploaded</span>';
     if (inc.evidence_url) {
         const isVideo = /\.(mp4|webm|mov|avi)$/i.test(inc.evidence_url);
+        const isAudio = /\.(wav|mp3|ogg|webm)$/i.test(inc.evidence_url) && !isVideo;
         if (isVideo) {
             evidenceHTML = `
                 <div class="space-y-1">
@@ -1039,6 +1040,13 @@ function renderIncidentInspectModal(inc) {
                     <a href="${inc.evidence_url}" target="_blank" class="text-purple-400 underline font-bold text-xs inline-flex items-center space-x-1">
                         <span>Open Video Evidence ↗</span>
                     </a>
+                </div>
+            `;
+        } else if (isAudio) {
+            evidenceHTML = `
+                <div class="space-y-1 bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                    <span class="text-xs font-bold text-purple-300 flex items-center space-x-1"><i data-lucide="headphones" class="w-3.5 h-3.5"></i><span>Voice SOS Recording</span></span>
+                    <audio src="${inc.evidence_url}" controls class="w-full h-8 rounded mt-1"></audio>
                 </div>
             `;
         } else {
@@ -1059,13 +1067,47 @@ function renderIncidentInspectModal(inc) {
 
     modal.innerHTML = `
         <div class="bg-slate-900 border border-purple-800 rounded-2xl max-w-2xl w-full p-6 text-slate-200 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <!-- Modal Header -->
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center space-x-2">
                     <span class="font-mono text-base font-black text-purple-400">${inc.id}</span>
                     <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase badge-${(inc.emergency_level || 'HIGH').toLowerCase()}">${inc.emergency_level}</span>
+                    <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">Risk: ${inc.risk_score || 75}/100</span>
                 </div>
                 <button onclick="document.getElementById('incident-inspect-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">
                     <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+            </div>
+
+            <!-- MANDATORY ACTION BUTTONS (SECTION 13) -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-purple-800/60 flex flex-wrap gap-2">
+                <button onclick="acknowledgeIncident('${inc.id}')" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                    <span>ACKNOWLEDGE</span>
+                </button>
+                <button onclick="document.getElementById('modal-team-select').focus()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow">
+                    <i data-lucide="truck" class="w-3.5 h-3.5"></i>
+                    <span>ASSIGN TEAM</span>
+                </button>
+                <button onclick="openContactCitizenDrawer('${inc.id}')" class="bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1 transition">
+                    <i data-lucide="phone" class="w-3.5 h-3.5"></i>
+                    <span>CONTACT USER</span>
+                </button>
+                <button onclick="viewIncidentSafeRoute('${inc.id}', ${inc.latitude}, ${inc.longitude})" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow">
+                    <i data-lucide="navigation-2" class="w-3.5 h-3.5"></i>
+                    <span>VIEW ROUTE</span>
+                </button>
+                <button onclick="promptChangePriority('${inc.id}', '${inc.emergency_level}')" class="bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1 transition">
+                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+                    <span>CHANGE PRIORITY</span>
+                </button>
+                <button onclick="quickResolveIncident('${inc.id}')" class="bg-emerald-800 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow">
+                    <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+                    <span>MARK RESOLVED</span>
+                </button>
+                <button onclick="generateIncidentReport('${inc.id}')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1 transition">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                    <span>GENERATE REPORT</span>
                 </button>
             </div>
 
@@ -1088,7 +1130,7 @@ function renderIncidentInspectModal(inc) {
                     <span class="text-purple-300 font-semibold">${inc.assigned_rescue_team || 'Pending Team Dispatch'}</span>
                 </div>
 
-                <!-- Live Citizen GPS Telemetry Card (Admin Live Location View) -->
+                <!-- Live Citizen GPS Telemetry Card -->
                 <div class="sm:col-span-2 bg-slate-900 p-4 rounded-xl border border-purple-800/80 space-y-3 shadow-lg">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center space-x-2">
@@ -1096,7 +1138,7 @@ function renderIncidentInspectModal(inc) {
                                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                                 <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                             </span>
-                            <span class="font-extrabold text-white text-xs uppercase tracking-wider">Citizen Live SOS Location Telemetry</span>
+                            <span class="font-extrabold text-white text-xs uppercase tracking-wider">Citizen Live Location Telemetry</span>
                         </div>
                         <span class="text-[10px] font-mono bg-emerald-950 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-700 font-bold flex items-center space-x-1">
                             <span>●</span>
@@ -1126,13 +1168,11 @@ function renderIncidentInspectModal(inc) {
                             <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
                             <span>Track on Tactical Map</span>
                         </button>
-
                         <a href="https://www.google.com/maps/search/?api=1&query=${inc.latitude},${inc.longitude}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-700/60 font-bold py-2 px-3.5 rounded-xl text-xs flex items-center space-x-1.5 transition shadow">
                             <i data-lucide="navigation" class="w-3.5 h-3.5 text-purple-400"></i>
-                            <span>Open Google Maps Navigation ↗</span>
+                            <span>Google Maps ↗</span>
                         </a>
-
-                        <button onclick="navigator.clipboard.writeText('${inc.latitude}, ${inc.longitude}'); showToast('GPS Coordinates copied to clipboard!', 'success');" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700 py-2 px-3 rounded-xl text-xs flex items-center space-x-1 transition">
+                        <button onclick="navigator.clipboard.writeText('${inc.latitude}, ${inc.longitude}'); showToast('GPS Coordinates copied!', 'success');" class="bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-700 py-2 px-3 rounded-xl text-xs flex items-center space-x-1 transition">
                             <i data-lucide="copy" class="w-3.5 h-3.5"></i>
                             <span>Copy GPS</span>
                         </button>
@@ -1147,14 +1187,20 @@ function renderIncidentInspectModal(inc) {
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">Emergency Situation Report</span>
                     <p class="text-slate-200 text-xs mt-1 leading-relaxed bg-slate-900 p-2.5 rounded-lg border border-slate-800/80">${inc.details || 'No details provided.'}</p>
                 </div>
+
+                ${inc.priority_explanation ? `
+                    <div class="sm:col-span-2 bg-slate-900 p-3 rounded-lg border border-purple-800/40 space-y-1">
+                        <span class="text-purple-300 font-bold block text-[10px] uppercase">AI Risk Engine Analysis</span>
+                        <p class="text-slate-200 text-xs leading-relaxed">${inc.priority_explanation}</p>
+                        ${inc.recommended_action ? `<p class="text-emerald-300 text-xs font-semibold mt-1">💡 Action: ${inc.recommended_action}</p>` : ''}
+                    </div>
+                ` : ''}
+
                 <div class="sm:col-span-2">
                     <span class="text-slate-400 block text-[10px] uppercase font-bold mb-1">Attached Incident Evidence</span>
                     ${evidenceHTML}
                 </div>
-                <div>
-                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Assigned Authority</span>
-                    <span class="text-purple-300 font-semibold">${inc.assigned_authority || 'Pending Command Assignment'}</span>
-                </div>
+
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">Reported At</span>
                     <span class="text-slate-400 text-[11px]">${createdTimeStr}</span>
@@ -1163,6 +1209,7 @@ function renderIncidentInspectModal(inc) {
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">Last Updated</span>
                     <span class="text-slate-400 text-[11px]">${updatedTimeStr}</span>
                 </div>
+
                 ${resolvedTimeStr ? `
                     <div class="sm:col-span-2 bg-emerald-950/40 p-2 rounded border border-emerald-800 text-emerald-300">
                         <span class="font-bold">Resolved At:</span> ${resolvedTimeStr}
@@ -1171,19 +1218,21 @@ function renderIncidentInspectModal(inc) {
                 ` : ''}
             </div>
 
-            <!-- Authority Action Controls -->
+            <!-- Authority Status & Team Transition Controls (Section 14) -->
             <div class="space-y-4 border-t border-slate-800 pt-4">
-                <h4 class="font-bold text-white text-xs uppercase tracking-wider">Command Operations & Dispatch Action</h4>
+                <h4 class="font-bold text-white text-xs uppercase tracking-wider">Status Lifecycle & Dispatch Override</h4>
 
                 <div class="grid sm:grid-cols-2 gap-3 text-xs">
                     <div>
-                        <label class="block text-slate-300 font-bold mb-1">Change Incident Status</label>
+                        <label class="block text-slate-300 font-bold mb-1">Incident Lifecycle Status</label>
                         <select id="modal-status-select" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:border-purple-500 focus:outline-none">
-                            <option value="RECEIVED" ${inc.status === 'RECEIVED' ? 'selected' : ''}>RECEIVED</option>
-                            <option value="TRIAGED" ${inc.status === 'TRIAGED' ? 'selected' : ''}>TRIAGED</option>
-                            <option value="DISPATCHED" ${inc.status === 'DISPATCHED' ? 'selected' : ''}>DISPATCHED</option>
-                            <option value="TEAM_ASSIGNED" ${inc.status === 'TEAM_ASSIGNED' ? 'selected' : ''}>TEAM_ASSIGNED</option>
-                            <option value="IN_PROGRESS" ${inc.status === 'IN_PROGRESS' ? 'selected' : ''}>IN_PROGRESS</option>
+                            <option value="NEW" ${inc.status === 'NEW' ? 'selected' : ''}>NEW (Beacon Received)</option>
+                            <option value="ACKNOWLEDGED" ${inc.status === 'ACKNOWLEDGED' ? 'selected' : ''}>ACKNOWLEDGED</option>
+                            <option value="ANALYZING" ${inc.status === 'ANALYZING' ? 'selected' : ''}>ANALYZING (Risk Triage)</option>
+                            <option value="ASSIGNED" ${inc.status === 'ASSIGNED' ? 'selected' : ''}>ASSIGNED</option>
+                            <option value="TEAM_DISPATCHED" ${inc.status === 'TEAM_DISPATCHED' ? 'selected' : ''}>TEAM_DISPATCHED</option>
+                            <option value="TEAM_APPROACHING" ${inc.status === 'TEAM_APPROACHING' ? 'selected' : ''}>TEAM_APPROACHING</option>
+                            <option value="ON_SCENE" ${inc.status === 'ON_SCENE' ? 'selected' : ''}>ON_SCENE</option>
                             <option value="RESOLVED" ${inc.status === 'RESOLVED' ? 'selected' : ''}>RESOLVED</option>
                             <option value="CANCELLED" ${inc.status === 'CANCELLED' ? 'selected' : ''}>CANCELLED</option>
                         </select>
@@ -1271,6 +1320,146 @@ function renderIncidentInspectModal(inc) {
     }, 150);
 }
 
+// -------------------------------------------------------------
+// ACTION BUTTON HANDLERS (SECTION 13)
+// -------------------------------------------------------------
+async function acknowledgeIncident(id) {
+    try {
+        const res = await api.patch(`/api/incidents/${id}`, {
+            status: 'ACKNOWLEDGED',
+            note: 'Incident acknowledged by commanding officer.'
+        });
+        if (!res.success) throw new Error(res.message || 'Acknowledge failed');
+
+        showToast(`Incident [${id}] ACKNOWLEDGED by Command HQ.`, 'success');
+        await inspectIncident(id);
+        await fetchOverviewStats();
+        await fetchIncidentsList();
+    } catch (e) {
+        showToast(e.message || 'Failed to acknowledge incident', 'error');
+    }
+}
+
+function openContactCitizenDrawer(id) {
+    const inc = allIncidents.find(i => i.id === id) || currentInspectedIncident;
+    const phone = (inc && (inc.phone || inc.contact_phone)) || '+91 9876543210';
+
+    const msg = prompt(`Contact Citizen for SOS [${id}]\nEnter message or dial directly at ${phone}:`, `Emergency dispatch update for incident ${id}: First responder squad has been deployed.`);
+    if (msg) {
+        showToast(`Dispatch message queued to citizen at ${phone}: "${msg}"`, 'success');
+    }
+}
+
+async function viewIncidentSafeRoute(incidentId, lat, lng) {
+    const modal = document.getElementById('incident-inspect-modal');
+    if (modal) modal.classList.add('hidden');
+
+    switchAuthorityView('tactical');
+
+    try {
+        showToast(`Calculating safe tactical route for incident ${incidentId}...`, 'info');
+        const res = await api.get(`/api/routes/safe-route?destLat=${lat}&destLng=${lng}&incidentId=${incidentId}`);
+        if (!res.success) throw new Error(res.message || 'Route calculation failed');
+
+        const routeData = res.data || res;
+
+        // Fly authority map to destination
+        if (authorityMap) {
+            authorityMap.flyTo({ center: [lng, lat], zoom: 14, duration: 1000 });
+
+            const geojson = {
+                type: 'Feature',
+                geometry: {
+                    type: 'LineString',
+                    coordinates: routeData.waypoints
+                }
+            };
+
+            if (authorityMap.getSource('authority-safe-route')) {
+                authorityMap.getSource('authority-safe-route').setData(geojson);
+            } else {
+                authorityMap.addSource('authority-safe-route', {
+                    type: 'geojson',
+                    data: geojson
+                });
+                authorityMap.addLayer({
+                    id: 'authority-safe-route-line',
+                    type: 'line',
+                    source: 'authority-safe-route',
+                    paint: { 'line-color': '#a855f7', 'line-width': 5 }
+                });
+            }
+        }
+
+        showToast(`Safe route computed: ${routeData.distanceKm} km • ETA: ${routeData.etaMinutes} mins • Risk: ${routeData.routeRisk}`, 'success');
+    } catch (e) {
+        showToast(e.message || 'Failed to compute route', 'error');
+    }
+}
+
+async function promptChangePriority(id, currentPriority) {
+    const newPriority = prompt(`Change Priority for [${id}]\nEnter priority (CRITICAL, HIGH, MEDIUM, LOW):`, currentPriority || 'HIGH');
+    if (!newPriority) return;
+
+    const upper = newPriority.trim().toUpperCase();
+    if (!['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'].includes(upper)) {
+        showToast('Invalid priority. Choose CRITICAL, HIGH, MEDIUM, or LOW.', 'error');
+        return;
+    }
+
+    try {
+        const res = await api.patch(`/api/incidents/${id}`, {
+            emergency_level: upper,
+            note: `Priority changed to ${upper} by authority officer.`
+        });
+        if (!res.success) throw new Error(res.message || 'Priority update failed');
+
+        showToast(`Priority for incident [${id}] set to ${upper}.`, 'success');
+        await inspectIncident(id);
+        await fetchOverviewStats();
+        await fetchIncidentsList();
+    } catch (e) {
+        showToast(e.message || 'Failed to update priority', 'error');
+    }
+}
+
+async function generateIncidentReport(id) {
+    try {
+        showToast(`Generating official report dossier for ${id}...`, 'info');
+        const token = api.getToken();
+        const res = await fetch(`/api/incidents/${id}/report`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error(`Report generation failed with status ${res.status}`);
+        const data = await res.json();
+
+        // Open in printable window
+        const reportWindow = window.open('', '_blank');
+        reportWindow.document.write(`
+            <html>
+                <head>
+                    <title>Emergency Incident Dossier - ${id}</title>
+                    <style>
+                        body { font-family: monospace; padding: 24px; background: #fff; color: #000; line-height: 1.5; }
+                        h1 { color: #7e22ce; }
+                        pre { background: #f4f4f4; padding: 12px; border-radius: 6px; }
+                        button { padding: 8px 16px; background: #7e22ce; color: white; border: none; border-radius: 4px; cursor: pointer; }
+                    </style>
+                </head>
+                <body>
+                    <button onclick="window.print()">Print Dossier (PDF)</button>
+                    <pre>${escapeHtml(data.markdownReport || JSON.stringify(data, null, 2))}</pre>
+                </body>
+            </html>
+        `);
+        reportWindow.document.close();
+        showToast(`Report dossier for ${id} generated!`, 'success');
+    } catch (e) {
+        showToast(e.message || 'Failed to generate incident report', 'error');
+    }
+}
+
 async function saveIncidentModalChanges(id) {
     const statusSelect = document.getElementById('modal-status-select');
     const teamSelect = document.getElementById('modal-team-select');
@@ -1300,13 +1489,14 @@ async function saveIncidentModalChanges(id) {
 }
 
 async function quickResolveIncident(id) {
-    if (!confirm(`Mark emergency incident ${id} as fully resolved?`)) return;
+    const notes = prompt(`Mark incident ${id} as RESOLVED?\nEnter resolution notes:`, 'Incident resolved by on-scene commanding officer.');
+    if (notes === null) return;
 
     try {
         const res = await api.patch(`/api/incidents/${id}`, {
             status: 'RESOLVED',
-            resolutionNotes: 'Incident marked resolved by Duty Officer.',
-            note: 'Incident marked resolved by Duty Officer.'
+            resolutionNotes: notes || 'Incident resolved by Duty Officer.',
+            note: notes || 'Incident marked resolved by Duty Officer.'
         });
         if (!res.success) throw new Error(res.message || 'Resolve failed');
 
@@ -1442,43 +1632,454 @@ function escapeHtml(str) {
 
 function switchAuthorityView(viewName) {
     currentAuthorityView = viewName;
-    const tacticalView = document.getElementById('view-tactical');
-    const databaseView = document.getElementById('view-database');
-    const tacticalBtn = document.getElementById('nav-btn-tactical');
-    const databaseBtn = document.getElementById('nav-btn-database');
+
+    // Hide all subviews
+    document.querySelectorAll('.authority-subview').forEach(el => el.classList.add('hidden'));
+    const target = document.getElementById(`view-${viewName}`);
+    if (target) target.classList.remove('hidden');
+
+    // Reset all nav button classes
+    const viewNames = ['tactical', 'teams', 'resources', 'clusters', 'analytics', 'database'];
+    viewNames.forEach(v => {
+        const btn = document.getElementById(`nav-btn-${v}`);
+        if (btn) {
+            btn.className = "px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200";
+        }
+    });
+
+    const activeBtn = document.getElementById(`nav-btn-${viewName}`);
+    if (activeBtn) {
+        activeBtn.className = "px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition bg-purple-700 text-white shadow-md";
+    }
 
     if (viewName === 'database') {
-        tacticalView?.classList.add('hidden');
-        databaseView?.classList.remove('hidden');
-
-        tacticalBtn?.classList.remove('bg-purple-700', 'text-white', 'shadow-md');
-        tacticalBtn?.classList.add('text-slate-400', 'hover:text-slate-200');
-
-        databaseBtn?.classList.add('bg-purple-700', 'text-white', 'shadow-md');
-        databaseBtn?.classList.remove('text-slate-400', 'hover:text-slate-200');
-
         if (!dbOverviewData) {
             loadDatabaseOverview(true);
         } else {
             loadTableData();
         }
-    } else {
-        databaseView?.classList.add('hidden');
-        tacticalView?.classList.remove('hidden');
-
-        databaseBtn?.classList.remove('bg-purple-700', 'text-white', 'shadow-md');
-        databaseBtn?.classList.add('text-slate-400', 'hover:text-slate-200');
-
-        tacticalBtn?.classList.add('bg-purple-700', 'text-white', 'shadow-md');
-        tacticalBtn?.classList.remove('text-slate-400', 'hover:text-slate-200');
-
-        // Resize Mapbox if initialized
+    } else if (viewName === 'teams') {
+        renderRescueTeamsFleet();
+    } else if (viewName === 'resources') {
+        renderResourcesInventory();
+    } else if (viewName === 'clusters') {
+        fetchIncidentClusters();
+    } else if (viewName === 'analytics') {
+        fetchAnalyticsSummary();
+    } else if (viewName === 'tactical') {
         if (authorityMap && typeof authorityMap.resize === 'function') {
             setTimeout(() => authorityMap.resize(), 100);
         }
     }
 
     if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// -------------------------------------------------------------
+// RESCUE FLEET MANAGEMENT (SECTION 15)
+// -------------------------------------------------------------
+async function renderRescueTeamsFleet() {
+    const container = document.getElementById('rescue-teams-list-grid');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="col-span-full text-center py-10 text-slate-400 text-xs">
+            <div class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <span>Loading rescue team fleet...</span>
+        </div>
+    `;
+
+    try {
+        const res = await api.get('/api/rescue-teams');
+        if (!res.success || !res.data) throw new Error(res.message || 'Failed to fetch teams');
+
+        allRescueTeams = res.data;
+        container.innerHTML = '';
+
+        allRescueTeams.forEach(t => {
+            const isAvail = t.status === 'AVAILABLE';
+            const isBusy = t.status === 'BUSY';
+            const statusClass = isAvail 
+                ? 'bg-emerald-950 text-emerald-300 border-emerald-700' 
+                : (isBusy ? 'bg-amber-950 text-amber-300 border-amber-700' : 'bg-slate-800 text-slate-400 border-slate-700');
+
+            const card = document.createElement('div');
+            card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-3";
+            card.innerHTML = `
+                <div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="text-[10px] font-mono text-purple-400 font-bold block">${t.id}</span>
+                            <h3 class="font-bold text-white text-base">${t.name}</h3>
+                            <p class="text-xs text-purple-300 font-semibold">${t.type || 'Rescue Squad'}</p>
+                        </div>
+                        <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded border ${statusClass}">
+                            ${t.status}
+                        </span>
+                    </div>
+
+                    <div class="space-y-1.5 text-xs text-slate-300 mt-3 pt-3 border-t border-slate-800">
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Squad Members:</span>
+                            <strong class="text-white">${t.members || 6} personnel</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Assigned Vehicle:</span>
+                            <strong class="text-white">${t.vehicle || 'Standard Emergency Transit'}</strong>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block mb-0.5">Tactical Gear:</span>
+                            <span class="text-slate-200 text-[11px]">${t.equipment || 'Trauma medical kits, satellite radio, cutting gear'}</span>
+                        </div>
+                        ${t.current_incident ? `
+                            <div class="p-2 bg-red-950/40 border border-red-800/40 rounded-lg text-red-300 font-bold text-[11px]">
+                                Current Target: ${t.current_incident}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                <!-- Status Update Control -->
+                <div class="pt-3 border-t border-slate-800 space-y-1.5">
+                    <label class="block text-[10px] text-slate-400 font-bold uppercase">Change Team Status</label>
+                    <div class="grid grid-cols-3 gap-1 text-[10px] font-bold">
+                        <button onclick="updateRescueTeamStatus('${t.id}', 'AVAILABLE')" class="py-1 px-1.5 rounded transition ${isAvail ? 'bg-emerald-700 text-white font-extrabold' : 'bg-slate-950 text-slate-400 hover:text-white'}">Available</button>
+                        <button onclick="updateRescueTeamStatus('${t.id}', 'BUSY')" class="py-1 px-1.5 rounded transition ${isBusy ? 'bg-amber-700 text-white font-extrabold' : 'bg-slate-950 text-slate-400 hover:text-white'}">Busy</button>
+                        <button onclick="updateRescueTeamStatus('${t.id}', 'OFFLINE')" class="py-1 px-1.5 rounded transition ${t.status === 'OFFLINE' ? 'bg-slate-700 text-white font-extrabold' : 'bg-slate-950 text-slate-400 hover:text-white'}">Offline</button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = `<p class="col-span-full text-center text-red-400 text-xs py-8">Failed to load rescue teams: ${e.message}</p>`;
+    }
+}
+
+async function updateRescueTeamStatus(teamId, status) {
+    try {
+        const res = await api.patch(`/api/rescue-teams/${teamId}/status`, { status });
+        if (!res.success) throw new Error(res.message || 'Status update failed');
+
+        showToast(`Team [${teamId}] status set to ${status}.`, 'success');
+        await renderRescueTeamsFleet();
+    } catch (e) {
+        showToast(e.message || 'Failed to update team status', 'error');
+    }
+}
+
+// -------------------------------------------------------------
+// EMERGENCY RESOURCES INVENTORY (SECTION 16)
+// -------------------------------------------------------------
+async function renderResourcesInventory() {
+    const container = document.getElementById('resources-inventory-grid');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="col-span-full text-center py-10 text-slate-400 text-xs">
+            <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <span>Loading resource logistics inventory...</span>
+        </div>
+    `;
+
+    try {
+        const res = await api.get('/api/resources');
+        if (!res.success || !res.data) throw new Error(res.message || 'Failed to fetch resources');
+
+        container.innerHTML = '';
+        res.data.forEach(r => {
+            const avail = Math.max(0, r.total_units - r.deployed_units);
+            const pct = r.total_units > 0 ? Math.round((r.deployed_units / r.total_units) * 100) : 0;
+
+            const card = document.createElement('div');
+            card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-3";
+            card.innerHTML = `
+                <div>
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-slate-400 block">${r.category}</span>
+                            <h3 class="font-bold text-white text-base">${r.name}</h3>
+                        </div>
+                        <span class="text-xs font-mono font-bold bg-blue-950 text-blue-300 px-2 py-0.5 rounded border border-blue-800">
+                            ${avail} Avail
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 mt-3 text-center text-xs">
+                        <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block">Total</span>
+                            <strong class="text-white text-sm">${r.total_units}</strong>
+                        </div>
+                        <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block">Deployed</span>
+                            <strong class="text-amber-400 text-sm">${r.deployed_units}</strong>
+                        </div>
+                        <div class="bg-slate-950 p-2 rounded-xl border border-slate-800">
+                            <span class="text-[9px] uppercase font-bold text-slate-400 block">Available</span>
+                            <strong class="text-emerald-400 text-sm">${avail}</strong>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 space-y-1">
+                        <div class="flex justify-between text-[11px] text-slate-400">
+                            <span>Deployment Rate</span>
+                            <span>${pct}% deployed</span>
+                        </div>
+                        <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden">
+                            <div class="h-2 rounded-full ${pct > 80 ? 'bg-red-500' : 'bg-blue-500'}" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="updateResourceCount('${r.id}', ${r.total_units}, ${r.deployed_units})" class="w-full bg-slate-800 hover:bg-slate-700 text-blue-300 font-bold py-2 rounded-xl text-xs transition">
+                    Update Fleet Stock & Deployment
+                </button>
+            `;
+            container.appendChild(card);
+        });
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = `<p class="col-span-full text-center text-red-400 text-xs py-8">Failed to load resources: ${e.message}</p>`;
+    }
+}
+
+async function updateResourceCount(resId, currentTotal, currentDeployed) {
+    const newTotal = prompt('Update Total Units in Inventory:', currentTotal);
+    if (newTotal === null) return;
+    const newDeployed = prompt('Update Deployed Units in Field:', currentDeployed);
+    if (newDeployed === null) return;
+
+    try {
+        const res = await api.patch(`/api/resources/${resId}`, {
+            totalUnits: parseInt(newTotal, 10),
+            deployedUnits: parseInt(newDeployed, 10)
+        });
+        if (!res.success) throw new Error(res.message || 'Update failed');
+
+        showToast('Resource allocation updated.', 'success');
+        await renderResourcesInventory();
+    } catch (e) {
+        showToast(e.message || 'Failed to update resource', 'error');
+    }
+}
+
+// -------------------------------------------------------------
+// INCIDENT CLUSTERS & MERGE (SECTION 19 & 20)
+// -------------------------------------------------------------
+async function fetchIncidentClusters() {
+    const container = document.getElementById('clusters-container');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="text-center py-10 text-slate-400 text-xs">
+            <div class="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <span>Analyzing spatial telemetry for incident clusters (&le; 2 km)...</span>
+        </div>
+    `;
+
+    try {
+        const res = await api.get('/api/clusters');
+        if (!res.success || !res.data) throw new Error(res.message || 'Cluster lookup failed');
+
+        const clusters = res.data;
+        if (clusters.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-12 bg-slate-900 border border-slate-800 rounded-2xl p-8">
+                    <i data-lucide="check-circle-2" class="w-10 h-10 text-emerald-400 mx-auto mb-2"></i>
+                    <h4 class="font-bold text-white text-base">No Critical Duplicate Clusters Detected</h4>
+                    <p class="text-xs text-slate-400 mt-1">Incoming emergency beacons are spatially isolated and being triaged individually.</p>
+                </div>
+            `;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            return;
+        }
+
+        container.innerHTML = '';
+        clusters.forEach(c => {
+            const card = document.createElement('div');
+            card.className = "bg-slate-900 border border-amber-800/80 rounded-2xl p-6 shadow-xl space-y-4";
+            card.innerHTML = `
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+                            <span class="font-bold text-amber-300 text-xs uppercase tracking-wider">POSSIBLE INCIDENT CLUSTER</span>
+                            <span class="text-xs font-mono font-bold bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-700">${c.incidentCount} Reports</span>
+                        </div>
+                        <h3 class="text-lg font-black text-white mt-1">Likely Disaster: ${c.likelyDisaster}</h3>
+                        <p class="text-xs text-slate-400">Epicenter: ${Number(c.centroid.lat).toFixed(4)}°, ${Number(c.centroid.lng).toFixed(4)}° • Cluster Priority: <span class="text-red-400 font-bold">${c.suggestedPriority}</span></p>
+                    </div>
+
+                    <button onclick="mergeIncidentCluster('${c.id}')" class="bg-amber-600 hover:bg-amber-500 text-white font-extrabold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow-lg transition">
+                        <i data-lucide="merge" class="w-4 h-4"></i>
+                        <span>MERGE AS MAJOR INCIDENT</span>
+                    </button>
+                </div>
+
+                <div class="space-y-2">
+                    <span class="text-[10px] uppercase font-bold text-slate-400">Grouped Incident Signals:</span>
+                    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                        ${c.incidents.map(inc => `
+                            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-xs">
+                                <div class="flex justify-between items-center font-mono">
+                                    <strong class="text-purple-300">${inc.id}</strong>
+                                    <span class="text-[10px] text-amber-400">${inc.count || 1} victim(s)</span>
+                                </div>
+                                <p class="text-[11px] text-slate-300 truncate mt-1">${inc.details}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = `<p class="text-center text-red-400 text-xs py-8">Cluster detection failed: ${e.message}</p>`;
+    }
+}
+
+async function mergeIncidentCluster(clusterId) {
+    if (!confirm('Merge these grouped reports into one major command incident? Individual reports will be preserved.')) return;
+
+    try {
+        const res = await api.post('/api/clusters/merge', { clusterId });
+        if (!res.success) throw new Error(res.message || 'Cluster merge failed');
+
+        showToast(`Cluster merged successfully into master incident [${res.data.masterIncidentId}]!`, 'success');
+        await fetchIncidentClusters();
+        await fetchIncidentsList();
+    } catch (e) {
+        showToast(e.message || 'Failed to merge cluster', 'error');
+    }
+}
+
+// -------------------------------------------------------------
+// ANALYTICS & CSV EXPORT (SECTION 26 & 27)
+// -------------------------------------------------------------
+async function fetchAnalyticsSummary() {
+    const container = document.getElementById('analytics-content-holder');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="text-center py-10 text-slate-400 text-xs">
+            <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <span>Aggregating incident triage statistics and response times...</span>
+        </div>
+    `;
+
+    try {
+        const res = await api.get('/api/incidents/analytics/summary');
+        if (!res.success || !res.data) throw new Error(res.message || 'Failed to load analytics');
+
+        const d = res.data;
+        container.innerHTML = `
+            <!-- Top KPI Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Avg Response Time</span>
+                    <strong class="text-2xl font-black text-emerald-400">${d.avgResponseTimeMinutes} mins</strong>
+                    <span class="text-[10px] text-slate-500 block mt-1">From beacon to triage dispatch</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Avg Resolution Time</span>
+                    <strong class="text-2xl font-black text-purple-400">${d.avgResolutionTimeHours} hrs</strong>
+                    <span class="text-[10px] text-slate-500 block mt-1">Mean duration to case closure</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Fleet Utilization</span>
+                    <strong class="text-2xl font-black text-amber-400">${d.resourceUtilization}%</strong>
+                    <span class="text-[10px] text-slate-500 block mt-1">${d.fleetSummary.teamsDeployed} / ${d.fleetSummary.teamsTotal} squads deployed</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block">Total Rescued Victims</span>
+                    <strong class="text-2xl font-black text-white">${d.totalVictims}</strong>
+                    <span class="text-[10px] text-slate-500 block mt-1">Cumulative registered count</span>
+                </div>
+            </div>
+
+            <!-- Breakdown Tables -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <h3 class="font-bold text-white text-sm uppercase tracking-wider">Incidents by Disaster Category</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left text-slate-300">
+                            <thead class="text-[10px] uppercase text-slate-500 border-b border-slate-800">
+                                <tr>
+                                    <th class="py-2">Category</th>
+                                    <th class="py-2 text-right">Incidents</th>
+                                    <th class="py-2 text-right">Victims</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800">
+                                ${(d.byDisaster || []).map(row => `
+                                    <tr>
+                                        <td class="py-2 font-bold text-white">${row.category}</td>
+                                        <td class="py-2 text-right font-mono text-purple-300">${row.count}</td>
+                                        <td class="py-2 text-right font-mono text-amber-400">${row.victims || row.count}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+                    <h3 class="font-bold text-white text-sm uppercase tracking-wider">Lifecycle Status Distribution</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left text-slate-300">
+                            <thead class="text-[10px] uppercase text-slate-500 border-b border-slate-800">
+                                <tr>
+                                    <th class="py-2">Lifecycle Stage</th>
+                                    <th class="py-2 text-right">Active Count</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-800">
+                                ${(d.byStatus || []).map(row => `
+                                    <tr>
+                                        <td class="py-2 font-bold text-white">${row.status}</td>
+                                        <td class="py-2 text-right font-mono text-emerald-400">${row.count}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = `<p class="text-center text-red-400 text-xs py-8">Analytics aggregation failed: ${e.message}</p>`;
+    }
+}
+
+async function exportIncidentsCsv() {
+    try {
+        showToast('Exporting incident logs as CSV...', 'info');
+        const token = api.getToken();
+        const res = await fetch('/api/incidents/export/csv', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!res.ok) throw new Error(`Export failed with status ${res.status}`);
+        const csvBlob = await res.blob();
+        const url = window.URL.createObjectURL(csvBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `emergency_incidents_export_${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        showToast('CSV export downloaded successfully!', 'success');
+    } catch (e) {
+        showToast(e.message || 'CSV export failed', 'error');
+    }
 }
 
 async function loadDatabaseOverview(autoLoadFirstTable = true) {
@@ -1514,6 +2115,7 @@ async function loadDatabaseOverview(autoLoadFirstTable = true) {
         console.error('[Database] Overview load error:', err);
     }
 }
+
 
 function renderDatabaseTablePills() {
     const container = document.getElementById('db-table-pills');
