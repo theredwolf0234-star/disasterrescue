@@ -106,10 +106,10 @@ function updateCitizenAuthUI() {
         `;
     } else {
         navAuthContainer.innerHTML = `
-            <button onclick="openCitizenAuthModal('login')" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 shadow transition">
-                <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+            <button onclick="openCitizenAuthModal('login')" class="h-7 sm:h-8 bg-purple-700 hover:bg-purple-600 text-white font-bold px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs flex items-center space-x-1 shadow transition">
+                <i data-lucide="log-in" class="w-3.5 h-3.5 flex-shrink-0"></i>
                 <span class="hidden sm:inline">Sign In / Register</span>
-                <span class="sm:hidden">Sign In</span>
+                <span class="sm:hidden text-[11px]">Sign In</span>
             </button>
         `;
     }

@@ -2,20 +2,33 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>RESCUE AI | AI Disaster Rescue Coordinator</title>
 
     <!-- Standalone Offline Tailwind CSS (Loads instantly in < 20ms from local storage) -->
     <link rel="stylesheet" href="css/tailwind.min.css">
 
     <!-- Local Core Design System & Mobile Safe Area Styles -->
-    <link rel="stylesheet" href="css/style.css?v=20261009-v8">
+    <link rel="stylesheet" href="css/style.css?v=20261010-v1">
     <style>
+        :root {
+            --app-bg: #F8FAFC;
+            --app-text: #0F172A;
+        }
+        html.theme-dark, body.theme-dark {
+            --app-bg: #0B0F19;
+            --app-text: #E2E8F0;
+        }
         html, body {
-            background-color: #0B0F19 !important;
-            color: #E2E8F0 !important;
-            margin: 0;
-            padding: 0;
+            background-color: var(--app-bg) !important;
+            color: var(--app-text) !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            touch-action: pan-y;
+            overscroll-behavior-x: none !important;
             min-height: 100vh;
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             -webkit-tap-highlight-color: transparent;
@@ -170,17 +183,17 @@
     </script>
 
     <!-- NAVBAR -->
-    <header class="app-header sticky top-0 bg-[#0B0F19]/95 backdrop-blur-md border-b border-slate-800 z-50 shadow-md">
-        <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <button onclick="switchTab('home')" class="flex items-center space-x-2.5 focus:outline-none flex-shrink-0">
-                    <div class="relative flex items-center justify-center w-9 h-9 rounded-xl bg-purple-700 text-white font-bold shadow-lg shadow-purple-900/50 border border-purple-500/30">
+    <header class="app-header sticky top-0 w-full max-w-full bg-[#0B0F19]/95 backdrop-blur-md border-b border-slate-800 z-50 shadow-md overflow-hidden">
+        <div class="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-14 sm:h-16">
+                <button onclick="switchTab('home')" class="flex items-center space-x-2 focus:outline-none flex-shrink-0">
+                    <div class="relative flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-700 text-white font-bold shadow-lg shadow-purple-900/50 border border-purple-500/30">
                         <i data-lucide="navigation" class="w-4 h-4 fill-current transform rotate-45"></i>
                     </div>
                     <div class="text-left">
                         <div class="flex items-center space-x-1.5">
-                            <span class="font-black text-lg md:text-xl tracking-tight text-white">RESCUE<span class="text-purple-400">AI</span></span>
-                            <span class="text-[9px] font-extrabold uppercase bg-slate-800 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800/50" data-i18n="grid247">24/7</span>
+                            <span class="font-black text-base sm:text-xl tracking-tight text-white">RESCUE<span class="text-purple-400">AI</span></span>
+                            <span class="hidden sm:inline-flex text-[9px] font-extrabold uppercase bg-slate-800 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800/50" data-i18n="grid247">24/7</span>
                         </div>
                         <p class="text-[9px] text-slate-400 font-medium hidden sm:block" data-i18n="tagline">Disaster Coordinator</p>
                     </div>
@@ -256,23 +269,25 @@
                 <!-- Right Actions: Theme Toggle, Language Switcher, Profile/Auth, Authority Admin Portal -->
                 <div class="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
                     <!-- Theme Toggle Switcher (High Contrast Bright / Dark) -->
-                    <button id="theme-toggle-btn" type="button" onclick="toggleTheme()" title="Toggle Theme (Light / Dark)" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
+                    <button id="theme-toggle-btn" type="button" onclick="toggleTheme()" title="Toggle Theme (Light / Dark)" class="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-bold transition shadow p-0">
                         <span id="theme-toggle-icon">🌙</span>
-                        <span id="theme-toggle-text" class="hidden md:inline">Theme</span>
+                        <span id="theme-toggle-text" class="hidden md:inline ml-1">Theme</span>
                     </button>
 
                     <!-- Bilingual Language Switcher (Section 29) -->
-                    <button id="lang-toggle-btn" type="button" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-purple-700 dark:text-purple-300 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
-                        <span>🌐 हिंदी</span>
+                    <button id="lang-toggle-btn" type="button" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="h-7 sm:h-8 px-2 sm:px-2.5 rounded-lg bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-purple-700 dark:text-purple-300 text-xs font-bold transition flex items-center shadow">
+                        <span class="hidden sm:inline">🌐 हिंदी</span>
+                        <span class="sm:hidden font-black text-[11px]">HI</span>
                     </button>
 
                     <!-- Citizen Auth State Container -->
-                    <div id="nav-auth-container"></div>
+                    <div id="nav-auth-container" class="flex-shrink-0"></div>
 
                     <!-- Authority Administrative Portal Link (Prominently visible on BOTH mobile and desktop) -->
-                    <a href="authority.html" class="flex bg-purple-700 hover:bg-purple-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-extrabold transition items-center space-x-1 shadow shadow-purple-950/40" title="Administrative Command Portal">
-                        <i data-lucide="shield" class="w-3.5 h-3.5"></i>
-                        <span data-i18n="commandPortal">Admin HQ</span>
+                    <a href="authority.html" class="h-7 sm:h-8 flex items-center space-x-1 bg-purple-700 hover:bg-purple-600 text-white px-2 sm:px-2.5 rounded-lg text-xs font-extrabold transition shadow shadow-purple-950/40" title="Administrative Command Portal">
+                        <i data-lucide="shield" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                        <span class="hidden sm:inline" data-i18n="commandPortal">Command Portal</span>
+                        <span class="sm:hidden text-[11px] font-bold">Admin</span>
                     </a>
 
                     <!-- Android APK Download Button (Desktop only, hidden inside mobile app) -->
@@ -286,7 +301,7 @@
     </header>
 
     <!-- MOBILE QUICK FEATURE CHIPS STRIP (Prominently visible on all smartphones) -->
-    <div id="quick-features-bar" class="lg:hidden sticky top-16 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center space-x-2 overflow-x-auto no-scrollbar shadow-sm text-xs font-bold">
+    <div id="quick-features-bar" class="lg:hidden sticky top-14 sm:top-16 z-40 w-full max-w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-2.5 sm:px-3 py-1.5 sm:py-2 flex items-center space-x-1.5 sm:space-x-2 overflow-x-auto no-scrollbar shadow-sm text-xs font-bold overscroll-contain">
         <button type="button" onclick="openSosModal()" class="flex-none px-3 py-1.5 rounded-full bg-red-600 text-white flex items-center space-x-1 shadow active:scale-95 transition">
             <i data-lucide="siren" class="w-3 h-3 animate-pulse"></i>
             <span>SOS</span>

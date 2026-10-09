@@ -30,6 +30,14 @@ public class MainActivity extends BridgeActivity {
             settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
             settings.setCacheMode(WebSettings.LOAD_DEFAULT);
             settings.setGeolocationEnabled(true);
+            settings.setUseWideViewPort(true);
+            settings.setLoadWithOverviewMode(true);
+            settings.setSupportZoom(false);
+            settings.setBuiltInZoomControls(false);
+            settings.setDisplayZoomControls(false);
+
+            webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
+            webView.setHorizontalScrollBarEnabled(false);
         }
 
         // Native smartphone back navigation callback

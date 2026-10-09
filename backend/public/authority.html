@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>RESCUE AI | Authority Command & Emergency Dispatch Portal</title>
 
     <!-- Tailwind CSS -->
@@ -30,16 +30,16 @@
     <!-- Custom Production Styles -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="min-h-screen flex flex-col antialiased selection:bg-purple-600 selection:text-white bg-[#0B0F19] text-slate-200">
+<body class="min-h-screen flex flex-col antialiased selection:bg-purple-600 selection:text-white bg-[#0B0F19] text-slate-200 w-full max-w-full overflow-x-hidden">
 
     <!-- MANDATORY EMERGENCY DISCLAIMER (SECTION 3 & 38) -->
-    <aside aria-label="Official Coordination Notice" class="bg-purple-950/80 border-b border-purple-800/40 text-purple-200 px-4 py-1.5 text-[10px] text-center font-medium">
+    <aside aria-label="Official Coordination Notice" class="w-full max-w-full bg-purple-950/80 border-b border-purple-800/40 text-purple-200 px-4 py-1.5 text-[10px] text-center font-medium overflow-hidden">
         <span>AUTHORITY COMMAND HQ &bull; Official Incident Coordination Interface &bull; Real-Time Emergency Triage Grid &bull; Demo Coordination System</span>
     </aside>
 
     <!-- TOP SYSTEM STATUS BAR -->
-    <div class="bg-slate-950 border-b border-slate-800 text-xs px-4 py-2 flex items-center justify-between text-slate-300">
-        <div class="flex items-center space-x-3">
+    <div class="w-full max-w-full bg-slate-950 border-b border-slate-800 text-xs px-3 sm:px-4 py-2 flex items-center justify-between text-slate-300 overflow-hidden">
+        <div class="flex items-center space-x-2 sm:space-x-3">
             <!-- Real Socket.IO status indicator -->
             <div id="socket-status-badge" class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[10px] bg-slate-800 border border-slate-700">
                 <span class="w-2 h-2 rounded-full bg-slate-500"></span>
@@ -48,17 +48,17 @@
             <span class="hidden md:inline text-slate-700">|</span>
             <span class="hidden md:inline font-mono text-slate-400 text-[11px]">Command Node: NDRF-HQ-LUCKNOW-01</span>
         </div>
-        <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-3 sm:space-x-4">
             <span class="text-purple-300 text-[11px] font-semibold" id="last-sync-time">Last Sync: Connecting...</span>
             <button onclick="syncData()" class="hover:text-white text-purple-400 underline font-bold flex items-center space-x-1 text-xs">
                 <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-                <span>Force Refresh</span>
+                <span class="hidden sm:inline">Force Refresh</span>
             </button>
         </div>
     </div>
 
     <!-- MAIN NAVBAR -->
-    <header class="bg-slate-950 border-b border-slate-800 sticky top-0 z-40 shadow-lg">
+    <header class="w-full max-w-full bg-slate-950 border-b border-slate-800 sticky top-0 z-40 shadow-lg overflow-hidden">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-3">
                 <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-700 text-white font-bold shadow-lg shadow-purple-950/80 border border-purple-500/40">
