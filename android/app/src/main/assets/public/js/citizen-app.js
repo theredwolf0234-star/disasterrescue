@@ -156,19 +156,14 @@ function openCitizenAuthModal(tab = 'login') {
             <form id="citizen-login-form" onsubmit="handleCitizenLogin(event)" class="space-y-3 text-xs ${tab === 'login' ? '' : 'hidden'}">
                 <div>
                     <label class="block text-slate-300 font-bold uppercase mb-1">Email Address</label>
-                    <input type="email" id="citizen-login-email" value="satyam@example.com" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none">
+                    <input type="email" id="citizen-login-email" placeholder="name@example.com" required autocomplete="email" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none">
                 </div>
                 <div>
                     <label class="block text-slate-300 font-bold uppercase mb-1">Password</label>
-                    <input type="password" id="citizen-login-password" value="citizen123" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none">
+                    <input type="password" id="citizen-login-password" placeholder="••••••••" required autocomplete="current-password" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none">
                 </div>
 
                 <div id="citizen-login-error" class="hidden p-2.5 bg-red-950/60 border border-red-800 text-red-300 rounded-xl text-xs"></div>
-
-                <div class="p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-0.5">
-                    <p class="font-bold text-slate-300">Default Citizen Credentials:</p>
-                    <p>Email: <code class="text-purple-300 font-mono">satyam@example.com</code> | Pass: <code class="text-purple-300 font-mono">citizen123</code></p>
-                </div>
 
                 <button type="submit" id="citizen-login-btn" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-extrabold py-2.5 rounded-xl uppercase text-xs shadow-lg transition">
                     Sign In to Citizen Grid
@@ -845,6 +840,10 @@ async function handleSosSubmit(e) {
         let res;
         const hasEvidenceFile = evidenceFileInput && evidenceFileInput.files && evidenceFileInput.files.length > 0;
         const hasAudioBlob = voiceEngine && voiceEngine.recordedAudioBlob;
+        const idempotencyKey = `sos_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const gpsTelemetry = (typeof window.getGpsTelemetry === 'function')
+            ? window.getGpsTelemetry()
+            : { isVerifiedGps: true, accuracy: null, timestamp: new Date().toISOString() };
 
         if (hasEvidenceFile || hasAudioBlob) {
             const formData = new FormData();
@@ -853,6 +852,12 @@ async function handleSosSubmit(e) {
             formData.append('details', details);
             formData.append('latitude', coords[0].toString());
             formData.append('longitude', coords[1].toString());
+            formData.append('idempotency_key', idempotencyKey);
+            formData.append('is_verified_gps', gpsTelemetry.isVerifiedGps ? '1' : '0');
+            if (gpsTelemetry.accuracy !== null && gpsTelemetry.accuracy !== undefined) {
+                formData.append('gps_accuracy', gpsTelemetry.accuracy.toString());
+            }
+            formData.append('gps_timestamp', gpsTelemetry.timestamp || new Date().toISOString());
             if (address) formData.append('address', address);
 
             if (hasEvidenceFile) {
@@ -861,7 +866,7 @@ async function handleSosSubmit(e) {
                 formData.append('evidence', voiceEngine.recordedAudioBlob, 'voice-sos.webm');
             }
 
-            res = await api.postMultipart('/api/incidents', formData);
+            res = await api.postMultipart('/api/incidents', formData, { 'Idempotency-Key': idempotencyKey });
         } else {
             const payload = {
                 category,
@@ -869,9 +874,13 @@ async function handleSosSubmit(e) {
                 details,
                 latitude: coords[0],
                 longitude: coords[1],
-                address: address || undefined
+                address: address || undefined,
+                idempotency_key: idempotencyKey,
+                is_verified_gps: gpsTelemetry.isVerifiedGps ? 1 : 0,
+                gps_accuracy: gpsTelemetry.accuracy,
+                gps_timestamp: gpsTelemetry.timestamp || new Date().toISOString()
             };
-            res = await api.post('/api/incidents', payload);
+            res = await api.post('/api/incidents', payload, { 'Idempotency-Key': idempotencyKey });
         }
 
         if (!res.success) throw new Error(res.message || 'SOS dispatch failed');
@@ -1094,7 +1103,7 @@ function showDispatchSuccessModal(incident) {
             </div>
             <div class="text-center">
                 <h3 class="font-black text-white text-xl">Emergency Beacon Dispatched</h3>
-                <p class="text-xs text-slate-400 mt-1">Incident successfully registered on NDRF Tactical Dispatch Grid.</p>
+                <p class="text-xs text-slate-400 mt-1">Incident successfully registered on AISTER Authority Coordination Grid.</p>
             </div>
             <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs space-y-2">
                 <div class="flex justify-between items-center">
@@ -1126,8 +1135,9 @@ function showDispatchSuccessModal(incident) {
                     <span class="text-slate-300">${createdTimeStr}</span>
                 </div>
             </div>
-            <div class="p-3 bg-purple-950/40 border border-purple-800/40 rounded-xl text-[11px] text-purple-200 text-center">
-                You can monitor live triage, assigned rescue squads, and status changes directly in the <strong>My Reports</strong> tab.
+            <div class="p-3 bg-purple-950/40 border border-purple-800/40 rounded-xl text-[11px] text-purple-200 text-center space-y-1">
+                <p>Track response status and tactical squad updates in the <strong>My Reports</strong> tab.</p>
+                <p class="text-[10px] text-amber-300 font-bold">⚠️ For life-threatening emergencies, also dial 112 (National Emergency Helpline) immediately.</p>
             </div>
             <button onclick="document.getElementById('dispatch-confirm-modal').classList.add('hidden')" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl uppercase text-xs shadow-lg transition">
                 Understood, View My Reports
@@ -1511,19 +1521,27 @@ async function fetchRealtimeWeatherData(lat, lng) {
         const updatedEl = document.getElementById('weather-updated-time');
         const badge = document.getElementById('weather-source-badge');
 
-        if (tempEl) tempEl.innerText = `${w.temperature || 28}°C`;
-        if (rainEl) rainEl.innerText = `${w.rainfall || 0} mm/h`;
-        if (windEl) windEl.innerText = `${w.wind_speed || 14} km/h`;
-        if (humEl) humEl.innerText = `${w.humidity || 65}%`;
-        if (condEl) condEl.innerText = w.condition || 'Partly Cloudy';
-        if (updatedEl) updatedEl.innerText = `Updated: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+        if (tempEl) tempEl.innerText = (w.temperature !== null && w.temperature !== undefined) ? `${w.temperature}°C` : '--°C';
+        if (rainEl) rainEl.innerText = (w.rainfall !== null && w.rainfall !== undefined) ? `${w.rainfall} mm/h` : '-- mm/h';
+        const windVal = w.windSpeed !== undefined && w.windSpeed !== null ? w.windSpeed : w.wind_speed;
+        if (windEl) windEl.innerText = (windVal !== null && windVal !== undefined) ? `${windVal} km/h` : '-- km/h';
+        if (humEl) humEl.innerText = (w.humidity !== null && w.humidity !== undefined) ? `${w.humidity}%` : '--%';
+        if (condEl) condEl.innerText = w.condition || (w.dataStatus === 'UNAVAILABLE' ? 'Telemetry Offline' : 'Partly Cloudy');
+        if (updatedEl) updatedEl.innerText = `Updated: ${new Date(w.fetchedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
         if (badge) {
-            const isLive = res.source === 'WeatherAPI.com' || res.source === 'Open-Meteo' || res.isLive;
-            badge.innerText = isLive ? 'LIVE DATA' : 'DEMO DATA';
-            badge.className = isLive 
-                ? 'text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700'
-                : 'text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700';
+            const isLive = w.dataStatus === 'LIVE' || w.isLive;
+            const isCached = w.dataStatus === 'CACHED_STALE' || w.isStale;
+            if (isLive) {
+                badge.innerText = `LIVE (${w.provider || 'Open-Meteo'})`;
+                badge.className = 'text-[9px] font-black uppercase px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700';
+            } else if (isCached) {
+                badge.innerText = 'CACHED TELEMETRY';
+                badge.className = 'text-[9px] font-black uppercase px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700';
+            } else {
+                badge.innerText = 'SENSOR OFFLINE';
+                badge.className = 'text-[9px] font-black uppercase px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700';
+            }
         }
     } catch (e) {
         console.warn('Weather fetch warning:', e.message);

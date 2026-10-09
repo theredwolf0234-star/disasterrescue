@@ -73,7 +73,19 @@ app.use('/api/auth', strictLimiter);
 
 // 6. Serve Uploaded Static Assets Safely
 const uploadsPath = path.resolve(__dirname, '../uploads');
-app.use('/uploads', express.static(uploadsPath, { maxAge: '1d' }));
+if (!fs.existsSync(uploadsPath)) {
+    fs.mkdirSync(uploadsPath, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsPath, {
+    maxAge: '1d',
+    dotfiles: 'ignore',
+    setHeaders: (res, filePath) => {
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        if (filePath.endsWith('.svg') || filePath.endsWith('.html') || filePath.endsWith('.htm')) {
+            res.setHeader('Content-Type', 'text/plain');
+        }
+    }
+}));
 
 // 7. Robust Frontend Static Asset Resolution (Monorepo root frontend/)
 function getFrontendDir() {

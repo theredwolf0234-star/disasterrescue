@@ -7,21 +7,31 @@
 const assert = require('assert');
 const http = require('http');
 const { io } = require('socket.io-client');
+const { app, server } = require('../src/server');
+const db = require('../src/config/database');
 
-const baseUrl = 'http://localhost:5000';
+const TEST_PORT = process.env.TEST_PORT || 5057;
+const baseUrl = process.env.TEST_URL || `http://localhost:${TEST_PORT}`;
+let serverInstance = null;
 
 function request(method, path, body = null, headers = {}) {
     return new Promise((resolve, reject) => {
         const url = new URL(path, baseUrl);
+        const serializedBody = body ? (typeof body === 'object' ? JSON.stringify(body) : body) : null;
+        const reqHeaders = {
+            'Content-Type': 'application/json',
+            ...headers
+        };
+        if (serializedBody) {
+            reqHeaders['Content-Length'] = Buffer.byteLength(serializedBody);
+        }
+
         const options = {
             method,
             hostname: url.hostname,
             port: url.port,
             path: url.pathname + url.search,
-            headers: {
-                'Content-Type': 'application/json',
-                ...headers
-            }
+            headers: reqHeaders
         };
 
         const req = http.request(options, (res) => {
@@ -37,14 +47,25 @@ function request(method, path, body = null, headers = {}) {
         });
 
         req.on('error', reject);
-        if (body) {
-            req.write(typeof body === 'object' ? JSON.stringify(body) : body);
+        if (serializedBody) {
+            req.write(serializedBody);
         }
         req.end();
     });
 }
 
 async function runE2E() {
+    await db.initDatabase();
+
+    if (!process.env.TEST_URL) {
+        await new Promise((resolve, reject) => {
+            serverInstance = server.listen(TEST_PORT, (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+    }
+
     console.log('===============================================================');
     console.log('  TESTING REAL WORKING FLOW: CITIZEN SOS TO AUTHORITY DISPATCH ');
     console.log('===============================================================\n');
@@ -236,12 +257,14 @@ async function runE2E() {
     console.log('  ALL REAL WORKING FLOW TESTS PASSED SUCCESSFULLY!             ');
     console.log('===============================================================\n');
 
-    authoritySocket.disconnect();
-    citizenSocket.disconnect();
+    if (authoritySocket) authoritySocket.disconnect();
+    if (citizenSocket) citizenSocket.disconnect();
+    if (serverInstance) serverInstance.close();
     process.exit(0);
 }
 
 runE2E().catch(err => {
     console.error('E2E Flow Test failed:', err);
+    if (serverInstance) serverInstance.close();
     process.exit(1);
 });

@@ -641,6 +641,11 @@ window.searchLiveLocation = searchLiveLocation;
 window.recenterMap = recenterMap;
 window.toggleRiskZones = toggleRiskZones;
 window.getUserCoordinates = () => [liveUserCoordinates[1], liveUserCoordinates[0]]; // returns [Lat, Lng]
+window.getGpsTelemetry = () => ({
+    isVerifiedGps: Boolean(isRealGpsActive),
+    accuracy: gpsAccuracyMeters,
+    timestamp: new Date().toISOString()
+});
 window.setLiveUserCoordinates = (lng, lat, accuracy) => {
     liveUserCoordinates = [lng, lat];
     if (accuracy) gpsAccuracyMeters = accuracy;

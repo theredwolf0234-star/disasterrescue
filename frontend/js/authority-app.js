@@ -204,17 +204,6 @@ function showAuthorityLoginModal(customMessage = null) {
                     <input type="password" id="auth-password" required autocomplete="current-password" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="••••••••">
                 </div>
 
-                <!-- Quick Fill Helpers for Easy Testing -->
-                <div class="flex items-center space-x-2 pt-1">
-                    <span class="text-[11px] font-bold text-slate-500">Quick Fill:</span>
-                    <button type="button" onclick="quickFillAuthority('ndrf_commander', 'authority123')" class="px-2.5 py-1 bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 rounded-lg text-[11px] font-bold border border-purple-300 dark:border-purple-800 hover:bg-purple-200">
-                        🛡️ Commander
-                    </button>
-                    <button type="button" onclick="quickFillAuthority('AISTER23', '@aster23')" class="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-lg text-[11px] font-bold border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200">
-                        ⚙️ Admin
-                    </button>
-                </div>
-
                 <div id="auth-login-error" class="hidden p-3 bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-xs"></div>
 
                 <button type="submit" id="auth-login-submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-extrabold py-3 rounded-xl uppercase text-xs shadow-lg transition">
@@ -232,14 +221,6 @@ function showAuthorityLoginModal(customMessage = null) {
     modal.classList.remove('hidden');
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
-
-function quickFillAuthority(username, password) {
-    const u = document.getElementById('auth-username');
-    const p = document.getElementById('auth-password');
-    if (u) u.value = username;
-    if (p) p.value = password;
-}
-window.quickFillAuthority = quickFillAuthority;
 
 async function handleAuthorityLogin(e) {
     e.preventDefault();
@@ -1451,34 +1432,32 @@ async function promptChangePriority(id, currentPriority) {
 async function generateIncidentReport(id) {
     try {
         showToast(`Generating official report dossier for ${id}...`, 'info');
-        const token = api.getToken();
-        const res = await fetch(`/api/incidents/${id}/report`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await api.get(`/api/incidents/${id}/report`);
+        if (!res.success && !res.data) throw new Error(res.message || 'Report generation failed');
+        const data = res.data || res;
 
-        if (!res.ok) throw new Error(`Report generation failed with status ${res.status}`);
-        const data = await res.json();
-
-        // Open in printable window
+        // Open in printable window if supported, or inform user
         const reportWindow = window.open('', '_blank');
-        reportWindow.document.write(`
-            <html>
-                <head>
-                    <title>Emergency Incident Dossier - ${id}</title>
-                    <style>
-                        body { font-family: monospace; padding: 24px; background: #fff; color: #000; line-height: 1.5; }
-                        h1 { color: #7e22ce; }
-                        pre { background: #f4f4f4; padding: 12px; border-radius: 6px; }
-                        button { padding: 8px 16px; background: #7e22ce; color: white; border: none; border-radius: 4px; cursor: pointer; }
-                    </style>
-                </head>
-                <body>
-                    <button onclick="window.print()">Print Dossier (PDF)</button>
-                    <pre>${escapeHtml(data.markdownReport || JSON.stringify(data, null, 2))}</pre>
-                </body>
-            </html>
-        `);
-        reportWindow.document.close();
+        if (reportWindow) {
+            reportWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Emergency Incident Dossier - ${escapeHtml(id)}</title>
+                        <style>
+                            body { font-family: monospace; padding: 24px; background: #fff; color: #000; line-height: 1.5; }
+                            h1 { color: #7e22ce; }
+                            pre { background: #f4f4f4; padding: 12px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; }
+                            button { padding: 8px 16px; background: #7e22ce; color: white; border: none; border-radius: 4px; cursor: pointer; }
+                        </style>
+                    </head>
+                    <body>
+                        <button onclick="window.print()">Print Dossier (PDF)</button>
+                        <pre>${escapeHtml(data.markdownReport || JSON.stringify(data, null, 2))}</pre>
+                    </body>
+                </html>
+            `);
+            reportWindow.document.close();
+        }
         showToast(`Report dossier for ${id} generated!`, 'success');
     } catch (e) {
         showToast(e.message || 'Failed to generate incident report', 'error');
@@ -2094,21 +2073,8 @@ async function fetchAnalyticsSummary() {
 async function exportIncidentsCsv() {
     try {
         showToast('Exporting incident logs as CSV...', 'info');
-        const token = api.getToken();
-        const res = await fetch('/api/incidents/export/csv', {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!res.ok) throw new Error(`Export failed with status ${res.status}`);
-        const csvBlob = await res.blob();
-        const url = window.URL.createObjectURL(csvBlob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `emergency_incidents_export_${Date.now()}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+        const filename = `rescue_ai_incidents_${Date.now()}.csv`;
+        await api.downloadFile('/api/incidents/export/csv', filename);
         showToast('CSV export downloaded successfully!', 'success');
     } catch (e) {
         showToast(e.message || 'CSV export failed', 'error');
@@ -2384,22 +2350,8 @@ async function exportCurrentTable(format = 'csv') {
     if (!currentDbTable) return;
     try {
         showToast(`Generating ${currentDbTable} export (${format.toUpperCase()})...`, 'info');
-        const token = api.getToken();
-        const res = await fetch(`/api/database/export/${currentDbTable}?format=${format}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        if (!res.ok) throw new Error('Export request returned status ' + res.status);
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${currentDbTable}_export_${Date.now()}.${format}`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(url);
+        const filename = `${currentDbTable}_export_${Date.now()}.${format}`;
+        await api.downloadFile(`/api/database/export/${currentDbTable}?format=${format}`, filename);
         showToast(`Exported ${currentDbTable} (${format.toUpperCase()}) successfully!`, 'success');
     } catch (err) {
         showToast(`Export failed: ${err.message}`, 'error');

@@ -76,8 +76,60 @@ async function createIncident(req, res, next) {
         }
 
         const victimCount = Math.max(1, parseInt(count, 10) || 1);
-        const incidentId = await generateIncidentId();
         const userId = req.user ? req.user.id : null;
+
+        // Idempotency key verification & rapid duplicate suppression
+        const idempotencyKey = req.headers['idempotency-key'] || req.body.idempotency_key || req.body.idempotencyKey || null;
+        if (idempotencyKey) {
+            const existingByIdempotency = await db.get(
+                `SELECT * FROM incidents WHERE idempotency_key = ? ORDER BY created_at DESC LIMIT 1`,
+                [idempotencyKey]
+            );
+            if (existingByIdempotency) {
+                const updates = await db.query(`SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at ASC`, [existingByIdempotency.id]);
+                return res.status(200).json({
+                    success: true,
+                    message: 'Incident previously registered (idempotent request).',
+                    data: {
+                        ...existingByIdempotency,
+                        incident: existingByIdempotency,
+                        updates
+                    }
+                });
+            }
+        }
+
+        // Rapid duplicate beacon suppression (same reporter, same category, same location within ~50m within 20s)
+        const recentDuplicate = await db.get(
+            `SELECT * FROM incidents 
+             WHERE category = ? 
+               AND ABS(latitude - ?) < 0.0005 
+               AND ABS(longitude - ?) < 0.0005 
+               AND (user_id = ? OR (user_id IS NULL AND ? IS NULL))
+               AND created_at >= datetime('now', '-20 seconds')
+             ORDER BY created_at DESC LIMIT 1`,
+            [category.trim(), numLat, numLng, userId, userId]
+        );
+        if (recentDuplicate) {
+            const updates = await db.query(`SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at ASC`, [recentDuplicate.id]);
+            return res.status(200).json({
+                success: true,
+                message: 'Duplicate SOS beacon suppressed; existing incident active.',
+                data: {
+                    ...recentDuplicate,
+                    incident: recentDuplicate,
+                    updates
+                }
+            });
+        }
+
+        const incidentId = await generateIncidentId();
+
+        // GPS Telemetry verification & accuracy
+        const isVerifiedGps = req.body.is_verified_gps !== undefined ? (req.body.is_verified_gps ? 1 : 0) : (req.body.isVerifiedGps !== undefined ? (req.body.isVerifiedGps ? 1 : 0) : 1);
+        const rawAccuracy = req.body.gps_accuracy !== undefined ? parseFloat(req.body.gps_accuracy) : (req.body.gpsAccuracy !== undefined ? parseFloat(req.body.gpsAccuracy) : null);
+        const gpsAccuracy = !isNaN(rawAccuracy) ? rawAccuracy : null;
+        const gpsTimestamp = req.body.gps_timestamp || req.body.gpsTimestamp || new Date().toISOString();
 
         // File upload check if handled by multer
         let finalEvidenceUrl = evidenceUrl || null;
@@ -137,8 +189,9 @@ async function createIncident(req, res, next) {
                 latitude, longitude, readable_address, status,
                 assigned_authority, assigned_rescue_team, evidence_url,
                 risk_score, risk_factors, recommended_action, ai_vision_analysis, audio_url,
+                is_verified_gps, gps_accuracy, gps_timestamp, idempotency_key,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', NULL, NULL, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
             [
                 incidentId,
                 userId,
@@ -154,7 +207,11 @@ async function createIncident(req, res, next) {
                 JSON.stringify(priorityAssessment.factors || {}),
                 priorityAssessment.recommendedAction || 'Dispatch nearest tactical unit.',
                 aiVisionData ? JSON.stringify(aiVisionData) : null,
-                audioUrl
+                audioUrl,
+                isVerifiedGps,
+                gpsAccuracy,
+                gpsTimestamp,
+                idempotencyKey
             ]
         );
 
@@ -744,6 +801,16 @@ async function getIncidentReport(req, res, next) {
             return res.status(404).json({ success: false, message: 'Incident not found.' });
         }
 
+        // Server-side authorization check: citizen can only view own reports; authority/admin can view any
+        const isAuth = req.user && (req.user.role === 'AUTHORITY' || req.user.role === 'ADMIN');
+        if (!isAuth && (!req.user || incident.user_id !== req.user.id)) {
+            return res.status(403).json({
+                success: false,
+                message: 'Forbidden: Access restricted. You do not have permission to view this incident report.',
+                errorCode: 'FORBIDDEN'
+            });
+        }
+
         const updates = await db.query(`SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at ASC`, [id]);
         const media = await db.query(`SELECT * FROM media WHERE incident_id = ? ORDER BY created_at ASC`, [id]);
         const risk = await db.get(`SELECT * FROM risk_analysis WHERE incident_id = ? ORDER BY created_at DESC LIMIT 1`, [id]);
@@ -773,7 +840,9 @@ async function getIncidentReport(req, res, next) {
             location: {
                 readableAddress: incident.readable_address,
                 latitude: incident.latitude,
-                longitude: incident.longitude
+                longitude: incident.longitude,
+                isVerifiedGps: Boolean(incident.is_verified_gps),
+                gpsAccuracy: incident.gps_accuracy
             },
             reporter: reporter || { name: 'Anonymous Dispatch Beacon' },
             assignedTeam: team || { name: incident.assigned_rescue_team || 'Unassigned' },
@@ -803,30 +872,85 @@ async function getIncidentReport(req, res, next) {
 // GET /api/incidents/export/csv
 async function exportIncidentsCsv(req, res, next) {
     try {
-        const incidents = await db.query(`SELECT * FROM incidents ORDER BY created_at DESC`);
+        const { category, status, emergency_level, from, to } = req.query;
+        let sql = `SELECT * FROM incidents WHERE 1=1`;
+        const params = [];
+
+        if (category) {
+            sql += ` AND category = ?`;
+            params.push(category);
+        }
+        if (status) {
+            sql += ` AND status = ?`;
+            params.push(status);
+        }
+        if (emergency_level) {
+            sql += ` AND emergency_level = ?`;
+            params.push(emergency_level);
+        }
+        if (from) {
+            sql += ` AND created_at >= ?`;
+            params.push(from);
+        }
+        if (to) {
+            sql += ` AND created_at <= ?`;
+            params.push(to);
+        }
+
+        sql += ` ORDER BY created_at DESC`;
+        const incidents = await db.query(sql, params);
+
+        // Sanitize string to prevent spreadsheet formula injection (=, +, -, @, \t, \r)
+        function sanitizeCsvField(val) {
+            if (val === null || val === undefined) return '""';
+            let str = String(val);
+            if (/^[=+\-@\t\r]/.test(str)) {
+                str = `'${str}`;
+            }
+            return `"${str.replace(/"/g, '""')}"`;
+        }
         
-        const header = ['Incident_ID', 'Category', 'Emergency_Level', 'Risk_Score', 'Victims', 'Status', 'Assigned_Team', 'Latitude', 'Longitude', 'Address', 'Created_At', 'Resolved_At'];
+        const header = [
+            'Incident_ID', 'Category', 'Emergency_Level', 'Risk_Score', 
+            'Victims', 'Status', 'Assigned_Team', 'Latitude', 'Longitude', 
+            'Address', 'Verified_GPS', 'GPS_Accuracy_Meters', 'Created_At', 'Resolved_At'
+        ];
         const csvRows = [header.join(',')];
 
         incidents.forEach(inc => {
             const row = [
-                `"${inc.id}"`,
-                `"${(inc.category || '').replace(/"/g, '""')}"`,
-                `"${inc.emergency_level}"`,
-                inc.risk_score || 70,
-                inc.count || 1,
-                `"${inc.status}"`,
-                `"${(inc.assigned_rescue_team || 'Unassigned').replace(/"/g, '""')}"`,
+                sanitizeCsvField(inc.id),
+                sanitizeCsvField(inc.category),
+                sanitizeCsvField(inc.emergency_level),
+                Number(inc.risk_score) || 70,
+                Number(inc.count) || 1,
+                sanitizeCsvField(inc.status),
+                sanitizeCsvField(inc.assigned_rescue_team || 'Unassigned'),
                 inc.latitude,
                 inc.longitude,
-                `"${(inc.readable_address || '').replace(/"/g, '""')}"`,
-                `"${inc.created_at}"`,
-                `"${inc.resolved_at || ''}"`
+                sanitizeCsvField(inc.readable_address),
+                inc.is_verified_gps ? 'YES' : 'NO',
+                inc.gps_accuracy !== null && inc.gps_accuracy !== undefined ? inc.gps_accuracy : 'N/A',
+                sanitizeCsvField(inc.created_at),
+                sanitizeCsvField(inc.resolved_at || '')
             ];
             csvRows.push(row.join(','));
         });
 
-        res.setHeader('Content-Type', 'text/csv');
+        // Audit log the export
+        if (req.user) {
+            await logAction({
+                userId: req.user.id,
+                userRole: req.user.role,
+                action: 'EXPORT_INCIDENTS_CSV',
+                entityType: 'INCIDENT',
+                entityId: 'ALL',
+                details: { filterCategory: category, filterStatus: status, rowCount: incidents.length },
+                ipAddress: req.ip
+            });
+        }
+
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="rescue_ai_incidents_${Date.now()}.csv"`);
         res.send(csvRows.join('\n'));
     } catch (err) {

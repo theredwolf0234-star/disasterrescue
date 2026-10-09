@@ -281,11 +281,95 @@ function logout(req, res) {
     });
 }
 
+// DELETE /api/auth/account - Authenticated citizen account deletion with password verification & GDPR/retention compliance
+async function deleteAccount(req, res, next) {
+    try {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication token required.',
+                errorCode: 'AUTH_REQUIRED'
+            });
+        }
+
+        if (req.user.role !== 'CITIZEN') {
+            return res.status(403).json({
+                success: false,
+                message: 'Authority and Admin accounts cannot be deleted through citizen self-service. Please contact Central Administration.',
+                errorCode: 'FORBIDDEN'
+            });
+        }
+
+        const { password } = req.body;
+        if (!password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password confirmation is required to delete your account.',
+                errorCode: 'PASSWORD_REQUIRED'
+            });
+        }
+
+        const user = await db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id]);
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User account not found.',
+                errorCode: 'NOT_FOUND'
+            });
+        }
+
+        const match = await bcrypt.compare(password, user.password_hash);
+        if (!match) {
+            return res.status(401).json({
+                success: false,
+                message: 'Incorrect password. Account deletion aborted.',
+                errorCode: 'INVALID_CREDENTIALS'
+            });
+        }
+
+        // Anonymize user reference on operational emergency incidents (retain records for legal/operational reasons)
+        await db.run(
+            `UPDATE incidents 
+             SET user_id = 'DELETED_CITIZEN' 
+             WHERE user_id = ?`,
+            [user.id]
+        );
+
+        // Delete push subscriptions if any
+        try {
+            await db.run(`DELETE FROM push_subscriptions WHERE user_id = ?`, [user.id]);
+        } catch (e) {}
+
+        // Delete citizen user profile from users table
+        await db.run(`DELETE FROM users WHERE id = ?`, [user.id]);
+
+        // Audit log the deletion
+        await logAction({
+            userId: user.id,
+            userRole: 'CITIZEN',
+            action: 'CITIZEN_ACCOUNT_DELETED',
+            entityType: 'USER',
+            entityId: user.id,
+            details: 'Citizen requested account deletion. Personal data purged; operational incident records anonymized.',
+            ipAddress: req.ip
+        });
+
+        res.json({
+            success: true,
+            message: 'Your citizen account and personal data have been permanently deleted. Emergency operational incident records have been anonymized.',
+            errorCode: 'ACCOUNT_DELETED'
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
 module.exports = {
     registerCitizen,
     loginCitizen,
     loginAuthority,
     getMe,
     updateProfile,
+    deleteAccount,
     logout
 };

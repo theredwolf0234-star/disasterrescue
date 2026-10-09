@@ -77,6 +77,27 @@ const api = {
         return Boolean(this.getToken() && u && u.role === 'CITIZEN');
     },
 
+    getBaseUrl() {
+        return API_BASE;
+    },
+
+    resolveUrl(endpoint) {
+        if (!endpoint) return '';
+        if (/^https?:\/\//i.test(endpoint)) return endpoint;
+        const base = this.getBaseUrl();
+        const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        return `${base}${path}`;
+    },
+
+    getAuthHeaders(customHeaders = {}) {
+        const headers = { ...customHeaders };
+        const token = this.getToken();
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        return headers;
+    },
+
     async request(endpoint, options = {}) {
         const url = `${API_BASE}${endpoint}`;
         const headers = {
@@ -167,6 +188,41 @@ const api = {
 
     delete(endpoint, headers = {}) {
         return this.request(endpoint, { method: 'DELETE', headers });
+    },
+
+    async downloadFile(endpoint, defaultFilename = 'download.csv') {
+        const fullUrl = this.resolveUrl(endpoint);
+        const headers = this.getAuthHeaders();
+        const res = await fetch(fullUrl, { credentials: 'include', headers });
+        if (!res.ok) {
+            let errMsg = `Server returned status ${res.status}`;
+            try {
+                const errJson = await res.json();
+                if (errJson && errJson.message) errMsg = errJson.message;
+            } catch (e) {}
+            throw new Error(errMsg);
+        }
+        const blob = await res.blob();
+        let filename = defaultFilename;
+        const disposition = res.headers.get('content-disposition');
+        if (disposition && disposition.includes('filename=')) {
+            const match = disposition.match(/filename=["']?([^"';]+)["']?/);
+            if (match && match[1]) filename = match[1];
+        }
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            try {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (e) {}
+        }, 500);
+        return { success: true, filename };
     }
 };
 

@@ -133,6 +133,9 @@ async function fetchRealWeather(lat, lng, customApiKey = null) {
             airQuality: null,
             severeAlert,
             provider: 'Open-Meteo',
+            dataStatus: 'LIVE',
+            isLive: true,
+            isStale: false,
             hadKeyError,
             fetchedAt: new Date().toISOString()
         };
@@ -152,16 +155,19 @@ async function fetchRealWeather(lat, lng, customApiKey = null) {
                     latitude: Number(cached.latitude) || latitude,
                     longitude: Number(cached.longitude) || longitude,
                     locationName: 'Regional Meteorological Telemetry (Cached)',
-                    temperature: Number(cached.temperature) || 28.5,
-                    rainfall: Number(cached.rainfall) || 0,
-                    windSpeed: Number(cached.wind_speed) || 12,
-                    humidity: Number(cached.humidity) || 68,
-                    condition: cached.condition || 'Partly Cloudy',
+                    temperature: cached.temperature !== null ? Number(cached.temperature) : null,
+                    rainfall: cached.rainfall !== null ? Number(cached.rainfall) : 0,
+                    windSpeed: cached.wind_speed !== null ? Number(cached.wind_speed) : null,
+                    humidity: cached.humidity !== null ? Number(cached.humidity) : null,
+                    condition: cached.condition || 'Cached Telemetry Baseline',
                     conditionIcon: null,
-                    uv: 4,
-                    airQuality: { pm2_5: 45 },
+                    uv: null,
+                    airQuality: null,
                     severeAlert: null,
-                    provider: 'Cached Telemetry',
+                    provider: `${cached.provider || 'Station Grid'} (Cached)`,
+                    dataStatus: 'CACHED_STALE',
+                    isLive: false,
+                    isStale: true,
                     hadKeyError,
                     fetchedAt: cached.fetched_at || new Date().toISOString()
                 };
@@ -170,22 +176,26 @@ async function fetchRealWeather(lat, lng, customApiKey = null) {
             // continue to tertiary fallback
         }
 
-        // 4. TERTIARY FALLBACK: RELIABLE DISASTER SECTOR TELEMETRY
+        // 4. TERTIARY FALLBACK: REPORT HONESTLY AS UNAVAILABLE (NO FABRICATED DUMMY SENSORS)
         return {
             latitude,
             longitude,
             locationName: 'Local Monitoring Sector',
-            temperature: 28.2,
-            rainfall: 0.0,
-            windSpeed: 11.5,
-            humidity: 64,
-            condition: 'Clear Sky',
+            temperature: null,
+            rainfall: null,
+            windSpeed: null,
+            humidity: null,
+            condition: 'Telemetry Sensor Offline',
             conditionIcon: null,
-            uv: 4,
-            airQuality: { pm2_5: 38 },
+            uv: null,
+            airQuality: null,
             severeAlert: null,
-            provider: 'Backup Telemetry Grid',
+            provider: 'Unavailable',
+            dataStatus: 'UNAVAILABLE',
+            isLive: false,
+            isStale: false,
             hadKeyError,
+            message: 'Meteorological telemetry is currently unreachable. No simulated sensor readings fabricated.',
             fetchedAt: new Date().toISOString()
         };
     }

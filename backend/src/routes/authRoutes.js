@@ -8,6 +8,7 @@ router.post('/login', authController.loginCitizen);
 router.post('/authority-login', authController.loginAuthority);
 router.get('/me', verifyToken, authController.getMe);
 router.put('/profile', verifyToken, authController.updateProfile);
+router.delete('/account', verifyToken, authController.deleteAccount);
 router.post('/logout', authController.logout);
 
 module.exports = router;

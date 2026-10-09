@@ -1,5 +1,6 @@
 package com.rescueai.disasterrescue;
 
+import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.webkit.WebSettings;
@@ -25,9 +26,19 @@ public class MainActivity extends BridgeActivity {
             settings.setJavaScriptEnabled(true);
             settings.setDomStorageEnabled(true);
             settings.setDatabaseEnabled(true);
-            settings.setAllowFileAccess(true);
             settings.setAllowContentAccess(true);
-            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
+            boolean isDebuggable = 0 != (getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE);
+            if (isDebuggable) {
+                WebView.setWebContentsDebuggingEnabled(true);
+                settings.setAllowFileAccess(true);
+                settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+            } else {
+                WebView.setWebContentsDebuggingEnabled(false);
+                settings.setAllowFileAccess(false);
+                settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+            }
+
             settings.setCacheMode(WebSettings.LOAD_DEFAULT);
             settings.setGeolocationEnabled(true);
             settings.setUseWideViewPort(true);

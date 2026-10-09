@@ -392,6 +392,10 @@ async function createTables() {
     try { await run(`ALTER TABLE incidents ADD COLUMN ai_vision_analysis ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN audio_url ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN recommended_action ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN is_verified_gps ${intType} DEFAULT 1`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN gps_accuracy ${numType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN gps_timestamp ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN idempotency_key ${textType}`); } catch (e) {}
 
     // Migrations for rescue_teams table
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN members ${intType} DEFAULT 6`); } catch (e) {}

@@ -25,15 +25,21 @@ let citizen2IncidentId = '';
 function makeRequest(method, path, body = null, headers = {}) {
     return new Promise((resolve, reject) => {
         const url = new URL(path, baseUrl);
+        const serializedBody = body ? (typeof body === 'object' ? JSON.stringify(body) : body) : null;
+        const reqHeaders = {
+            'Content-Type': 'application/json',
+            ...headers
+        };
+        if (serializedBody) {
+            reqHeaders['Content-Length'] = Buffer.byteLength(serializedBody);
+        }
+
         const options = {
             method,
             hostname: url.hostname,
             port: url.port,
             path: url.pathname + url.search,
-            headers: {
-                'Content-Type': 'application/json',
-                ...headers
-            }
+            headers: reqHeaders
         };
 
         const req = http.request(options, (res) => {
@@ -51,8 +57,8 @@ function makeRequest(method, path, body = null, headers = {}) {
 
         req.on('error', reject);
 
-        if (body) {
-            req.write(typeof body === 'object' ? JSON.stringify(body) : body);
+        if (serializedBody) {
+            req.write(serializedBody);
         }
         req.end();
     });
@@ -518,6 +524,151 @@ async function runTests() {
         assert.strictEqual(res.status, 200);
         assert.strictEqual(res.body.success, true);
         assert.strictEqual(res.body.data.team_id, 'TEAM_NDRF_01');
+    });
+
+    // 29. GET /api/incidents/:id/report - Authorization check: Citizen 2 blocked from Citizen 1 report
+    await test('29. Citizen cannot view another citizen report dossier via GET /api/incidents/:id/report (403 Forbidden)', async () => {
+        const res = await makeRequest('GET', `/api/incidents/${citizen1IncidentId}/report`, null, {
+            'Authorization': `Bearer ${citizen2Token}`
+        });
+        assert.strictEqual(res.status, 403);
+        assert.strictEqual(res.body.success, false);
+        assert.strictEqual(res.body.errorCode, 'FORBIDDEN');
+    });
+
+    // 30. GET /api/incidents/:id/report - Ownership and Authority access granted
+    await test('30. Incident reporter and Authority can view report dossier with verified GPS metadata', async () => {
+        // Reporter citizen 1 access
+        const citizenRes = await makeRequest('GET', `/api/incidents/${citizen1IncidentId}/report`, null, {
+            'Authorization': `Bearer ${citizen1Token}`
+        });
+        assert.strictEqual(citizenRes.status, 200);
+        assert.strictEqual(citizenRes.body.success, true);
+        assert.strictEqual(citizenRes.body.data.incidentId, citizen1IncidentId);
+        assert.ok(citizenRes.body.data.location.isVerifiedGps !== undefined);
+
+        // Authority access
+        const authRes = await makeRequest('GET', `/api/incidents/${citizen1IncidentId}/report`, null, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+        assert.strictEqual(authRes.status, 200);
+        assert.strictEqual(authRes.body.success, true);
+    });
+
+    // 31. GET /api/incidents/export/csv - Citizen blocked from CSV export (403 Forbidden)
+    await test('31. Citizen blocked from incident CSV export via /api/incidents/export/csv (403 Forbidden)', async () => {
+        const res = await makeRequest('GET', '/api/incidents/export/csv', null, {
+            'Authorization': `Bearer ${citizen1Token}`
+        });
+        assert.strictEqual(res.status, 403);
+        assert.strictEqual(res.body.success, false);
+    });
+
+    // 32. GET /api/incidents/export/csv - Authority CSV export works and sanitizes formula injection
+    await test('32. Authority can export CSV with formula injection sanitization and filter parameters', async () => {
+        const res = await makeRequest('GET', '/api/incidents/export/csv?category=Flooding', null, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+        assert.strictEqual(res.status, 200);
+        assert.ok(typeof res.body === 'string');
+        assert.ok(res.body.includes('Incident_ID,Category,Emergency_Level'));
+        // Verify formula injection characters are not raw
+        assert.ok(!res.body.includes(',"=cmd'));
+    });
+
+    // 33. Idempotent SOS Beacon Submission
+    await test('33. Idempotent SOS submission prevents duplicate incident records on double-click', async () => {
+        const testIdempotencyKey = `idemp_${Date.now()}_test`;
+        const payload = {
+            category: 'Flash Flood Rescue',
+            details: 'Victim requiring evacuation testing idempotency',
+            latitude: 26.8500,
+            longitude: 80.9400,
+            count: 2,
+            idempotency_key: testIdempotencyKey,
+            is_verified_gps: 1,
+            gps_accuracy: 4.5
+        };
+
+        // First dispatch
+        const res1 = await makeRequest('POST', '/api/incidents', payload, {
+            'Authorization': `Bearer ${citizen1Token}`
+        });
+        assert.strictEqual(res1.status, 201);
+        const firstId = res1.body.data.id;
+
+        // Second dispatch with same idempotency key
+        const res2 = await makeRequest('POST', '/api/incidents', payload, {
+            'Authorization': `Bearer ${citizen1Token}`
+        });
+        assert.strictEqual(res2.status, 200);
+        assert.strictEqual(res2.body.data.id, firstId);
+        assert.strictEqual(res2.body.message, 'Incident previously registered (idempotent request).');
+    });
+
+    // 34. Weather endpoint returns honest telemetry status
+    await test('34. GET /api/weather returns honest status (LIVE, CACHED_STALE, or UNAVAILABLE)', async () => {
+        const res = await makeRequest('GET', '/api/weather?lat=26.8467&lng=80.9462');
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.ok(['LIVE', 'CACHED_STALE', 'UNAVAILABLE'].includes(res.body.data.dataStatus));
+    });
+
+    // 35. Authenticated Citizen Account Deletion
+    await test('35. Authenticated citizen can delete account with password verification and anonymized incident retention', async () => {
+        // Register temporary citizen
+        const tempReg = await makeRequest('POST', '/api/auth/register', {
+            fullName: 'Delete Target Citizen',
+            email: `delete.me.${Date.now()}@example.com`,
+            password: 'deletePassword123',
+            phone: '9111222333'
+        });
+        assert.strictEqual(tempReg.status, 201);
+        const tempToken = tempReg.body.data.token;
+        const tempUserId = tempReg.body.data.user.id;
+
+        // Create an incident under this citizen
+        const incRes = await makeRequest('POST', '/api/incidents', {
+            category: 'Medical Emergency',
+            details: 'Emergency beacon by temporary citizen',
+            latitude: 26.8480,
+            longitude: 80.9420,
+            count: 1
+        }, {
+            'Authorization': `Bearer ${tempToken}`
+        });
+        assert.strictEqual(incRes.status, 201);
+        const tempIncId = incRes.body.data.id;
+
+        // Wrong password fails
+        const wrongPassRes = await makeRequest('DELETE', '/api/auth/account', {
+            password: 'wrongPassword'
+        }, {
+            'Authorization': `Bearer ${tempToken}`
+        });
+        assert.strictEqual(wrongPassRes.status, 401);
+
+        // Correct password succeeds
+        const deleteRes = await makeRequest('DELETE', '/api/auth/account', {
+            password: 'deletePassword123'
+        }, {
+            'Authorization': `Bearer ${tempToken}`
+        });
+        assert.strictEqual(deleteRes.status, 200);
+        assert.strictEqual(deleteRes.body.success, true);
+
+        // Token can no longer fetch profile
+        const meRes = await makeRequest('GET', '/api/auth/me', null, {
+            'Authorization': `Bearer ${tempToken}`
+        });
+        assert.strictEqual(meRes.status, 404);
+
+        // Incident record retained but anonymized
+        const authIncRes = await makeRequest('GET', `/api/incidents/${tempIncId}`, null, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+        assert.strictEqual(authIncRes.status, 200);
+        assert.strictEqual(authIncRes.body.data.user_id, 'DELETED_CITIZEN');
     });
 
     console.log(`\n======================================================`);
