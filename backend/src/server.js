@@ -93,7 +93,26 @@ function getFrontendDir() {
 }
 
 const frontendPath = getFrontendDir();
-app.use(express.static(frontendPath));
+
+// Set strict anti-cache headers for service-worker and entry HTML so updates are applied immediately
+app.use((req, res, next) => {
+    if (req.path === '/service-worker.js') {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    } else if (req.path === '/' || req.path.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate, max-age=0');
+    }
+    next();
+});
+
+app.use(express.static(frontendPath, {
+    setHeaders: (res, filePath) => {
+        if (filePath.endsWith('service-worker.js')) {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+        } else if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, must-revalidate, max-age=0');
+        }
+    }
+}));
 
 // 8. Health Check Endpoints
 app.get('/health', async (req, res) => {

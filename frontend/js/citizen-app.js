@@ -299,20 +299,24 @@ function citizenLogout() {
 // THEME SYSTEM (DARK EMERGENCY GRID AS DEFAULT)
 // -------------------------------------------------------------
 function initTheme() {
-    // Clear legacy bright theme override if previously stored in browser
-    if (localStorage.getItem('rescue_theme') === 'bright') {
+    try {
         localStorage.removeItem('rescue_theme');
-    }
+        sessionStorage.removeItem('rescue_theme');
+    } catch(e) {}
+    document.body.classList.remove('theme-bright');
+    document.documentElement.classList.remove('theme-bright');
     applyTheme('dark');
 }
 
 function toggleTheme() {
     document.body.classList.remove('theme-bright');
-    localStorage.setItem('rescue_theme', 'dark');
+    document.documentElement.classList.remove('theme-bright');
+    try { localStorage.removeItem('rescue_theme'); } catch(e) {}
 }
 
 function applyTheme(theme) {
     document.body.classList.remove('theme-bright');
+    document.documentElement.classList.remove('theme-bright');
     const icon = document.getElementById('theme-toggle-icon');
     const text = document.getElementById('theme-toggle-text');
     if (icon) icon.innerText = '🌙';
