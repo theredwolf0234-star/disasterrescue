@@ -49,4 +49,4 @@ android/local.properties
 !frontend/downloads/*.apk
 !backend/public/downloads/*.apk
 release/
-
+android/.kotlin/

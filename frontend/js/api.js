@@ -14,27 +14,25 @@ function resolveApiBaseUrl() {
     }
     const isNativeCapacitor = Boolean(
         (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
-        (typeof window !== 'undefined' && window.location && window.location.protocol === 'file:')
+        (typeof window !== 'undefined' && window.location && (window.location.protocol === 'file:' || window.location.protocol === 'capacitor:'))
     );
     if (isNativeCapacitor && window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) {
         return window.RESCUE_CONFIG.SERVER_URL.replace(/\/$/, '');
     }
     if (typeof window !== 'undefined' && window.location) {
-        if (window.location.protocol === 'file:') {
-            return (window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) || 'http://localhost:5000';
+        if (window.location.protocol === 'file:' || window.location.protocol === 'capacitor:') {
+            return (window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) || 'https://disaster-rescuecoordinator.onrender.com';
         }
-        if (window.location.port === '5000' || window.location.port === '') {
+        if (window.location.port === '5000') {
             return '';
         }
         if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-            if (isNativeCapacitor && window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) {
-                return window.RESCUE_CONFIG.SERVER_URL.replace(/\/$/, '');
-            }
-            return 'http://localhost:5000';
+            // In Android WebView, origin is localhost: route to live Render backend
+            return (window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) || 'https://disaster-rescuecoordinator.onrender.com';
         }
         return window.location.origin;
     }
-    return '';
+    return (window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) || 'https://disaster-rescuecoordinator.onrender.com';
 }
 
 const API_BASE = resolveApiBaseUrl();

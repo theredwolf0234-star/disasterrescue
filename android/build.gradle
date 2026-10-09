@@ -22,6 +22,7 @@ allprojects {
         google()
         mavenCentral()
     }
+    buildDir = new File("C:/Users/satyam pathak/.android_builds/aister", project.name)
 }
 
 task clean(type: Delete) {
