@@ -372,7 +372,7 @@ function switchTab(tabId) {
     } else {
         // If tab is in More menu, highlight the More button
         const moreBtn = document.getElementById('nav-more-btn');
-        if (moreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about'].includes(tabId)) {
+        if (moreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about', 'app'].includes(tabId)) {
             moreBtn.classList.remove('text-slate-400');
             moreBtn.classList.add('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
         }
@@ -396,17 +396,135 @@ function switchTab(tabId) {
     } else if (tabId === 'risk') {
         runModularRiskAssessment();
         fetchRealtimeWeatherData();
+    } else if (tabId === 'app') {
+        updatePhoneClock();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // -------------------------------------------------------------
-// MODALS
+// MODALS & APP SHOWCASE SIMULATOR
 // -------------------------------------------------------------
 function openSosModal() {
     const modal = document.getElementById('sos-modal');
     if (modal) modal.classList.remove('hidden');
+}
+
+function openApkModal() {
+    const modal = document.getElementById('apk-download-modal');
+    if (modal) modal.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeApkModal() {
+    const modal = document.getElementById('apk-download-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function updatePhoneClock() {
+    const el = document.getElementById('phone-clock');
+    if (el) {
+        const now = new Date();
+        el.innerText = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+}
+
+function switchPhoneScreen(screenId) {
+    document.querySelectorAll('.phone-view').forEach(v => v.classList.add('hidden'));
+    const target = document.getElementById(`phone-view-${screenId}`);
+    if (target) target.classList.remove('hidden');
+
+    document.querySelectorAll('.phone-tab-btn').forEach(btn => {
+        btn.classList.remove('text-purple-400', 'font-bold');
+        btn.classList.add('text-slate-400', 'font-medium');
+    });
+    const activeTab = document.getElementById(`phone-tab-${screenId}`);
+    if (activeTab) {
+        activeTab.classList.remove('text-slate-400', 'font-medium');
+        activeTab.classList.add('text-purple-400', 'font-bold');
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function simulatePhoneSos() {
+    const alertBox = document.getElementById('phone-sos-alert');
+    if (!alertBox) return;
+    alertBox.classList.remove('hidden');
+    alertBox.innerHTML = `
+        <div class="p-3 bg-red-950/90 border border-red-500 rounded-xl text-red-200 text-xs space-y-1.5 shadow-lg">
+            <div class="flex items-center space-x-1.5 font-black text-red-300">
+                <i data-lucide="siren" class="w-4 h-4 animate-spin"></i>
+                <span>BEACON TRANSMITTED TO HQ!</span>
+            </div>
+            <p class="text-[10px] text-slate-300">GPS: 26.8467° N, 80.9462° E • Accuracy: ±4.2m</p>
+            <p class="text-[10px] text-emerald-400 font-bold">✓ NDRF Unit 11 Acknowledged • ETA 8 Mins</p>
+        </div>
+    `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    setTimeout(() => {
+        if (alertBox) alertBox.classList.add('hidden');
+    }, 6000);
+}
+
+function simulateAiDetection(type) {
+    const titleEl = document.getElementById('phone-ai-title');
+    const badgeEl = document.getElementById('phone-ai-badge');
+    const metric1 = document.getElementById('phone-ai-m1');
+    const metric2 = document.getElementById('phone-ai-m2');
+    const metric3 = document.getElementById('phone-ai-m3');
+    const recEl = document.getElementById('phone-ai-rec');
+
+    if (type === 'flood') {
+        if (titleEl) titleEl.innerText = 'Flash Flood & River Inundation';
+        if (badgeEl) { badgeEl.innerText = 'P1 CRITICAL'; badgeEl.className = 'text-[9px] font-bold px-2 py-0.5 rounded bg-red-950 text-red-400 border border-red-800'; }
+        if (metric1) metric1.innerText = 'Water Depth: 1.8m (Rising)';
+        if (metric2) metric2.innerText = 'Victims: 4 Trapped on Terrace';
+        if (metric3) metric3.innerText = 'Structural Risk: 84% High';
+        if (recEl) recEl.innerText = 'Immediate Inflatable Boat / Air Evacuation Recommended';
+    } else if (type === 'earthquake') {
+        if (titleEl) titleEl.innerText = 'Structural Debris Collapse';
+        if (badgeEl) { badgeEl.innerText = 'P1 HIGH'; badgeEl.className = 'text-[9px] font-bold px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800'; }
+        if (metric1) metric1.innerText = 'Rubble Depth: 2.4m Trapped';
+        if (metric2) metric2.innerText = 'Acoustic Signs: 2 Vitals Detected';
+        if (metric3) metric3.innerText = 'Aftershock Probability: 68%';
+        if (recEl) recEl.innerText = 'Deploy Search & Rescue K9 + Concrete Breaker Squad';
+    } else if (type === 'fire') {
+        if (titleEl) titleEl.innerText = 'Urban Fire & Toxic Smoke Surge';
+        if (badgeEl) { badgeEl.innerText = 'P2 URGENT'; badgeEl.className = 'text-[9px] font-bold px-2 py-0.5 rounded bg-orange-950 text-orange-400 border border-orange-800'; }
+        if (metric1) metric1.innerText = 'Thermal Heat: 420°C Core';
+        if (metric2) metric2.innerText = 'Toxic Gases: CO High 450ppm';
+        if (metric3) metric3.innerText = 'Spread Rate: 12 m/min Downwind';
+        if (recEl) recEl.innerText = 'Deploy Water Tender Foam + SCBA Breathing Apparatus';
+    }
+}
+
+function simulateOfflineSync() {
+    const status = document.getElementById('phone-offline-status');
+    if (!status) return;
+    status.innerHTML = `<span class="text-amber-400 animate-pulse">Syncing 3 beacons with Command HQ...</span>`;
+    setTimeout(() => {
+        status.innerHTML = `<span class="text-emerald-400 font-bold">✓ 3 Beacons Synced to SQLite & PostgreSQL DB!</span>`;
+    }, 1200);
+}
+
+function copyChecksum() {
+    const hash = '596A0746CAC1F24AAFF14C5057E0A5A5583DF784ADBC37DA16CC1D9741088B38';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(hash).then(() => {
+            const btn = document.getElementById('copy-checksum-btn');
+            if (btn) {
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<span>✓ Copied!</span>';
+                setTimeout(() => { btn.innerHTML = orig; }, 2000);
+            }
+        }).catch(() => {
+            prompt('SHA-256 Checksum (Copy with Ctrl+C):', hash);
+        });
+    } else {
+        prompt('SHA-256 Checksum (Copy with Ctrl+C):', hash);
+    }
 }
 
 function openCitizenProfileModal() {
@@ -1419,3 +1537,11 @@ window.citizenLogout = citizenLogout;
 window.toggleTheme = toggleTheme;
 window.toggleMoreMenu = toggleMoreMenu;
 window.toggleMobileMoreMenu = toggleMobileMoreMenu;
+window.openApkModal = openApkModal;
+window.closeApkModal = closeApkModal;
+window.switchPhoneScreen = switchPhoneScreen;
+window.simulatePhoneSos = simulatePhoneSos;
+window.simulateAiDetection = simulateAiDetection;
+window.simulateOfflineSync = simulateOfflineSync;
+window.updatePhoneClock = updatePhoneClock;
+window.copyChecksum = copyChecksum;

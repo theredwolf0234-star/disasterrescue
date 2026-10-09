@@ -132,6 +132,39 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
     res.status(404).json({ error: 'assetlinks.json not found' });
 });
 
+// Direct Android APK Download Endpoints
+app.get(['/download/app', '/download/release', '/downloads/AISTER-AI-DisasterRescueCoordinator-release.apk'], (req, res) => {
+    const filename = 'AISTER-AI-DisasterRescueCoordinator-release.apk';
+    const candidates = [
+        path.join(frontendPath, 'downloads', filename),
+        path.resolve(__dirname, '../public/downloads', filename),
+        path.resolve(__dirname, '../../release', filename)
+    ];
+    for (const p of candidates) {
+        if (fs.existsSync(p)) {
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+            return res.download(p, filename);
+        }
+    }
+    res.status(404).json({ error: 'Release APK download file not found' });
+});
+
+app.get(['/download/debug', '/downloads/AISTER-AI-DisasterRescueCoordinator-debug.apk'], (req, res) => {
+    const filename = 'AISTER-AI-DisasterRescueCoordinator-debug.apk';
+    const candidates = [
+        path.join(frontendPath, 'downloads', filename),
+        path.resolve(__dirname, '../public/downloads', filename),
+        path.resolve(__dirname, '../../release', filename)
+    ];
+    for (const p of candidates) {
+        if (fs.existsSync(p)) {
+            res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+            return res.download(p, filename);
+        }
+    }
+    res.status(404).json({ error: 'Debug APK download file not found' });
+});
+
 // 8. Health Check Endpoints
 app.get('/health', async (req, res) => {
     try {

@@ -46,5 +46,7 @@ android/key.properties
 android/local.properties
 *.aab
 *.apk
+!frontend/downloads/*.apk
+!backend/public/downloads/*.apk
 release/
 
