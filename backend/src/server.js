@@ -105,14 +105,32 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(frontendPath, {
+    dotfiles: 'allow',
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('service-worker.js')) {
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
         } else if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache, must-revalidate, max-age=0');
+        } else if (filePath.endsWith('assetlinks.json')) {
+            res.setHeader('Content-Type', 'application/json');
         }
     }
 }));
+
+// Android Digital Asset Links explicit route (Section 10)
+app.get('/.well-known/assetlinks.json', (req, res) => {
+    const candidates = [
+        path.join(frontendPath, '.well-known', 'assetlinks.json'),
+        path.resolve(__dirname, '../public/.well-known/assetlinks.json')
+    ];
+    for (const c of candidates) {
+        if (fs.existsSync(c)) {
+            res.setHeader('Content-Type', 'application/json');
+            return res.sendFile(c);
+        }
+    }
+    res.status(404).json({ error: 'assetlinks.json not found' });
+});
 
 // 8. Health Check Endpoints
 app.get('/health', async (req, res) => {

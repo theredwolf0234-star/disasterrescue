@@ -1,10 +1,10 @@
-// Service Worker for RESCUE AI - Offline Emergency Resilience
-const CACHE_NAME = 'rescue-ai-cache-v5';
+const CACHE_NAME = 'aister-offline-cache-v6';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './authority.html',
   './css/style.css',
+  './js/config.js',
+  './js/i18n.js',
   './js/api.js',
   './js/socket.js',
   './js/citizen-app.js',
@@ -14,8 +14,15 @@ const STATIC_ASSETS = [
   './manifest.json'
 ];
 
-// Install: Immediately skip waiting to take over stale workers
+// Install: Pre-cache essential offline resources & safety guide
 self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn('[Service Worker] Non-fatal asset pre-cache error:', err);
+      });
+    })
+  );
   self.skipWaiting();
 });
 

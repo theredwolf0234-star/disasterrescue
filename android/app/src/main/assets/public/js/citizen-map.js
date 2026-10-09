@@ -124,8 +124,14 @@ function startCitizenLocationTracking() {
             if (userMarker) userMarker.setLngLat(liveUserCoordinates);
             else renderUserGpsMarker();
 
-            if (statusText) {
-                statusText.innerHTML = `<span class="text-emerald-400 font-bold">✓ Live GPS Active:</span> ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}° (±${Math.round(accuracy)}m)`;
+            if (accuracy && accuracy > 200) {
+                if (statusText) {
+                    statusText.innerHTML = `<span class="text-amber-400 font-bold">⚠️ GPS Active (Low Accuracy ±${Math.round(accuracy)}m):</span> ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}° • Please enter address details for faster response.`;
+                }
+            } else {
+                if (statusText) {
+                    statusText.innerHTML = `<span class="text-emerald-400 font-bold">✓ Live GPS Active (±${Math.round(accuracy || 0)}m):</span> ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
+                }
             }
             if (heroText) {
                 heroText.innerText = `${latitude.toFixed(3)}°N, ${longitude.toFixed(3)}°E`;
@@ -164,11 +170,17 @@ function startCitizenLocationTracking() {
         },
         (error) => {
             isRealGpsActive = false;
-            let msg = 'GPS Access Denied. Using Lucknow Regional Coordinates.';
-            if (error.code === error.TIMEOUT) msg = 'GPS Query Timed Out. Using Default Regional Coordinates.';
+            let msg = '⚠️ Location permission denied. Please allow GPS or enter your address manually.';
+            if (error.code === error.PERMISSION_DENIED) {
+                msg = '⚠️ Location permission denied. You can enter your street address or landmark manually below.';
+            } else if (error.code === error.POSITION_UNAVAILABLE) {
+                msg = '⚠️ GPS signal unavailable. Please enable device location or enter address manually.';
+            } else if (error.code === error.TIMEOUT) {
+                msg = '⚠️ GPS query timed out. Please retry or enter address manually.';
+            }
 
-            if (statusText) statusText.innerText = msg;
-            if (heroText) heroText.innerText = "Lucknow Regional Grid";
+            if (statusText) statusText.innerHTML = `<span class="text-amber-400 font-semibold">${msg}</span>`;
+            if (heroText && !isManualLocationSet) heroText.innerText = "Location Not Detected (Enter Manually)";
 
             if (typeof fetchRealtimeWeatherData === 'function') {
                 fetchRealtimeWeatherData(liveUserCoordinates[1], liveUserCoordinates[0]);

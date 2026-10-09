@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.rescueai.disasterrescue",
+      "sha256_cert_fingerprints": [
+        "EF:F1:19:90:E0:24:FA:5A:BE:59:33:6A:94:D3:16:9C:50:51:19:6D:F6:B7:C0:41:C4:4A:6C:C4:33:D6:08:15"
+      ]
+    }
+  }
+]

@@ -43,6 +43,8 @@ android/app/build/
 android/app/*.jks
 android/app/*.keystore
 android/key.properties
+android/local.properties
 *.aab
 *.apk
+release/
 

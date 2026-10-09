@@ -1,6 +1,6 @@
 {
 	"appId": "com.rescueai.disasterrescue",
-	"appName": "RESCUE AI",
+	"appName": "AISTER - AI Disaster Rescue Coordinator",
 	"webDir": "frontend",
 	"bundledWebRuntime": false,
 	"server": {

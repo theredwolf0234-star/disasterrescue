@@ -370,6 +370,19 @@ async function createTables() {
         )
     `);
 
+    // 16. push_subscriptions (Android FCM / Web Push Tokens)
+    await run(`
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id ${idType},
+            user_id ${textType},
+            device_token ${textType},
+            endpoint ${textType},
+            p256dh ${textType},
+            auth ${textType},
+            created_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
 
     // Migrations for incidents table
     try { await run(`ALTER TABLE incidents ADD COLUMN risk_score ${intType} DEFAULT 70`); } catch (e) {}

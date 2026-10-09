@@ -9,7 +9,7 @@
 window.RESCUE_CONFIG = {
     // Production backend deployment URL:
     SERVER_URL: 'https://disaster-rescuecoordinator.onrender.com',
-    APP_NAME: 'RESCUE AI',
+    APP_NAME: 'AISTER — AI Disaster Rescue Coordinator',
     VERSION: '1.0.0',
     EMERGENCY_PHONE: '112',
     NDRF_HELPLINE: '1078'
