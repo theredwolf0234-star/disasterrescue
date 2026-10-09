@@ -46,7 +46,7 @@
                 if ('caches' in window) {
                     caches.keys().then(function(keys) {
                         keys.forEach(function(k) {
-                            if (k !== 'rescue-ai-cache-v4') {
+                            if (k !== 'rescue-ai-cache-v5') {
                                 caches.delete(k);
                             }
                         });
@@ -64,7 +64,7 @@
     </script>
 
     <!-- Custom Production Styles with version query string -->
-    <link rel="stylesheet" href="css/style.css?v=20261009-v4">
+    <link rel="stylesheet" href="css/style.css?v=20261009-v5">
 </head>
 <body class="text-slate-200 antialiased min-h-screen flex flex-col selection:bg-purple-600 selection:text-white bg-[#0B0F19]">
     <script>
@@ -72,11 +72,6 @@
         try { localStorage.removeItem('rescue_theme'); } catch(e) {}
     </script>
 
-    <!-- MANDATORY DEMO NOTICE BANNER (SECTION 3 & 38) -->
-    <aside aria-label="Demo Emergency System Notice" class="bg-amber-950/80 border-b border-amber-700/60 text-amber-200 px-4 py-1.5 text-[11px] text-center font-bold flex items-center justify-center space-x-2">
-        <span class="inline-block w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
-        <span data-i18n="demoNotice">Demo Emergency Coordination System • Simulated demo environment for college/SIH demonstration • Not connected to real 112/NDRF dispatch</span>
-    </aside>
 
     <!-- OFFLINE RETRY BANNER (SECTION 32) -->
     <div id="offline-network-banner" class="hidden bg-red-950/90 border-b border-red-700 text-red-200 px-4 py-2 text-xs text-center font-bold flex items-center justify-center space-x-2">
@@ -1086,13 +1081,13 @@
     </footer>
 
     <!-- App Scripts (Modular Production Architecture) -->
-    <script src="js/config.js?v=20261009-v4"></script>
-    <script src="js/i18n.js?v=20261009-v4"></script>
-    <script src="js/api.js?v=20261009-v4"></script>
-    <script src="js/socket.js?v=20261009-v4"></script>
-    <script src="js/voice-sos.js?v=20261009-v4"></script>
-    <script src="js/citizen-map.js?v=20261009-v4"></script>
-    <script src="js/citizen-app.js?v=20261009-v4"></script>
+    <script src="js/config.js?v=20261009-v5"></script>
+    <script src="js/i18n.js?v=20261009-v5"></script>
+    <script src="js/api.js?v=20261009-v5"></script>
+    <script src="js/socket.js?v=20261009-v5"></script>
+    <script src="js/voice-sos.js?v=20261009-v5"></script>
+    <script src="js/citizen-map.js?v=20261009-v5"></script>
+    <script src="js/citizen-app.js?v=20261009-v5"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {

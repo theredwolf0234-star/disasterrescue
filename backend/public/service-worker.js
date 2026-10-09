@@ -1,5 +1,5 @@
 // Service Worker for RESCUE AI - Offline Emergency Resilience
-const CACHE_NAME = 'rescue-ai-cache-v4';
+const CACHE_NAME = 'rescue-ai-cache-v5';
 const STATIC_ASSETS = [
   './',
   './index.html',
