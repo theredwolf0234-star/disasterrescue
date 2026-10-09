@@ -41,7 +41,19 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('offline', handleNetworkOffline);
     checkOfflineQueue();
 
-    // 6. Listen to Real-Time Updates from Authority Command Grid
+    // 6. Direct Hash Navigation (#app, #map, #risk, #report)
+    const initHash = window.location.hash.replace('#', '');
+    if (initHash && ['app', 'report', 'risk', 'map', 'reports', 'shelters', 'hospitals', 'contacts', 'help', 'about'].includes(initHash)) {
+        setTimeout(() => switchTab(initHash), 50);
+    }
+    window.addEventListener('hashchange', () => {
+        const h = window.location.hash.replace('#', '');
+        if (h && ['app', 'report', 'risk', 'map', 'reports', 'shelters', 'hospitals', 'contacts', 'help', 'about', 'home'].includes(h)) {
+            switchTab(h);
+        }
+    });
+
+    // 7. Listen to Real-Time Updates from Authority Command Grid
     if (typeof onRealtimeEvent === 'function') {
         onRealtimeEvent('incident:updated', (updatedInc) => {
             handleIncidentUpdated(updatedInc);
@@ -400,6 +412,11 @@ function switchTab(tabId) {
         updatePhoneClock();
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
+
+    try {
+        if (tabId !== 'home') history.replaceState(null, '', `#${tabId}`);
+        else if (window.location.hash) history.replaceState(null, '', window.location.pathname);
+    } catch(e) {}
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
