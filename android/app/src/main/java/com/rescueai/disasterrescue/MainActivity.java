@@ -4,6 +4,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import androidx.activity.OnBackPressedCallback;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
@@ -11,14 +12,14 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Enforce dark background on the activity window and system bars immediately
-        getWindow().getDecorView().setBackgroundColor(Color.parseColor("#0B0F19"));
-        getWindow().setStatusBarColor(Color.parseColor("#0B0F19"));
-        getWindow().setNavigationBarColor(Color.parseColor("#0B0F19"));
+        // High-contrast clean bar and background colors
+        getWindow().getDecorView().setBackgroundColor(Color.parseColor("#F8FAFC"));
+        getWindow().setStatusBarColor(Color.parseColor("#4F46E5"));
+        getWindow().setNavigationBarColor(Color.parseColor("#1E293B"));
 
         if (bridge != null && bridge.getWebView() != null) {
             WebView webView = bridge.getWebView();
-            webView.setBackgroundColor(Color.parseColor("#0B0F19"));
+            webView.setBackgroundColor(Color.parseColor("#F8FAFC"));
 
             WebSettings settings = webView.getSettings();
             settings.setJavaScriptEnabled(true);
@@ -30,5 +31,28 @@ public class MainActivity extends BridgeActivity {
             settings.setCacheMode(WebSettings.LOAD_DEFAULT);
             settings.setGeolocationEnabled(true);
         }
+
+        // Native smartphone back navigation callback
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (bridge != null && bridge.getWebView() != null) {
+                    bridge.getWebView().evaluateJavascript(
+                        "(function() { if (window.handleSmartphoneBack && window.handleSmartphoneBack()) { return true; } return false; })()",
+                        value -> {
+                            if (!"\"true\"".equals(value) && !"true".equals(value)) {
+                                setEnabled(false);
+                                getOnBackPressedDispatcher().onBackPressed();
+                                setEnabled(true);
+                            }
+                        }
+                    );
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                    setEnabled(true);
+                }
+            }
+        });
     }
 }

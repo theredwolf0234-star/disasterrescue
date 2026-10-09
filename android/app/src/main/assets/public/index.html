@@ -159,10 +159,15 @@
         }
     </script>
     <script>
-        document.body.classList.remove('theme-bright');
-        try { localStorage.removeItem('rescue_theme'); } catch(e) {}
+        const savedTheme = localStorage.getItem('rescue_theme') || 'light';
+        if (savedTheme === 'dark') {
+            document.body.classList.add('theme-dark');
+            document.documentElement.classList.add('theme-dark');
+        } else {
+            document.body.classList.remove('theme-dark');
+            document.documentElement.classList.remove('theme-dark');
+        }
     </script>
-
 
     <!-- NAVBAR -->
     <header class="app-header sticky top-0 bg-[#0B0F19]/95 backdrop-blur-md border-b border-slate-800 z-50 shadow-md">
@@ -248,30 +253,81 @@
                     </div>
                 </nav>
 
-                <!-- Right Actions: Language Switcher, Profile/Auth, Authority Portal Link -->
-                <div class="flex items-center space-x-1.5 flex-shrink-0">
+                <!-- Right Actions: Theme Toggle, Language Switcher, Profile/Auth, Authority Admin Portal -->
+                <div class="flex items-center space-x-1 sm:space-x-1.5 flex-shrink-0">
+                    <!-- Theme Toggle Switcher (High Contrast Bright / Dark) -->
+                    <button id="theme-toggle-btn" type="button" onclick="toggleTheme()" title="Toggle Theme (Light / Dark)" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
+                        <span id="theme-toggle-icon">🌙</span>
+                        <span id="theme-toggle-text" class="hidden md:inline">Theme</span>
+                    </button>
+
                     <!-- Bilingual Language Switcher (Section 29) -->
-                    <button id="lang-toggle-btn" type="button" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 text-purple-300 px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
+                    <button id="lang-toggle-btn" type="button" onclick="I18N.toggle()" title="Switch Language / भाषा बदलें" class="bg-slate-100 dark:bg-slate-900 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 text-purple-700 dark:text-purple-300 px-2 sm:px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 shadow">
                         <span>🌐 हिंदी</span>
                     </button>
 
                     <!-- Citizen Auth State Container -->
                     <div id="nav-auth-container"></div>
 
-                    <!-- Authority Portal Link (Desktop only in top nav, mobile via bottom More menu) -->
-                    <a href="authority.html" target="_blank" class="hidden md:flex bg-purple-950/80 hover:bg-purple-900 border border-purple-800/80 text-purple-200 px-2.5 py-1.5 rounded-lg text-xs font-bold transition items-center space-x-1 shadow">
-                        <i data-lucide="shield" class="w-3.5 h-3.5 text-purple-400"></i>
-                        <span data-i18n="commandPortal">Command</span>
+                    <!-- Authority Administrative Portal Link (Prominently visible on BOTH mobile and desktop) -->
+                    <a href="authority.html" class="flex bg-purple-700 hover:bg-purple-600 text-white px-2.5 py-1.5 rounded-lg text-xs font-extrabold transition items-center space-x-1 shadow shadow-purple-950/40" title="Administrative Command Portal">
+                        <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+                        <span data-i18n="commandPortal">Admin HQ</span>
                     </a>
 
                     <!-- Android APK Download Button (Desktop only, hidden inside mobile app) -->
-                    <button type="button" onclick="openApkModal()" class="apk-download-cta hidden md:flex bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition items-center space-x-1 shadow shadow-emerald-950">
+                    <button type="button" onclick="openApkModal()" class="apk-download-cta hidden lg:flex bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold transition items-center space-x-1 shadow shadow-emerald-950">
                         <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
                         <span>Get App</span>
                     </button>
                 </div>
             </div>
+        </div>
     </header>
+
+    <!-- MOBILE QUICK FEATURE CHIPS STRIP (Prominently visible on all smartphones) -->
+    <div id="quick-features-bar" class="lg:hidden sticky top-16 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 px-3 py-2 flex items-center space-x-2 overflow-x-auto no-scrollbar shadow-sm text-xs font-bold">
+        <button type="button" onclick="openSosModal()" class="flex-none px-3 py-1.5 rounded-full bg-red-600 text-white flex items-center space-x-1 shadow active:scale-95 transition">
+            <i data-lucide="siren" class="w-3 h-3 animate-pulse"></i>
+            <span>SOS</span>
+        </button>
+        <button type="button" onclick="switchTab('report')" class="flex-none px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 flex items-center space-x-1 active:scale-95 transition">
+            <i data-lucide="file-plus-2" class="w-3 h-3 text-purple-600"></i>
+            <span data-i18n="navReport">Report</span>
+        </button>
+        <button type="button" onclick="switchTab('risk')" class="flex-none px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 flex items-center space-x-1 active:scale-95 transition">
+            <i data-lucide="activity" class="w-3 h-3 text-amber-500"></i>
+            <span data-i18n="navLiveRisk">Live Risk</span>
+        </button>
+        <button type="button" onclick="switchTab('map')" class="flex-none px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 flex items-center space-x-1 active:scale-95 transition">
+            <i data-lucide="map-pin" class="w-3 h-3 text-purple-600"></i>
+            <span data-i18n="navMap">Map</span>
+        </button>
+        <button type="button" onclick="switchTab('shelters')" class="flex-none px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 flex items-center space-x-1 active:scale-95 transition">
+            <i data-lucide="tent" class="w-3 h-3 text-purple-600"></i>
+            <span data-i18n="navShelters">Shelters</span>
+        </button>
+        <button type="button" onclick="switchTab('hospitals')" class="flex-none px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 flex items-center space-x-1 active:scale-95 transition">
+            <i data-lucide="cross" class="w-3 h-3 text-blue-600"></i>
+            <span data-i18n="navHospitals">Hospitals</span>
+        </button>
+        <button type="button" onclick="switchTab('contacts')" class="flex-none px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 flex items-center space-x-1 active:scale-95 transition">
+            <i data-lucide="phone-call" class="w-3 h-3 text-red-600"></i>
+            <span data-i18n="navContacts">Hotlines</span>
+        </button>
+        <button type="button" onclick="switchTab('reports')" class="flex-none px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 flex items-center space-x-1 active:scale-95 transition">
+            <i data-lucide="clipboard-list" class="w-3 h-3 text-emerald-600"></i>
+            <span data-i18n="navReports">My Reports</span>
+        </button>
+        <button type="button" onclick="switchTab('help')" class="flex-none px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 flex items-center space-x-1 active:scale-95 transition">
+            <i data-lucide="help-circle" class="w-3 h-3 text-amber-500"></i>
+            <span data-i18n="navHelp">Triage</span>
+        </button>
+        <a href="authority.html" class="flex-none px-3 py-1.5 rounded-full bg-purple-700 text-white flex items-center space-x-1 active:scale-95 transition shadow">
+            <i data-lucide="shield" class="w-3 h-3"></i>
+            <span>Admin HQ</span>
+        </a>
+    </div>
     <!-- OFFLINE RETRY BANNER (SECTION 32) -->
     <div id="offline-network-banner" class="hidden bg-red-950/90 border-b border-red-700 text-red-200 px-4 py-2 text-xs text-center font-bold flex items-center justify-center space-x-2">
         <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span>
@@ -353,39 +409,84 @@
             </div>
         </div>
 
-        <!-- Quick Access Feature Grid -->
-        <div class="max-w-7xl mx-auto px-4 pb-12 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <button onclick="switchTab('report')" class="bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-2xl p-5 text-left transition space-y-2">
-                <div class="w-8 h-8 rounded-lg bg-purple-950 text-purple-400 flex items-center justify-center font-bold">
-                    <i data-lucide="file-text" class="w-4 h-4"></i>
+        <!-- Full Emergency Feature Suite (All platform features accessible in app) -->
+        <div class="max-w-7xl mx-auto px-4 pb-12">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="font-black text-lg sm:text-xl text-slate-900 dark:text-white flex items-center space-x-2">
+                        <span>⚡ Emergency Services & Coordination Hub</span>
+                    </h3>
+                    <p class="text-xs text-slate-600 dark:text-slate-400">All disaster response, triage, telemetry, and administrative tools</p>
                 </div>
-                <h4 class="font-bold text-white text-sm" data-i18n="navReport">Report Disaster</h4>
-                <p class="text-[11px] text-slate-400">Detailed report with photos, video & audio evidence</p>
-            </button>
+            </div>
 
-            <button onclick="switchTab('shelters')" class="bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-2xl p-5 text-left transition space-y-2">
-                <div class="w-8 h-8 rounded-lg bg-purple-950 text-purple-400 flex items-center justify-center font-bold">
-                    <i data-lucide="tent" class="w-4 h-4"></i>
-                </div>
-                <h4 class="font-bold text-white text-sm" data-i18n="navShelters">Relief Shelters</h4>
-                <p class="text-[11px] text-slate-400">Find operational relief camps with food & water capacity</p>
-            </button>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+                <button onclick="switchTab('report')" class="bg-white dark:bg-slate-900 hover:shadow-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 text-left transition space-y-2 group">
+                    <div class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold group-hover:scale-105 transition">
+                        <i data-lucide="file-plus-2" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm" data-i18n="navReport">Report Disaster</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Incident description with photos, video & voice evidence</p>
+                </button>
 
-            <button onclick="switchTab('hospitals')" class="bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-2xl p-5 text-left transition space-y-2">
-                <div class="w-8 h-8 rounded-lg bg-blue-950 text-blue-400 flex items-center justify-center font-bold">
-                    <i data-lucide="cross" class="w-4 h-4"></i>
-                </div>
-                <h4 class="font-bold text-white text-sm" data-i18n="navHospitals">Trauma Hospitals</h4>
-                <p class="text-[11px] text-slate-400">Check live bed availability & ambulance fleet</p>
-            </button>
+                <button onclick="switchTab('risk')" class="bg-white dark:bg-slate-900 hover:shadow-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 text-left transition space-y-2 group">
+                    <div class="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold group-hover:scale-105 transition">
+                        <i data-lucide="activity" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm" data-i18n="navLiveRisk">AI Live Risk</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Multi-hazard AI risk engine, weather alerts & flood matrix</p>
+                </button>
 
-            <button onclick="switchTab('contacts')" class="bg-slate-900 hover:bg-slate-800/80 border border-slate-800 rounded-2xl p-5 text-left transition space-y-2">
-                <div class="w-8 h-8 rounded-lg bg-red-950 text-red-400 flex items-center justify-center font-bold">
-                    <i data-lucide="phone" class="w-4 h-4"></i>
-                </div>
-                <h4 class="font-bold text-white text-sm" data-i18n="navContacts">Emergency Hotlines</h4>
-                <p class="text-[11px] text-slate-400">National 112, NDRF 1078, SDRF and medical contacts</p>
-            </button>
+                <button onclick="switchTab('map')" class="bg-white dark:bg-slate-900 hover:shadow-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 text-left transition space-y-2 group">
+                    <div class="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold group-hover:scale-105 transition">
+                        <i data-lucide="map-pin" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm" data-i18n="navMap">Tactical Map</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Live interactive GIS map with shelters, hospitals & routes</p>
+                </button>
+
+                <button onclick="switchTab('shelters')" class="bg-white dark:bg-slate-900 hover:shadow-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 text-left transition space-y-2 group">
+                    <div class="w-9 h-9 rounded-xl bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold group-hover:scale-105 transition">
+                        <i data-lucide="tent" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm" data-i18n="navShelters">Relief Shelters</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Find relief camps with verified food, water & bed capacity</p>
+                </button>
+
+                <button onclick="switchTab('hospitals')" class="bg-white dark:bg-slate-900 hover:shadow-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 text-left transition space-y-2 group">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold group-hover:scale-105 transition">
+                        <i data-lucide="cross" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm" data-i18n="navHospitals">Trauma Hospitals</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Real-time ICU, oxygen beds, blood bank & trauma care</p>
+                </button>
+
+                <button onclick="switchTab('contacts')" class="bg-white dark:bg-slate-900 hover:shadow-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 text-left transition space-y-2 group">
+                    <div class="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400 flex items-center justify-center font-bold group-hover:scale-105 transition">
+                        <i data-lucide="phone-call" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm" data-i18n="navContacts">Emergency Hotlines</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Direct dial NDRF 1078, National 112, Police & Ambulance</p>
+                </button>
+
+                <button onclick="switchTab('reports')" class="bg-white dark:bg-slate-900 hover:shadow-lg border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 text-left transition space-y-2 group">
+                    <div class="w-9 h-9 rounded-xl bg-teal-100 dark:bg-teal-950 text-teal-600 dark:text-teal-400 flex items-center justify-center font-bold group-hover:scale-105 transition">
+                        <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm" data-i18n="navReports">My Reports</h4>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">Track submitted emergency cases and rescue unit status</p>
+                </button>
+
+                <a href="authority.html" class="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950/80 dark:to-slate-900 hover:shadow-lg border border-purple-300 dark:border-purple-800 rounded-2xl p-4 sm:p-5 text-left transition space-y-2 group flex flex-col justify-between">
+                    <div class="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center font-bold group-hover:scale-105 transition shadow">
+                        <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-purple-900 dark:text-white text-sm">Administrative Portal</h4>
+                        <p class="text-[11px] text-purple-700 dark:text-purple-300 leading-snug">NDRF Command Center, fleet dispatch & database grid</p>
+                    </div>
+                </a>
+            </div>
         </div>
 
         <!-- ANDROID MOBILE APP SHOWCASE & DOWNLOAD SECTION -->
@@ -1697,9 +1798,65 @@
 
             <form id="sos-form" onsubmit="handleSosSubmit(event)" class="space-y-4 text-xs">
                 <div>
-                    <label class="block font-bold text-slate-300 uppercase mb-1" data-i18n="categoryLabel">Emergency Category</label>
-                    <select id="sos-category" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:border-purple-500 focus:outline-none">
-                        <option value="Flood">Flood / Waterlogging</option>
+                    <label class="block font-bold text-slate-800 dark:text-slate-200 uppercase mb-1.5 text-xs" data-i18n="categoryLabel">Emergency Category</label>
+                    
+                    <!-- High-Contrast Touch Category Tiles (Replaces OS dialog with crisp UI) -->
+                    <div id="sos-category-grid" class="grid grid-cols-2 gap-2 mb-2 max-h-52 overflow-y-auto p-0.5">
+                        <button type="button" data-val="Flood" onclick="selectSosCategory('Flood')" class="sos-cat-btn active flex items-center space-x-2 p-2.5 rounded-xl border border-purple-500 bg-purple-50 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 text-left transition font-bold text-xs shadow-sm">
+                            <span class="text-base">🌊</span>
+                            <span class="flex-1 truncate">Flood / Water</span>
+                            <i data-lucide="check" class="cat-check-icon w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                        <button type="button" data-val="Landslide" onclick="selectSosCategory('Landslide')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
+                            <span class="text-base">⛰️</span>
+                            <span class="flex-1 truncate">Landslide</span>
+                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                        <button type="button" data-val="Earthquake" onclick="selectSosCategory('Earthquake')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
+                            <span class="text-base">🏚️</span>
+                            <span class="flex-1 truncate">Earthquake</span>
+                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                        <button type="button" data-val="Cyclone" onclick="selectSosCategory('Cyclone')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
+                            <span class="text-base">🌀</span>
+                            <span class="flex-1 truncate">Cyclone / Gale</span>
+                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                        <button type="button" data-val="Fire" onclick="selectSosCategory('Fire')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
+                            <span class="text-base">🔥</span>
+                            <span class="flex-1 truncate">Fire / Burn</span>
+                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                        <button type="button" data-val="Lightning" onclick="selectSosCategory('Lightning')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
+                            <span class="text-base">⚡</span>
+                            <span class="flex-1 truncate">Lightning</span>
+                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                        <button type="button" data-val="Building collapse" onclick="selectSosCategory('Building collapse')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
+                            <span class="text-base">🏗️</span>
+                            <span class="flex-1 truncate">Collapse</span>
+                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                        <button type="button" data-val="Road accident" onclick="selectSosCategory('Road accident')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
+                            <span class="text-base">🚗</span>
+                            <span class="flex-1 truncate">Road Accident</span>
+                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                        <button type="button" data-val="Medical Emergency" onclick="selectSosCategory('Medical Emergency')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
+                            <span class="text-base">🚑</span>
+                            <span class="flex-1 truncate">Medical / Trauma</span>
+                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                        <button type="button" data-val="Other" onclick="selectSosCategory('Other')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
+                            <span class="text-base">🚨</span>
+                            <span class="flex-1 truncate">Other Emergency</span>
+                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
+                        </button>
+                    </div>
+
+                    <!-- Synchronized Underlying Select for Form Processing -->
+                    <select id="sos-category" class="hidden">
+                        <option value="Flood" selected>Flood / Waterlogging</option>
                         <option value="Landslide">Landslide</option>
                         <option value="Earthquake">Earthquake</option>
                         <option value="Cyclone">Cyclone / Gale</option>
@@ -1813,39 +1970,48 @@
 
     <!-- MOBILE MORE OPTIONS DRAWER (SLIDES UP FROM BOTTOM BAR) -->
     <div id="mobile-more-backdrop" class="hidden lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-xs" onclick="toggleMobileMoreMenu()"></div>
-    <div id="mobile-more-menu" class="hidden lg:hidden fixed bottom-[76px] left-3 right-3 max-w-md mx-auto z-50 bg-slate-900/98 backdrop-blur-2xl border border-slate-700/80 rounded-2xl p-3.5 shadow-2xl shadow-black/80 grid grid-cols-4 gap-2 text-center text-xs">
-        <button type="button" onclick="switchTab('risk'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
-            <i data-lucide="activity" class="w-4 h-4 text-amber-400 mb-1"></i>
-            <span class="text-[10px] font-medium" data-i18n="navLiveRisk">Live Risk</span>
-        </button>
-        <button type="button" onclick="switchTab('reports'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
-            <i data-lucide="clipboard-list" class="w-4 h-4 text-emerald-400 mb-1"></i>
-            <span class="text-[10px] font-medium" data-i18n="navReports">My Reports</span>
-        </button>
-        <button type="button" onclick="switchTab('shelters'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
-            <i data-lucide="tent" class="w-4 h-4 text-purple-400 mb-1"></i>
-            <span class="text-[10px] font-medium" data-i18n="navShelters">Shelters</span>
-        </button>
-        <button type="button" onclick="switchTab('hospitals'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
-            <i data-lucide="cross" class="w-4 h-4 text-blue-400 mb-1"></i>
-            <span class="text-[10px] font-medium" data-i18n="navHospitals">Hospitals</span>
-        </button>
-        <button type="button" onclick="switchTab('contacts'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
-            <i data-lucide="phone-call" class="w-4 h-4 text-red-400 mb-1"></i>
-            <span class="text-[10px] font-medium" data-i18n="navContacts">Hotlines</span>
-        </button>
-        <button type="button" onclick="switchTab('help'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
-            <i data-lucide="help-circle" class="w-4 h-4 text-amber-300 mb-1"></i>
-            <span class="text-[10px] font-medium" data-i18n="navHelp">Triage</span>
-        </button>
-        <a href="authority.html" target="_blank" class="p-2.5 rounded-xl bg-purple-950/80 border border-purple-800 text-purple-200 flex flex-col items-center active:bg-purple-900">
-            <i data-lucide="shield" class="w-4 h-4 text-purple-400 mb-1"></i>
-            <span class="text-[10px] font-medium" data-i18n="commandPortal">Command</span>
-        </a>
-        <button type="button" onclick="switchTab('about'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-slate-300 flex flex-col items-center active:bg-slate-800">
-            <i data-lucide="info" class="w-4 h-4 text-slate-400 mb-1"></i>
-            <span class="text-[10px] font-medium" data-i18n="navAbout">About</span>
-        </button>
+    <div id="mobile-more-menu" class="hidden lg:hidden fixed bottom-[76px] left-3 right-3 max-w-md mx-auto z-50 bg-white/98 dark:bg-slate-900/98 backdrop-blur-2xl border border-slate-300 dark:border-slate-700/80 rounded-2xl p-4 shadow-2xl shadow-black/40 space-y-3 text-xs">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <span class="font-extrabold text-slate-800 dark:text-white text-xs">Platform Tools & Emergency Services</span>
+            <button type="button" onclick="toggleMobileMoreMenu()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+        
+        <div class="grid grid-cols-4 gap-2 text-center text-xs">
+            <button type="button" onclick="switchTab('risk'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 flex flex-col items-center active:bg-slate-100 shadow-sm">
+                <i data-lucide="activity" class="w-4 h-4 text-amber-500 mb-1"></i>
+                <span class="text-[10px] font-bold" data-i18n="navLiveRisk">Live Risk</span>
+            </button>
+            <button type="button" onclick="switchTab('reports'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 flex flex-col items-center active:bg-slate-100 shadow-sm">
+                <i data-lucide="clipboard-list" class="w-4 h-4 text-emerald-600 mb-1"></i>
+                <span class="text-[10px] font-bold" data-i18n="navReports">My Reports</span>
+            </button>
+            <button type="button" onclick="switchTab('shelters'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 flex flex-col items-center active:bg-slate-100 shadow-sm">
+                <i data-lucide="tent" class="w-4 h-4 text-purple-600 mb-1"></i>
+                <span class="text-[10px] font-bold" data-i18n="navShelters">Shelters</span>
+            </button>
+            <button type="button" onclick="switchTab('hospitals'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 flex flex-col items-center active:bg-slate-100 shadow-sm">
+                <i data-lucide="cross" class="w-4 h-4 text-blue-600 mb-1"></i>
+                <span class="text-[10px] font-bold" data-i18n="navHospitals">Hospitals</span>
+            </button>
+            <button type="button" onclick="switchTab('contacts'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 flex flex-col items-center active:bg-slate-100 shadow-sm">
+                <i data-lucide="phone-call" class="w-4 h-4 text-red-600 mb-1"></i>
+                <span class="text-[10px] font-bold" data-i18n="navContacts">Hotlines</span>
+            </button>
+            <button type="button" onclick="switchTab('help'); toggleMobileMoreMenu();" class="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-200 flex flex-col items-center active:bg-slate-100 shadow-sm">
+                <i data-lucide="help-circle" class="w-4 h-4 text-amber-500 mb-1"></i>
+                <span class="text-[10px] font-bold" data-i18n="navHelp">Triage</span>
+            </button>
+            <a href="authority.html" class="p-2.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white flex flex-col items-center active:bg-purple-800 shadow">
+                <i data-lucide="shield" class="w-4 h-4 text-white mb-1"></i>
+                <span class="text-[10px] font-black">Admin HQ</span>
+            </a>
+            <button type="button" onclick="toggleTheme();" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 flex flex-col items-center active:bg-slate-200 shadow-sm">
+                <span id="mobile-more-theme-icon" class="text-base mb-0.5">🌙</span>
+                <span id="mobile-more-theme-text" class="text-[10px] font-bold">Theme</span>
+            </button>
+        </div>
     </div>
 
     <!-- BOTTOM NAVIGATION BAR FOR ALL ANDROID & IOS SMARTPHONES -->

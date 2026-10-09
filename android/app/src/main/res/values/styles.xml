@@ -1,33 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#7C3AED</color>
-    <color name="colorPrimaryDark">#0B0F19</color>
+    <color name="colorPrimary">#6366F1</color>
+    <color name="colorPrimaryDark">#4F46E5</color>
     <color name="colorAccent">#10B981</color>
-    <color name="bgDark">#0B0F19</color>
+    <color name="windowBg">#F8FAFC</color>
+    <color name="textDark">#0F172A</color>
 
-    <!-- Base application theme (Dark Theme for Disaster Coordinator) -->
-    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <!-- Base application theme (High-Contrast Clean Theme) -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
         <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
         <item name="colorAccent">@color/colorAccent</item>
-        <item name="android:windowBackground">@color/bgDark</item>
+        <item name="android:windowBackground">@color/windowBg</item>
+        <item name="android:textColorPrimary">@color/textDark</item>
     </style>
 
-    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:background">@color/bgDark</item>
-        <item name="android:windowBackground">@color/bgDark</item>
-        <item name="android:statusBarColor">@color/bgDark</item>
-        <item name="android:navigationBarColor">@color/bgDark</item>
+        <item name="android:windowBackground">@color/windowBg</item>
+        <item name="android:statusBarColor">@color/colorPrimaryDark</item>
+        <item name="android:navigationBarColor">#1E293B</item>
+        <item name="android:textColorPrimary">@color/textDark</item>
+        <item name="android:textColorSecondary">#475569</item>
+        <item name="android:textColorAlertDialogListItem">@color/textDark</item>
     </style>
 
-    <style name="AppTheme.NoActionBarLaunch" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.AppCompat.Light.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
-        <item name="android:background">@color/bgDark</item>
-        <item name="android:windowBackground">@color/bgDark</item>
-        <item name="android:statusBarColor">@color/bgDark</item>
-        <item name="android:navigationBarColor">@color/bgDark</item>
+        <item name="android:windowBackground">@color/windowBg</item>
+        <item name="android:statusBarColor">@color/colorPrimaryDark</item>
+        <item name="android:navigationBarColor">#1E293B</item>
     </style>
 </resources>

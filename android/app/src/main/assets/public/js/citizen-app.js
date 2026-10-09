@@ -308,32 +308,125 @@ function citizenLogout() {
 
 // -------------------------------------------------------------
 // -------------------------------------------------------------
-// THEME SYSTEM (DARK EMERGENCY GRID AS DEFAULT)
+// THEME SYSTEM (CRYSTAL-CLEAR HIGH-CONTRAST LIGHT DEFAULT)
+// Words & text are 100% visible, sharp and legible everywhere
 // -------------------------------------------------------------
 function initTheme() {
-    try {
-        localStorage.removeItem('rescue_theme');
-        sessionStorage.removeItem('rescue_theme');
-    } catch(e) {}
-    document.body.classList.remove('theme-bright');
-    document.documentElement.classList.remove('theme-bright');
-    applyTheme('dark');
+    const saved = localStorage.getItem('rescue_theme') || 'light';
+    applyTheme(saved);
 }
 
 function toggleTheme() {
-    document.body.classList.remove('theme-bright');
-    document.documentElement.classList.remove('theme-bright');
-    try { localStorage.removeItem('rescue_theme'); } catch(e) {}
+    const isDark = document.body.classList.contains('theme-dark');
+    const newTheme = isDark ? 'light' : 'dark';
+    applyTheme(newTheme);
 }
 
 function applyTheme(theme) {
-    document.body.classList.remove('theme-bright');
-    document.documentElement.classList.remove('theme-bright');
+    if (theme === 'dark') {
+        document.body.classList.add('theme-dark');
+        document.documentElement.classList.add('theme-dark');
+        localStorage.setItem('rescue_theme', 'dark');
+    } else {
+        document.body.classList.remove('theme-dark');
+        document.documentElement.classList.remove('theme-dark');
+        localStorage.setItem('rescue_theme', 'light');
+    }
     const icon = document.getElementById('theme-toggle-icon');
     const text = document.getElementById('theme-toggle-text');
-    if (icon) icon.innerText = '🌙';
-    if (text) text.innerText = 'Dark';
+    if (icon) icon.innerText = (theme === 'dark') ? '☀️' : '🌙';
+    if (text) text.innerText = (theme === 'dark') ? 'Light' : 'Dark';
+    
+    const moreIcon = document.getElementById('mobile-more-theme-icon');
+    const moreText = document.getElementById('mobile-more-theme-text');
+    if (moreIcon) moreIcon.innerText = (theme === 'dark') ? '☀️' : '🌙';
+    if (moreText) moreText.innerText = (theme === 'dark') ? 'Light Mode' : 'Dark Mode';
 }
+
+// -------------------------------------------------------------
+// VISUAL EMERGENCY CATEGORY GRID SELECTION
+// Eliminates illegible OS native dropdowns with high-contrast UI
+// -------------------------------------------------------------
+function selectSosCategory(category) {
+    const sel = document.getElementById('sos-category');
+    if (sel) sel.value = category;
+
+    document.querySelectorAll('.sos-cat-btn').forEach(btn => {
+        const isMatch = btn.getAttribute('data-val') === category;
+        btn.classList.toggle('active', isMatch);
+        const checkIcon = btn.querySelector('.cat-check-icon');
+        if (checkIcon) {
+            checkIcon.classList.toggle('hidden', !isMatch);
+        }
+    });
+}
+
+// -------------------------------------------------------------
+// SMARTPHONE NATIVE OS BACK BUTTON NAVIGATION
+// Handles Android hardware Back button, edge swipe back gesture,
+// and browser history to close modals, dismiss menus & navigate back
+// -------------------------------------------------------------
+function handleSmartphoneBack() {
+    // 1. If any modal is open, close it!
+    const openModals = Array.from(document.querySelectorAll('.fixed.inset-0:not(.hidden)'));
+    if (openModals.length > 0) {
+        openModals.forEach(m => m.classList.add('hidden'));
+        return true;
+    }
+
+    // 2. If mobile more menu drawer is open, close it!
+    const mobileMore = document.getElementById('mobile-more-menu');
+    if (mobileMore && !mobileMore.classList.contains('hidden')) {
+        toggleMobileMoreMenu();
+        return true;
+    }
+
+    // 3. If mobile more backdrop is visible, close it!
+    const backdrop = document.getElementById('mobile-more-backdrop');
+    if (backdrop && !backdrop.classList.contains('hidden')) {
+        backdrop.classList.add('hidden');
+        return true;
+    }
+
+    // 4. If on a sub-view (not home), smoothly navigate back to home!
+    let activeSubPage = false;
+    document.querySelectorAll('.page-content:not(.hidden)').forEach(el => {
+        if (el.id !== 'page-home') {
+            activeSubPage = true;
+        }
+    });
+    if (activeSubPage) {
+        switchTab('home');
+        return true;
+    }
+
+    // 5. Already at home with no modals open
+    return false;
+}
+
+// Wire up Capacitor App Plugin Hardware Back Button
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('backButton', () => {
+        const handled = handleSmartphoneBack();
+        if (!handled) {
+            // Android double-back to exit pattern
+            const now = Date.now();
+            if (window._lastBackPress && (now - window._lastBackPress < 2000)) {
+                window.Capacitor.Plugins.App.exitApp();
+            } else {
+                window._lastBackPress = now;
+                if (typeof showToast === 'function') {
+                    showToast('Press back again to exit RESCUE AI', 'info');
+                }
+            }
+        }
+    });
+}
+
+// Wire up Window Popstate Event
+window.addEventListener('popstate', () => {
+    handleSmartphoneBack();
+});
 
 // -------------------------------------------------------------
 // MORE DROPDOWN MENU
@@ -373,7 +466,7 @@ document.addEventListener('click', (e) => {
 });
 
 // -------------------------------------------------------------
-// NAVIGATION TAB SWITCHER (ALL 14 SECTIONS)
+// NAVIGATION TAB SWITCHER (ALL PLATFORM SECTIONS)
 // -------------------------------------------------------------
 function switchTab(tabId) {
     document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
@@ -400,21 +493,28 @@ function switchTab(tabId) {
 
     // Mobile bottom nav highlighting
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
-        btn.classList.remove('text-purple-400', 'font-bold');
-        btn.classList.add('text-slate-400');
+        btn.classList.remove('text-purple-600', 'dark:text-purple-400', 'font-bold');
+        btn.classList.add('text-slate-500', 'dark:text-slate-400');
     });
 
     const mobActiveBtn = document.getElementById(`mob-tab-${tabId}`);
     if (mobActiveBtn) {
-        mobActiveBtn.classList.remove('text-slate-400');
-        mobActiveBtn.classList.add('text-purple-400', 'font-bold');
+        mobActiveBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
+        mobActiveBtn.classList.add('text-purple-600', 'dark:text-purple-400', 'font-bold');
     } else {
         const mobMoreBtn = document.getElementById('mob-tab-more');
         if (mobMoreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about', 'app', 'risk', 'reports'].includes(tabId)) {
-            mobMoreBtn.classList.remove('text-slate-400');
-            mobMoreBtn.classList.add('text-purple-400', 'font-bold');
+            mobMoreBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
+            mobMoreBtn.classList.add('text-purple-600', 'dark:text-purple-400', 'font-bold');
         }
     }
+
+    // Mobile Quick Chips bar highlighting
+    document.querySelectorAll('#quick-features-bar button').forEach(b => {
+        b.classList.remove('ring-2', 'ring-purple-600');
+    });
+    const chipBtn = document.querySelector(`#quick-features-bar button[onclick*="'${tabId}'"]`);
+    if (chipBtn) chipBtn.classList.add('ring-2', 'ring-purple-600');
 
     // Auto-close dropdowns
     document.getElementById('nav-more-menu')?.classList.add('hidden');
@@ -440,9 +540,10 @@ function switchTab(tabId) {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
+    // Push state to browser history so smartphone back navigation works naturally
     try {
-        if (tabId !== 'home') history.replaceState(null, '', `#${tabId}`);
-        else if (window.location.hash) history.replaceState(null, '', window.location.pathname);
+        if (tabId !== 'home') history.pushState({ tab: tabId }, '', `#${tabId}`);
+        else if (window.location.hash) history.pushState({ tab: 'home' }, '', window.location.pathname);
     } catch(e) {}
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -453,13 +554,20 @@ function switchTab(tabId) {
 // -------------------------------------------------------------
 function openSosModal() {
     const modal = document.getElementById('sos-modal');
-    if (modal) modal.classList.remove('hidden');
+    if (modal) {
+        modal.classList.remove('hidden');
+        try { history.pushState({ modal: 'sos' }, '', '#sos'); } catch(e) {}
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
 }
 
 function openApkModal() {
     const modal = document.getElementById('apk-download-modal');
-    if (modal) modal.classList.remove('hidden');
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    if (modal) {
+        modal.classList.remove('hidden');
+        try { history.pushState({ modal: 'apk' }, '', '#apk'); } catch(e) {}
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
 }
 
 function closeApkModal() {
@@ -576,6 +684,8 @@ function openCitizenProfileModal() {
     if (!modal) return;
     loadCitizenProfile();
     modal.classList.remove('hidden');
+    try { history.pushState({ modal: 'profile' }, '', '#profile'); } catch(e) {}
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function loadCitizenProfile() {
@@ -1589,3 +1699,5 @@ window.simulateAiDetection = simulateAiDetection;
 window.simulateOfflineSync = simulateOfflineSync;
 window.updatePhoneClock = updatePhoneClock;
 window.copyChecksum = copyChecksum;
+window.handleSmartphoneBack = handleSmartphoneBack;
+window.selectSosCategory = selectSosCategory;

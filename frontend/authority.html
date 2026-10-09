@@ -102,31 +102,50 @@
                 </button>
             </div>
 
-            <div class="flex items-center space-x-3">
-                <a href="index.html" target="_blank" class="bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition">
-                    <i data-lucide="external-link" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span>Citizen Portal</span>
+            <div class="flex items-center space-x-2">
+                <!-- Return to Citizen App -->
+                <a href="index.html" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition shadow">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-purple-600"></i>
+                    <span>Citizen App</span>
                 </a>
                 
-                <div class="hidden sm:flex items-center space-x-2 bg-purple-950/80 border border-purple-800/60 px-3 py-1.5 rounded-lg text-xs">
-                    <i data-lucide="user-check" class="w-4 h-4 text-purple-400"></i>
-                    <span id="duty-officer-badge" class="font-bold text-purple-200">Duty Officer: NDRF Command</span>
+                <div class="hidden sm:flex items-center space-x-2 bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800/60 px-3 py-1.5 rounded-lg text-xs">
+                    <i data-lucide="user-check" class="w-4 h-4 text-purple-600"></i>
+                    <span id="duty-officer-badge" class="font-bold text-purple-900 dark:text-purple-200">Duty Officer: NDRF Command</span>
                 </div>
 
-                <button onclick="authorityLogout()" title="Logout" class="p-1.5 rounded-lg bg-slate-900 hover:bg-red-950/60 border border-slate-800 hover:border-red-700 text-slate-400 hover:text-red-300 transition">
+                <button onclick="authorityLogout()" title="Logout" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-100 dark:bg-slate-900 dark:hover:bg-red-950/60 border border-slate-300 dark:border-slate-800 hover:border-red-400 text-slate-700 dark:text-slate-400 hover:text-red-600 transition">
                     <i data-lucide="log-out" class="w-4 h-4"></i>
                 </button>
             </div>
         </div>
 
         <!-- Mobile / Tablet Authority Switcher Strip -->
-        <div class="lg:hidden flex items-center overflow-x-auto py-2 border-t border-slate-800/80 px-4 text-xs gap-2">
-            <button onclick="switchAuthorityView('tactical')" class="px-2.5 py-1 rounded bg-purple-700 text-white font-bold whitespace-nowrap">Tactical</button>
-            <button onclick="switchAuthorityView('teams')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Teams</button>
-            <button onclick="switchAuthorityView('resources')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Logistics</button>
-            <button onclick="switchAuthorityView('clusters')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Clusters</button>
-            <button onclick="switchAuthorityView('analytics')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Analytics</button>
-            <button onclick="switchAuthorityView('database')" class="px-2.5 py-1 rounded bg-slate-900 border border-slate-800 text-slate-300 font-semibold whitespace-nowrap">Database</button>
+        <div id="authority-mobile-nav" class="lg:hidden flex items-center overflow-x-auto py-2 border-t border-slate-200 dark:border-slate-800 px-3 text-xs gap-1.5 no-scrollbar bg-white dark:bg-slate-900 shadow-sm">
+            <button onclick="switchAuthorityView('tactical')" id="mob-auth-tactical" class="auth-mob-btn px-3 py-1.5 rounded-full bg-purple-700 text-white font-bold whitespace-nowrap shadow flex items-center space-x-1">
+                <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+                <span>Tactical Grid</span>
+            </button>
+            <button onclick="switchAuthorityView('teams')" id="mob-auth-teams" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="truck" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <span>Rescue Fleets</span>
+            </button>
+            <button onclick="switchAuthorityView('resources')" id="mob-auth-resources" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="package-check" class="w-3.5 h-3.5 text-blue-600"></i>
+                <span>Logistics</span>
+            </button>
+            <button onclick="switchAuthorityView('clusters')" id="mob-auth-clusters" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-600"></i>
+                <span>Clusters</span>
+            </button>
+            <button onclick="switchAuthorityView('analytics')" id="mob-auth-analytics" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-purple-600"></i>
+                <span>Analytics</span>
+            </button>
+            <button onclick="switchAuthorityView('database')" id="mob-auth-database" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="database" class="w-3.5 h-3.5 text-purple-600"></i>
+                <span>Database</span>
+            </button>
         </div>
     </header>
 

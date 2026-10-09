@@ -195,26 +195,51 @@ function showAuthorityLoginModal(customMessage = null) {
 
             <form onsubmit="handleAuthorityLogin(event)" class="space-y-4 text-xs">
                 <div>
-                    <label class="block text-slate-300 font-bold uppercase mb-1">Badge ID or Admin Username</label>
-                    <input type="text" id="auth-username" required autocomplete="username" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="Enter Admin ID / Badge ID">
+                    <label class="block text-slate-800 dark:text-slate-200 font-bold uppercase mb-1">Badge ID or Admin Username</label>
+                    <input type="text" id="auth-username" required autocomplete="username" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="e.g. ndrf_commander or AISTER23">
                 </div>
 
                 <div>
-                    <label class="block text-slate-300 font-bold uppercase mb-1">Passcode / Key</label>
-                    <input type="password" id="auth-password" required autocomplete="current-password" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="••••••••">
+                    <label class="block text-slate-800 dark:text-slate-200 font-bold uppercase mb-1">Passcode / Key</label>
+                    <input type="password" id="auth-password" required autocomplete="current-password" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="••••••••">
                 </div>
 
-                <div id="auth-login-error" class="hidden p-3 bg-red-950/60 border border-red-800 text-red-300 rounded-xl text-xs"></div>
+                <!-- Quick Fill Helpers for Easy Testing -->
+                <div class="flex items-center space-x-2 pt-1">
+                    <span class="text-[11px] font-bold text-slate-500">Quick Fill:</span>
+                    <button type="button" onclick="quickFillAuthority('ndrf_commander', 'authority123')" class="px-2.5 py-1 bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 rounded-lg text-[11px] font-bold border border-purple-300 dark:border-purple-800 hover:bg-purple-200">
+                        🛡️ Commander
+                    </button>
+                    <button type="button" onclick="quickFillAuthority('AISTER23', '@aster23')" class="px-2.5 py-1 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-lg text-[11px] font-bold border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200">
+                        ⚙️ Admin
+                    </button>
+                </div>
+
+                <div id="auth-login-error" class="hidden p-3 bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-xs"></div>
 
                 <button type="submit" id="auth-login-submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-extrabold py-3 rounded-xl uppercase text-xs shadow-lg transition">
                     Authenticate & Access Command Grid
                 </button>
+
+                <div class="pt-2 text-center border-t border-slate-200 dark:border-slate-800">
+                    <a href="index.html" class="inline-flex items-center space-x-1 text-slate-500 hover:text-purple-600 text-xs font-semibold">
+                        <span>← Return to Citizen App</span>
+                    </a>
+                </div>
             </form>
         </div>
     `;
     modal.classList.remove('hidden');
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
+
+function quickFillAuthority(username, password) {
+    const u = document.getElementById('auth-username');
+    const p = document.getElementById('auth-password');
+    if (u) u.value = username;
+    if (p) p.value = password;
+}
+window.quickFillAuthority = quickFillAuthority;
 
 async function handleAuthorityLogin(e) {
     e.preventDefault();
@@ -1638,18 +1663,26 @@ function switchAuthorityView(viewName) {
     const target = document.getElementById(`view-${viewName}`);
     if (target) target.classList.remove('hidden');
 
-    // Reset all nav button classes
+    // Reset all nav button classes (desktop & mobile)
     const viewNames = ['tactical', 'teams', 'resources', 'clusters', 'analytics', 'database'];
     viewNames.forEach(v => {
         const btn = document.getElementById(`nav-btn-${v}`);
         if (btn) {
             btn.className = "px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200";
         }
+        const mobBtn = document.getElementById(`mob-auth-${v}`);
+        if (mobBtn) {
+            mobBtn.className = "auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1";
+        }
     });
 
     const activeBtn = document.getElementById(`nav-btn-${viewName}`);
     if (activeBtn) {
         activeBtn.className = "px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition bg-purple-700 text-white shadow-md";
+    }
+    const activeMobBtn = document.getElementById(`mob-auth-${viewName}`);
+    if (activeMobBtn) {
+        activeMobBtn.className = "auth-mob-btn px-3 py-1.5 rounded-full bg-purple-700 text-white font-bold whitespace-nowrap shadow flex items-center space-x-1";
     }
 
     if (viewName === 'database') {
@@ -2443,4 +2476,26 @@ window.refreshDatabaseView = refreshDatabaseView;
 window.inspectDbRow = inspectDbRow;
 window.closeDbRecordModal = closeDbRecordModal;
 window.copyDbModalJson = copyDbModalJson;
+
+// Smartphone Back Navigation for Authority Portal
+function handleSmartphoneBack() {
+    const openModals = Array.from(document.querySelectorAll('.fixed.inset-0:not(.hidden)'));
+    if (openModals.length > 0) {
+        openModals.forEach(m => m.classList.add('hidden'));
+        return true;
+    }
+    // Navigate back to Citizen Portal (index.html)
+    window.location.href = 'index.html';
+    return true;
+}
+window.handleSmartphoneBack = handleSmartphoneBack;
+
+if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('backButton', () => {
+        handleSmartphoneBack();
+    });
+}
+window.addEventListener('popstate', () => {
+    handleSmartphoneBack();
+});
 

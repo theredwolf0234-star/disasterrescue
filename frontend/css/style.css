@@ -3,24 +3,39 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
 
 :root {
+    --bg-main: #F8FAFC;
+    --bg-card: #FFFFFF;
+    --bg-elevated: #F1F5F9;
+    --border-color: #E2E8F0;
+    --text-primary: #0F172A;
+    --text-secondary: #334155;
+    --text-muted: #64748B;
+    --brand-purple: #7C3AED;
+    --brand-purple-hover: #6D28D9;
+    --brand-emerald: #10B981;
+    --status-critical: #DC2626;
+    --status-high: #EA580C;
+    --status-medium: #D97706;
+    --status-low: #2563EB;
+    --status-resolved: #059669;
+}
+
+body.theme-dark {
     --bg-main: #0B0F19;
     --bg-card: #0F172A;
     --bg-elevated: #1E293B;
     --border-color: #334155;
-    --brand-purple: #7C3AED;
-    --brand-purple-hover: #6D28D9;
-    --brand-emerald: #10B981;
-    --status-critical: #EF4444;
-    --status-high: #F97316;
-    --status-medium: #F59E0B;
-    --status-low: #3B82F6;
-    --status-resolved: #10B981;
+    --text-primary: #F8FAFC;
+    --text-secondary: #CBD5E1;
+    --text-muted: #94A3B8;
 }
 
 body {
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: var(--bg-main);
-    color: #E2E8F0;
+    color: var(--text-primary);
+    transition: background-color 0.2s ease, color 0.2s ease;
+    padding-top: 0 !important;
 }
 
 /* Custom Scrollbar */
@@ -29,20 +44,267 @@ body {
     height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: #0B0F19;
+    background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-    background: #334155;
+    background: #CBD5E1;
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #475569;
+    background: #94A3B8;
+}
+
+/* ============================================================= */
+/* HIGH-CONTRAST READABLE THEME (DEFAULT / LIGHT)               */
+/* Words and text are razor-sharp and 100% visible everywhere    */
+/* ============================================================= */
+body:not(.theme-dark) {
+    background-color: #F8FAFC !important;
+    color: #0F172A !important;
+}
+
+/* Crisp White Cards & Panels */
+body:not(.theme-dark) .bg-slate-900,
+body:not(.theme-dark) .bg-\[\#0F172A\],
+body:not(.theme-dark) .bg-\[\#0B0F19\] {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 4px 15px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -2px rgba(15, 23, 42, 0.04) !important;
+}
+
+/* Sub-cards, containers & nested panels */
+body:not(.theme-dark) .bg-slate-950,
+body:not(.theme-dark) .bg-slate-950\/95,
+body:not(.theme-dark) .bg-slate-950\/90,
+body:not(.theme-dark) .bg-slate-950\/80,
+body:not(.theme-dark) .bg-slate-950\/50,
+body:not(.theme-dark) .bg-slate-950\/40,
+body:not(.theme-dark) .bg-slate-800 {
+    background-color: #F8FAFC !important;
+    color: #0F172A !important;
+    border-color: #E2E8F0 !important;
+}
+
+/* Razor-sharp Typography */
+body:not(.theme-dark) h1,
+body:not(.theme-dark) h2,
+body:not(.theme-dark) h3,
+body:not(.theme-dark) h4,
+body:not(.theme-dark) h5,
+body:not(.theme-dark) h6,
+body:not(.theme-dark) .text-white {
+    color: #0F172A !important;
+}
+
+body:not(.theme-dark) .text-slate-200,
+body:not(.theme-dark) .text-slate-300 {
+    color: #1E293B !important;
+}
+
+body:not(.theme-dark) .text-slate-400 {
+    color: #334155 !important;
+}
+
+body:not(.theme-dark) .text-slate-500 {
+    color: #64748B !important;
+}
+
+/* Form Controls & Inputs - Crisp White & Sharp Black Text */
+body:not(.theme-dark) input,
+body:not(.theme-dark) select,
+body:not(.theme-dark) textarea {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    border-color: #CBD5E1 !important;
+}
+
+body:not(.theme-dark) input::placeholder,
+body:not(.theme-dark) textarea::placeholder {
+    color: #94A3B8 !important;
+}
+
+body:not(.theme-dark) input:focus,
+body:not(.theme-dark) select:focus,
+body:not(.theme-dark) textarea:focus {
+    background-color: #FFFFFF !important;
+    border-color: #7C3AED !important;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15) !important;
+    outline: none !important;
+}
+
+/* Explicit Select and Option Colors to prevent OS native picker dark bugs */
+select, option {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+}
+
+body.theme-dark select,
+body.theme-dark option {
+    background-color: #0F172A !important;
+    color: #F8FAFC !important;
+}
+
+/* Dividers & Borders */
+body:not(.theme-dark) .border-slate-800,
+body:not(.theme-dark) .border-slate-700 {
+    border-color: #E2E8F0 !important;
+}
+
+/* Header & Navigation in Light Mode */
+body:not(.theme-dark) header.app-header,
+body:not(.theme-dark) header.sticky,
+body:not(.theme-dark) header {
+    background-color: rgba(255, 255, 255, 0.98) !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 4px 15px -3px rgba(15, 23, 42, 0.08) !important;
+}
+
+body:not(.theme-dark) header .text-white {
+    color: #0F172A !important;
+}
+
+body:not(.theme-dark) .nav-btn {
+    color: #475569 !important;
+    background-color: transparent !important;
+    border-color: transparent !important;
+}
+
+body:not(.theme-dark) .nav-btn:hover {
+    color: #0F172A !important;
+    background-color: #F1F5F9 !important;
+}
+
+body:not(.theme-dark) .nav-btn.active,
+body:not(.theme-dark) .nav-btn-active,
+body:not(.theme-dark) .nav-btn.bg-slate-800 {
+    color: #0F172A !important;
+    background-color: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+}
+
+/* Mobile Bottom Navigation Bar */
+body:not(.theme-dark) #mobile-nav-bar {
+    background-color: rgba(255, 255, 255, 0.98) !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 -4px 20px -2px rgba(15, 23, 42, 0.1) !important;
+}
+
+body:not(.theme-dark) #mobile-nav-bar button {
+    color: #64748B !important;
+}
+
+body:not(.theme-dark) #mobile-nav-bar button.text-purple-400,
+body:not(.theme-dark) #mobile-nav-bar button.font-bold {
+    color: #7C3AED !important;
+}
+
+/* Modals & Dialogs in Light Mode */
+body:not(.theme-dark) .fixed.inset-0.z-50 > div {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    border-color: #E2E8F0 !important;
+    box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25) !important;
+}
+
+/* High-Contrast Status Badges */
+body:not(.theme-dark) .badge-critical,
+body:not(.theme-dark) .bg-red-950,
+body:not(.theme-dark) .bg-red-950\/80,
+body:not(.theme-dark) .bg-red-950\/70,
+body:not(.theme-dark) .bg-red-950\/40 {
+    background-color: #FEF2F2 !important;
+    color: #991B1B !important;
+    border-color: #FECACA !important;
+}
+
+body:not(.theme-dark) .badge-high,
+body:not(.theme-dark) .bg-amber-950,
+body:not(.theme-dark) .bg-amber-950\/80,
+body:not(.theme-dark) .bg-amber-950\/40 {
+    background-color: #FFFBEB !important;
+    color: #92400E !important;
+    border-color: #FDE68A !important;
+}
+
+body:not(.theme-dark) .badge-resolved,
+body:not(.theme-dark) .bg-emerald-950,
+body:not(.theme-dark) .bg-emerald-950\/80,
+body:not(.theme-dark) .bg-emerald-950\/40 {
+    background-color: #ECFDF5 !important;
+    color: #065F46 !important;
+    border-color: #A7F3D0 !important;
+}
+
+body:not(.theme-dark) .badge-low,
+body:not(.theme-dark) .bg-blue-950,
+body:not(.theme-dark) .bg-blue-950\/80,
+body:not(.theme-dark) .bg-blue-950\/40 {
+    background-color: #EFF6FF !important;
+    color: #1E40AF !important;
+    border-color: #BFDBFE !important;
+}
+
+body:not(.theme-dark) .bg-purple-950,
+body:not(.theme-dark) .bg-purple-950\/80,
+body:not(.theme-dark) .bg-purple-950\/40 {
+    background-color: #F5F3FF !important;
+    color: #5B21B6 !important;
+    border-color: #DDD6FE !important;
+}
+
+/* Leaflet Popups in Light Mode */
+body:not(.theme-dark) .leaflet-popup-content-wrapper {
+    background: #FFFFFF !important;
+    color: #0F172A !important;
+    border: 1px solid #CBD5E1 !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15) !important;
+}
+body:not(.theme-dark) .leaflet-popup-tip {
+    background: #FFFFFF !important;
+}
+
+/* ============================================================= */
+/* HIGH-CONTRAST DARK THEME STYLING (WHEN ACTIVE)                */
+/* Ensures words in dark mode are pure white #FFFFFF & legible  */
+/* ============================================================= */
+body.theme-dark {
+    background-color: #0B0F19 !important;
+    color: #F8FAFC !important;
+}
+body.theme-dark h1,
+body.theme-dark h2,
+body.theme-dark h3,
+body.theme-dark h4,
+body.theme-dark h5,
+body.theme-dark h6,
+body.theme-dark .text-white {
+    color: #FFFFFF !important;
+}
+body.theme-dark .text-slate-200 { color: #F1F5F9 !important; }
+body.theme-dark .text-slate-300 { color: #E2E8F0 !important; }
+body.theme-dark .text-slate-400 { color: #CBD5E1 !important; }
+body.theme-dark input,
+body.theme-dark textarea {
+    background-color: #0B0F19 !important;
+    color: #FFFFFF !important;
+    border-color: #475569 !important;
 }
 
 /* Hero Disaster Banner */
 .hero-disaster-bg {
-    background: linear-gradient(180deg, rgba(11, 15, 25, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%), 
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.90) 0%, rgba(30, 41, 59, 0.95) 100%), 
                 url('https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat;
+}
+body:not(.theme-dark) .hero-disaster-bg {
+    background: linear-gradient(180deg, rgba(241, 245, 249, 0.92) 0%, rgba(226, 232, 240, 0.96) 100%),
+                url('https://images.unsplash.com/photo-1547683905-f686c993aae5?auto=format&fit=crop&w=1920&q=80') center/cover no-repeat;
+}
+body:not(.theme-dark) .hero-disaster-bg h1 {
+    color: #0F172A !important;
+}
+body:not(.theme-dark) .hero-disaster-bg p {
+    color: #334155 !important;
 }
 
 /* Pulse radar animations */
@@ -73,19 +335,10 @@ body {
     height: 100%;
     min-height: 480px;
     border-radius: 1rem;
+    background-color: #E2E8F0;
+}
+body.theme-dark #main-map, body.theme-dark #authority-map {
     background-color: #0f172a;
-}
-
-/* Leaflet Dark Custom Markers */
-.leaflet-popup-content-wrapper {
-    background: #0F172A !important;
-    color: #F1F5F9 !important;
-    border: 1px solid #334155 !important;
-    border-radius: 0.75rem !important;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
-}
-.leaflet-popup-tip {
-    background: #0F172A !important;
 }
 
 /* User GPS Marker */
@@ -108,33 +361,6 @@ body {
     border-radius: 50%;
     background: rgba(59, 130, 246, 0.4);
     animation: radar-pulse 2s infinite ease-out;
-}
-
-/* Priority status pills */
-.badge-critical {
-    background-color: rgba(239, 68, 68, 0.15);
-    color: #FCA5A5;
-    border: 1px solid rgba(239, 68, 68, 0.5);
-}
-.badge-high {
-    background-color: rgba(249, 115, 22, 0.15);
-    color: #FDBA74;
-    border: 1px solid rgba(249, 115, 22, 0.5);
-}
-.badge-medium {
-    background-color: rgba(245, 158, 11, 0.15);
-    color: #FCD34D;
-    border: 1px solid rgba(245, 158, 11, 0.5);
-}
-.badge-low {
-    background-color: rgba(59, 130, 246, 0.15);
-    color: #93C5FD;
-    border: 1px solid rgba(59, 130, 246, 0.5);
-}
-.badge-resolved {
-    background-color: rgba(16, 185, 129, 0.15);
-    color: #6EE7B7;
-    border: 1px solid rgba(16, 185, 129, 0.5);
 }
 
 /* Toast notifications */
@@ -177,9 +403,6 @@ body {
     --safe-area-top: var(--sat, 0px);
 }
 
-/* Standalone PWA & Native Android/iOS App Safe Area Handling:
-   When running inside Capacitor Android or standalone mode, if env() returns 0px,
-   fallback to 36px (standard Android status bar height) until JS detects exact height */
 html.native-app-mode,
 body.native-app-mode,
 .native-app-mode {
@@ -192,14 +415,6 @@ body.native-app-mode,
     }
 }
 
-/* Reset body padding-top so sticky header aligns cleanly with the physical top of the display */
-body {
-    padding-top: 0 !important;
-}
-
-/* App Header Safe Area Integration:
-   The dark header background seamlessly floods the status bar to top: 0,
-   while header contents are pushed safely below clock, notch, camera, and icons */
 header.app-header,
 header.sticky,
 header {
@@ -225,12 +440,10 @@ body > aside:first-child {
 }
 
 @media (max-width: 1023px) {
-    /* Main pages bottom padding so content is never covered by bottom nav bar */
     .page-content {
         padding-bottom: calc(5rem + max(var(--sab), 10px)) !important;
     }
     
-    /* Toast notifications positioned above bottom nav */
     #toast-container {
         bottom: calc(4.75rem + max(var(--sab), 10px)) !important;
         right: 1rem !important;
@@ -269,4 +482,35 @@ body > aside:first-child {
     animation: splash-pulse 1.2s infinite ease-in-out;
 }
 
+/* ============================================================= */
+/* VISUAL TOUCH-FRIENDLY CATEGORY SELECTOR TILES                */
+/* High-contrast, easy-to-tap, crystal-clear icons & text        */
+/* ============================================================= */
+.sos-cat-btn {
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+    border-width: 1.5px;
+}
+.sos-cat-btn:hover {
+    transform: translateY(-1px);
+}
+.sos-cat-btn.active {
+    border-color: #7C3AED !important;
+    background-color: #F5F3FF !important;
+    color: #4C1D95 !important;
+    box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.25) !important;
+}
+body.theme-dark .sos-cat-btn.active {
+    background-color: #2E1065 !important;
+    color: #FFFFFF !important;
+    border-color: #A855F7 !important;
+}
 
+/* Mobile Quick Features Horizontal Scrollbar Strip */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
