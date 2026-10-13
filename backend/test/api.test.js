@@ -671,6 +671,99 @@ async function runTests() {
         assert.strictEqual(authIncRes.body.data.user_id, 'DELETED_CITIZEN');
     });
 
+    // 36. One-Tap SOS with Auto-Dispatch and Zero-Delay Form
+    let oneTapIncidentId = null;
+    let assignedTeamId = null;
+    await test('36. One-Tap SOS initiates without form and auto-dispatches suitable rescue team', async () => {
+        await db.run(`UPDATE rescue_teams SET status = 'AVAILABLE', assigned_incident_id = NULL`);
+        const res = await makeRequest('POST', '/api/incidents', {
+            source: 'ONE_TAP_SOS',
+            autoDispatch: true,
+            latitude: 26.8610,
+            longitude: 80.9550 // Gomti riverfront zone
+        }, {
+            'Authorization': `Bearer ${citizen1Token}`
+        });
+
+        assert.strictEqual(res.status, 201);
+        assert.strictEqual(res.body.success, true);
+        assert.ok(res.body.data.id.startsWith('SOS-2026-'));
+        assert.strictEqual(res.body.data.status, 'TEAM_ASSIGNED');
+        assert.ok(res.body.data.assigned_rescue_team);
+        assert.ok(res.body.data.dispatch && res.body.data.dispatch.dispatched);
+        oneTapIncidentId = res.body.data.id;
+        assignedTeamId = res.body.data.dispatch_team_id || (res.body.data.assignedTeam && res.body.data.assignedTeam.id);
+    });
+
+    // 37. Responder Team Acknowledges Dispatch
+    await test('37. Rescue team acknowledges dispatch via POST /api/rescue-teams/:id/acknowledge', async () => {
+        const teamToAck = assignedTeamId || 'TEAM_02';
+        const res = await makeRequest('POST', `/api/rescue-teams/${teamToAck}/acknowledge`, {
+            incidentId: oneTapIncidentId,
+            note: 'Unit Boat-2 deployed with 6 divers and life rafts.'
+        }, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.strictEqual(res.body.data.status, 'TEAM_EN_ROUTE');
+
+        // Verify incident timeline and status updated
+        const incRes = await makeRequest('GET', `/api/incidents/${oneTapIncidentId}`, null, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+        assert.strictEqual(incRes.status, 200);
+        assert.strictEqual(incRes.body.data.status, 'TEAM_EN_ROUTE');
+    });
+
+    // 38. Authority Escalates Incident
+    await test('38. Authority escalates incident to secondary team or commander', async () => {
+        const res = await makeRequest('POST', `/api/incidents/${oneTapIncidentId}/escalate`, {
+            reason: 'Bridge collapsed on route; secondary squad required'
+        }, {
+            'Authorization': `Bearer ${authorityToken}`
+        });
+
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.strictEqual(res.body.data.escalated, true);
+    });
+
+    // 39. Dedicated 5-Day Weather Forecast
+    await test('39. GET /api/weather/forecast returns 5-day structured forecast', async () => {
+        const res = await makeRequest('GET', '/api/weather/forecast?lat=26.8467&lng=80.9462');
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.ok(res.body.data);
+        assert.ok(Array.isArray(res.body.data.forecast5Days));
+        if (res.body.data.forecast5Days.length > 0) {
+            const day1 = res.body.data.forecast5Days[0];
+            assert.ok(day1.date);
+            assert.ok(day1.dayOfWeek);
+            assert.ok(day1.condition);
+            assert.strictEqual(typeof day1.tempMax, 'number');
+            assert.strictEqual(typeof day1.tempMin, 'number');
+        }
+    });
+
+    // 40. Citizen Post-SOS Supplemental Details Update
+    await test('40. Citizen adds supplemental disaster details without delaying initial SOS', async () => {
+        const res = await makeRequest('POST', `/api/incidents/${oneTapIncidentId}/supplement`, {
+            category: 'Flood',
+            details: 'Water entered living room, rising 1 inch per 10 mins. 3 senior citizens present.',
+            count: 3
+        }, {
+            'Authorization': `Bearer ${citizen1Token}`
+        });
+
+        assert.strictEqual(res.status, 200);
+        assert.strictEqual(res.body.success, true);
+        assert.strictEqual(res.body.data.category, 'Flood');
+        assert.strictEqual(res.body.data.count, 3);
+        assert.ok(res.body.data.risk_score >= 50);
+    });
+
     console.log(`\n======================================================`);
     console.log(`Tests Summary: ${passed} passed, ${failed} failed.`);
     console.log(`======================================================\n`);

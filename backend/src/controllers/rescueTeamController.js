@@ -234,11 +234,76 @@ async function getTeamLocation(req, res, next) {
     }
 }
 
+// POST /api/rescue-teams/:id/acknowledge
+async function acknowledgeDispatch(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { incidentId, note } = req.body;
+
+        if (!incidentId) {
+            return res.status(400).json({
+                success: false,
+                message: 'incidentId is required to acknowledge emergency dispatch.',
+                errorCode: 'VALIDATION_ERROR'
+            });
+        }
+
+        const { acknowledgeTeamDispatch } = require('../services/dispatchEngine');
+        const result = await acknowledgeTeamDispatch({
+            teamId: id,
+            incidentId,
+            responderId: req.user ? req.user.id : null,
+            note
+        });
+
+        res.json({
+            success: true,
+            message: 'Emergency dispatch acknowledged. Unit en route.',
+            data: result
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// GET /api/rescue-teams/suitable?disasterType=...&lat=...&lng=...
+async function getSuitableTeams(req, res, next) {
+    try {
+        const { disasterType, lat, lng, details } = req.query;
+
+        if (!lat || !lng) {
+            return res.status(400).json({
+                success: false,
+                message: 'Latitude and longitude query parameters are required.',
+                errorCode: 'VALIDATION_ERROR'
+            });
+        }
+
+        const { findEligibleRescueTeams } = require('../services/dispatchEngine');
+        const candidates = await findEligibleRescueTeams({
+            disasterType: disasterType || 'General Emergency',
+            latitude: parseFloat(lat),
+            longitude: parseFloat(lng),
+            details: details || ''
+        });
+
+        res.json({
+            success: true,
+            count: candidates.length,
+            data: candidates
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
 module.exports = {
     getRescueTeams,
     createRescueTeam,
     updateRescueTeam,
     updateTeamLocation,
-    getTeamLocation
+    getTeamLocation,
+    acknowledgeDispatch,
+    getSuitableTeams
 };
 

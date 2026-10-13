@@ -29,6 +29,14 @@ router.post('/', optionalToken, uploadEvidence.single('evidence'), incidentContr
 // Upload additional media evidence for an existing incident
 router.post('/:id/evidence', optionalToken, uploadEvidence.single('evidence'), incidentController.uploadIncidentEvidence);
 
+// Add supplemental details (disaster type, photo, voice recording, count) after initial SOS
+router.post('/:id/supplement', optionalToken, uploadEvidence.single('evidence'), incidentController.supplementIncident);
+router.patch('/:id/supplement', optionalToken, uploadEvidence.single('evidence'), incidentController.supplementIncident);
+
+// Automated dispatch & Escalation endpoints
+router.post('/:id/auto-dispatch', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.triggerAutoDispatch);
+router.post('/:id/escalate', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.triggerEscalate);
+
 // Update incident status (Restricted to AUTHORITY and ADMIN)
 router.patch('/:id', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.updateIncident);
 router.patch('/:id/status', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.updateIncident);

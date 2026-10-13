@@ -8,14 +8,18 @@ const { emitNewIncident, emitIncidentUpdated } = require('../sockets/socketHandl
 const VALID_STATUSES = [
     'NEW',
     'RECEIVED',
+    'REQUESTED',
     'ACKNOWLEDGED',
     'ANALYZING',
+    'ASSESSING',
     'TRIAGED',
     'ASSIGNED',
+    'DISPATCHING',
     'TEAM_ASSIGNED',
     'TEAM_DISPATCHED',
     'DISPATCHED',
     'TEAM_APPROACHING',
+    'TEAM_EN_ROUTE',
     'IN_PROGRESS',
     'ON_SCENE',
     'RESOLVED',
@@ -27,9 +31,14 @@ async function createIncident(req, res, next) {
     try {
         const categoryRaw = req.body.category || req.body.disaster_type || req.body.disasterType || req.body.emergency_type;
         const detailsRaw = req.body.details || req.body.description || req.body.short_description;
+        const isQuickSos = req.body.source === 'ONE_TAP_SOS' || req.body.isOneTap || req.body.quickSos || req.headers['x-sos-quick'] || (!categoryRaw && !detailsRaw);
+        const category = categoryRaw && typeof categoryRaw === 'string' && categoryRaw.trim()
+            ? categoryRaw.trim()
+            : (isQuickSos ? 'Emergency SOS' : '');
+        const details = detailsRaw && typeof detailsRaw === 'string' && detailsRaw.trim()
+            ? detailsRaw.trim()
+            : (isQuickSos ? 'One-tap emergency distress beacon initiated by citizen. Live GPS tracking active.' : '');
         const countRaw = req.body.count !== undefined ? req.body.count : (req.body.people_affected !== undefined ? req.body.people_affected : req.body.peopleAffected);
-        const category = categoryRaw && typeof categoryRaw === 'string' ? categoryRaw.trim() : '';
-        const details = detailsRaw && typeof detailsRaw === 'string' ? detailsRaw.trim() : '';
         const count = countRaw !== undefined ? countRaw : 1;
         const { latitude, longitude, address, evidenceUrl } = req.body;
 
@@ -283,20 +292,105 @@ async function createIncident(req, res, next) {
             ipAddress: req.ip
         });
 
+        // Automatic Dispatch if One-Tap SOS or autoDispatch requested
+        let dispatchResult = null;
+        const isAutoDispatch = req.body.autoDispatch === true || req.body.source === 'ONE_TAP_SOS' || req.headers['x-auto-dispatch'] === 'true';
+        if (isAutoDispatch) {
+            try {
+                const { autoDispatchIncident } = require('../services/dispatchEngine');
+                dispatchResult = await autoDispatchIncident(incidentId, {
+                    category: category.trim(),
+                    details: details.trim(),
+                    dispatchedBy: userId || 'ONE_TAP_SOS_ENGINE'
+                });
+            } catch (dispErr) {
+                console.warn('[Incident] Automatic dispatch error:', dispErr.message);
+            }
+        }
+
+        // Automatic Relay to NDRF EOC CAD Gateway for High/Critical Beacons
+        let ndrfRelayResult = null;
+        const autoRelayEnabled = process.env.NDRF_GATEWAY_ENABLED !== 'false' && process.env.NDRF_AUTO_RELAY_CRITICAL !== 'false';
+        const isCriticalOrHigh = priorityAssessment.level === 'CRITICAL' || priorityAssessment.level === 'HIGH' || isAutoDispatch;
+        if (autoRelayEnabled && isCriticalOrHigh) {
+            try {
+                const { relayIncidentToNdrf } = require('../services/ndrfService');
+                ndrfRelayResult = await relayIncidentToNdrf(incidentId, {
+                    relayedBy: userId || 'AUTO_NDRF_CAD_GATEWAY'
+                });
+            } catch (ndrfErr) {
+                console.warn('[Incident] Automatic NDRF relay warning:', ndrfErr.message);
+            }
+        }
+
+        // AI-Assisted Verification & Triage Analysis (Advisory with Mandatory Human Review)
+        let aiVerification = null;
+        try {
+            const { performAiAssistedVerification } = require('../services/aiVerificationService');
+            aiVerification = await performAiAssistedVerification({
+                incidentId,
+                category: category.trim(),
+                details: details.trim(),
+                count: victimCount,
+                address: readableAddress,
+                latitude: numLat,
+                longitude: numLng,
+                isVerifiedGps,
+                gpsAccuracy
+            });
+
+            if (aiVerification) {
+                await db.run(
+                    `UPDATE incidents 
+                     SET ai_verification_summary = ?,
+                         ai_missing_info_flags = ?,
+                         ai_alert_zone_match = ?,
+                         ai_recommended_assistance = ?,
+                         ai_duplicate_of_id = ?
+                     WHERE id = ?`,
+                    [
+                        aiVerification.coordinatorSummary,
+                        JSON.stringify(aiVerification.missingInfoAndFlags || []),
+                        JSON.stringify(aiVerification.governmentAlertZoneMatch || {}),
+                        JSON.stringify(aiVerification.recommendedAssistance || []),
+                        aiVerification.duplicateAnalysis && aiVerification.duplicateAnalysis.isPotentialDuplicate 
+                            ? aiVerification.duplicateAnalysis.primaryDuplicateId 
+                            : null,
+                        incidentId
+                    ]
+                );
+            }
+        } catch (aiVerErr) {
+            console.warn('[Incident] AI Verification triage error:', aiVerErr.message);
+        }
+
+        const finalIncident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [incidentId]);
+        const finalUpdates = await db.query(
+            `SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at ASC`,
+            [incidentId]
+        );
+
         // Real-time broadcast via Socket.IO
         emitNewIncident({
-            ...newIncident,
-            incident: newIncident,
-            updates: initialUpdates
+            ...finalIncident,
+            incident: finalIncident,
+            updates: finalUpdates,
+            dispatch: dispatchResult,
+            ndrf: ndrfRelayResult
         });
 
         res.status(201).json({
             success: true,
-            message: 'Emergency SOS beacon recorded and dispatched to authority command grid.',
+            message: dispatchResult && dispatchResult.dispatched
+                ? `Emergency SOS recorded and automatically dispatched to ${dispatchResult.assignedTeam ? dispatchResult.assignedTeam.name : 'rescue team'}. ETA: ~${dispatchResult.etaMinutes} mins.`
+                : 'Emergency SOS beacon recorded and dispatched to authority command grid.',
             data: {
-                ...newIncident,
-                incident: newIncident,
-                updates: initialUpdates,
+                ...finalIncident,
+                incident: finalIncident,
+                updates: finalUpdates,
+                dispatch: dispatchResult,
+                ndrf: ndrfRelayResult,
+                assignedTeam: dispatchResult ? dispatchResult.assignedTeam : null,
                 priorityExplanation: priorityAssessment.reasoning
             }
         });
@@ -409,7 +503,8 @@ async function getIncidentById(req, res, next) {
         }
 
         const isAuthorityOrAdmin = req.user.role === 'AUTHORITY' || req.user.role === 'ADMIN';
-        if (!isAuthorityOrAdmin && incident.user_id !== req.user.id) {
+        const isAssignedNgo = req.user.role === 'NGO' && incident.assigned_ngo_id === req.user.ngoId;
+        if (!isAuthorityOrAdmin && !isAssignedNgo && incident.user_id !== req.user.id) {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied. You can only view your own incident reports.',
@@ -422,13 +517,29 @@ async function getIncidentById(req, res, next) {
             [id]
         );
 
+        const ndrfTransmission = await db.get(
+            `SELECT * FROM ndrf_transmissions WHERE incident_id = ? ORDER BY created_at DESC LIMIT 1`,
+            [id]
+        );
+
+        const ngoAssignment = await db.get(
+            `SELECT t.*, n.name as ngo_name, n.phone as ngo_phone, n.contact_person, n.official_email
+             FROM incident_ngo_assignments t 
+             JOIN ngos n ON t.ngo_id = n.id 
+             WHERE t.incident_id = ? 
+             ORDER BY t.created_at DESC LIMIT 1`,
+            [id]
+        );
+
         res.json({
             success: true,
             data: {
                 ...incident,
                 incident,
                 updates,
-                timeline: updates
+                timeline: updates,
+                ndrfTransmission: ndrfTransmission || null,
+                ngoAssignment: ngoAssignment || null
             }
         });
     } catch (err) {
@@ -1139,6 +1250,161 @@ async function uploadIncidentEvidence(req, res, next) {
     }
 }
 
+// POST or PATCH /api/incidents/:id/supplement
+// Allows user to add disaster type, audio recording, photo, victim count without delaying initial SOS
+async function supplementIncident(req, res, next) {
+    try {
+        const { id } = req.params;
+        const incident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [id]);
+        if (!incident) {
+            return res.status(404).json({ success: false, message: 'Incident not found.', errorCode: 'NOT_FOUND' });
+        }
+
+        // Verify authorization: citizen must own it or be authority
+        if (req.user && req.user.role === 'CITIZEN' && incident.user_id && incident.user_id !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Access denied.', errorCode: 'FORBIDDEN' });
+        }
+
+        const category = req.body.category || req.body.disasterType || null;
+        const details = req.body.details || req.body.description || null;
+        const count = req.body.count !== undefined ? parseInt(req.body.count, 10) : null;
+        const address = req.body.address || null;
+        let evidenceUrl = req.body.evidenceUrl || null;
+        let audioUrl = req.body.audioUrl || null;
+
+        if (req.file) {
+            evidenceUrl = `/uploads/${req.file.filename}`;
+            const isAudio = req.file.mimetype.startsWith('audio/') || ['.wav', '.mp3', '.webm', '.ogg'].some(ext => req.file.filename.endsWith(ext));
+            if (isAudio) audioUrl = evidenceUrl;
+        }
+
+        // Re-evaluate risk with new details
+        const combinedCategory = category || incident.category;
+        const combinedDetails = details ? `${incident.details}\n[Update]: ${details}` : incident.details;
+        const combinedCount = count || incident.count || 1;
+
+        const priorityAssessment = calculateEmergencyPriority({
+            category: combinedCategory,
+            count: combinedCount,
+            details: combinedDetails
+        });
+
+        await db.run(
+            `UPDATE incidents
+             SET category = COALESCE(?, category),
+                 details = COALESCE(?, details),
+                 count = COALESCE(?, count),
+                 readable_address = COALESCE(?, readable_address),
+                 evidence_url = COALESCE(?, evidence_url),
+                 audio_url = COALESCE(?, audio_url),
+                 emergency_level = ?,
+                 risk_score = ?,
+                 recommended_action = ?,
+                 updated_at = datetime('now')
+             WHERE id = ?`,
+            [
+                category ? category.trim() : null,
+                details ? details.trim() : null,
+                count,
+                address ? address.trim() : null,
+                evidenceUrl,
+                audioUrl,
+                priorityAssessment.level,
+                priorityAssessment.score || 70,
+                priorityAssessment.recommendedAction || incident.recommended_action,
+                id
+            ]
+        );
+
+        // Record update timeline
+        const note = `Citizen added supplemental details: Category '${combinedCategory}', Victims: ${combinedCount}.${details ? ` Note: "${details}"` : ''}`;
+        await db.run(
+            `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+            [
+                generateUUID('INCU'),
+                id,
+                req.user ? req.user.id : 'CITIZEN',
+                req.user ? req.user.role : 'CITIZEN',
+                incident.status,
+                incident.status,
+                note
+            ]
+        );
+
+        // Update risk_analysis table
+        await db.run(
+            `INSERT INTO risk_analysis (id, incident_id, disaster_type, risk_score, risk_level, factors_json, reason, confidence, recommended_action, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+            [
+                generateUUID('RISK'),
+                id,
+                combinedCategory,
+                priorityAssessment.score || 70,
+                priorityAssessment.level,
+                JSON.stringify(priorityAssessment.factors || {}),
+                priorityAssessment.reasoning || '',
+                priorityAssessment.confidence || 90,
+                priorityAssessment.recommendedAction || ''
+            ]
+        );
+
+        const updatedIncident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [id]);
+        const updates = await db.query(`SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at ASC`, [id]);
+
+        emitIncidentUpdated({ ...updatedIncident, incident: updatedIncident, updates });
+
+        res.json({
+            success: true,
+            message: 'Emergency details updated and re-analyzed by AI risk engine.',
+            data: {
+                ...updatedIncident,
+                incident: updatedIncident,
+                updates,
+                priorityAssessment
+            }
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// POST /api/incidents/:id/auto-dispatch
+async function triggerAutoDispatch(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { autoDispatchIncident } = require('../services/dispatchEngine');
+        const result = await autoDispatchIncident(id, {
+            dispatchedBy: req.user ? req.user.id : 'AUTHORITY'
+        });
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// POST /api/incidents/:id/escalate
+async function triggerEscalate(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { escalateIncident } = require('../services/dispatchEngine');
+        const result = await escalateIncident({
+            incidentId: id,
+            reason: req.body.reason || 'Manual authority escalation',
+            authorityUser: req.user
+        });
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
 module.exports = {
     createIncident,
     getIncidents,
@@ -1152,6 +1418,9 @@ module.exports = {
     exportIncidentsCsv,
     getAnalyticsSummary,
     getIncidentTimeline,
-    uploadIncidentEvidence
+    uploadIncidentEvidence,
+    supplementIncident,
+    triggerAutoDispatch,
+    triggerEscalate
 };
 

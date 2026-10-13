@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AISTER | NGO Collaborative Disaster Relief Grid</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 950: '#060913', 900: '#0D1322', 850: '#111827', 800: '#1E293B' },
+                        purple: { 950: '#1E0B36', 700: '#6D28D9', 600: '#7C3AED', 500: '#8B5CF6' }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Leaflet GIS Mapping -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    
+    <style>
+        body { font-family: 'Outfit', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        #ngo-map { height: 380px; width: 100%; border-radius: 1rem; z-index: 10; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-purple-600 selection:text-white">
+
+    <!-- NGO HEADER -->
+    <header class="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-700 to-indigo-500 flex items-center justify-center text-white font-black shadow-lg shadow-purple-950">
+                    <i data-lucide="heart-handshake" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-black text-lg tracking-tight text-white">AISTER</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-purple-950 text-purple-300 border border-purple-800">NGO GRID</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 font-medium">Collaborative Relief & Volunteer Operations</p>
+                </div>
+            </div>
+
+            <!-- DESKTOP NAV TABS -->
+            <nav class="hidden md:flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs">
+                <button onclick="switchNgoTab('tasks')" id="ngo-tab-tasks" class="ngo-nav-btn px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 bg-purple-700 text-white shadow">
+                    <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i>
+                    <span>Relief Tasks</span>
+                    <span id="badge-active-tasks" class="bg-purple-950 text-purple-200 px-1.5 py-0.2 rounded text-[10px] font-mono">0</span>
+                </button>
+                <button onclick="switchNgoTab('volunteers')" id="ngo-tab-volunteers" class="ngo-nav-btn px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 text-slate-400 hover:text-slate-200">
+                    <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
+                    <span>Volunteers</span>
+                </button>
+                <button onclick="switchNgoTab('inventory')" id="ngo-tab-inventory" class="ngo-nav-btn px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 text-slate-400 hover:text-slate-200">
+                    <i data-lucide="package" class="w-3.5 h-3.5 text-blue-400"></i>
+                    <span>Supplies</span>
+                </button>
+                <button onclick="switchNgoTab('alerts')" id="ngo-tab-alerts" class="ngo-nav-btn px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 text-slate-400 hover:text-slate-200">
+                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span>Govt Alerts</span>
+                </button>
+                <button onclick="switchNgoTab('messages')" id="ngo-tab-messages" class="ngo-nav-btn px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 text-slate-400 hover:text-slate-200">
+                    <i data-lucide="message-square" class="w-3.5 h-3.5 text-purple-400"></i>
+                    <span>Coordination</span>
+                </button>
+            </nav>
+
+            <!-- RIGHT PROFILE / PORTAL SWITCHER -->
+            <div class="flex items-center space-x-2.5">
+                <div id="ngo-org-pill" class="hidden sm:flex items-center space-x-2 bg-purple-950/70 border border-purple-800/60 px-3 py-1.5 rounded-xl text-xs">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="ngo-name-label" class="font-bold text-purple-200 truncate max-w-[180px]">Red Cross UP</span>
+                    <span class="text-[9px] bg-emerald-950 text-emerald-300 px-1 py-0.2 rounded border border-emerald-800 font-bold">VERIFIED</span>
+                </div>
+
+                <a href="index.html" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1 transition">
+                    <i data-lucide="home" class="w-3.5 h-3.5 text-purple-400"></i>
+                    <span class="hidden sm:inline">Citizen Portal</span>
+                </a>
+
+                <button onclick="openNgoAuthModal()" id="ngo-auth-btn" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1 transition shadow">
+                    <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                    <span id="ngo-auth-btn-text">NGO Login</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- MOBILE NAV STRIP -->
+        <div class="md:hidden flex items-center overflow-x-auto py-2 border-t border-slate-800 px-3 text-xs gap-1.5 no-scrollbar bg-slate-900">
+            <button onclick="switchNgoTab('tasks')" id="mob-ngo-tasks" class="mob-ngo-btn px-3 py-1.5 rounded-full bg-purple-700 text-white font-bold whitespace-nowrap shadow flex items-center space-x-1">
+                <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i>
+                <span>Tasks</span>
+            </button>
+            <button onclick="switchNgoTab('volunteers')" id="mob-ngo-volunteers" class="mob-ngo-btn px-3 py-1.5 rounded-full bg-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="users" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>Volunteers</span>
+            </button>
+            <button onclick="switchNgoTab('inventory')" id="mob-ngo-inventory" class="mob-ngo-btn px-3 py-1.5 rounded-full bg-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="package" class="w-3.5 h-3.5 text-blue-400"></i>
+                <span>Supplies</span>
+            </button>
+            <button onclick="switchNgoTab('alerts')" id="mob-ngo-alerts" class="mob-ngo-btn px-3 py-1.5 rounded-full bg-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i>
+                <span>Govt Alerts</span>
+            </button>
+            <button onclick="switchNgoTab('messages')" id="mob-ngo-messages" class="mob-ngo-btn px-3 py-1.5 rounded-full bg-slate-800 text-slate-300 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="message-square" class="w-3.5 h-3.5 text-purple-400"></i>
+                <span>Chat</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="flex-grow p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
+
+        <!-- ACTIVE GOVERNMENT ALERT TICKER -->
+        <div id="ngo-gov-alert-banner" class="hidden bg-amber-950/80 border border-amber-600/80 rounded-2xl p-4 text-amber-200 text-xs shadow-lg space-y-1">
+            <div class="flex items-center justify-between">
+                <span class="font-black text-amber-300 flex items-center space-x-1.5">
+                    <i data-lucide="alert-octagon" class="w-4 h-4 text-amber-400 animate-pulse"></i>
+                    <span id="alert-banner-source">NDMA SACHET PUBLIC WARNING</span>
+                </span>
+                <span id="alert-banner-time" class="text-[10px] text-amber-400 font-mono">Live</span>
+            </div>
+            <p id="alert-banner-text" class="text-white font-semibold">Elevated storm & inundation warning active across designated sectors.</p>
+            <p id="alert-banner-instructions" class="text-[11px] text-amber-200">Official Safety Guidance: Mobilize emergency dry rations and field volunteer teams.</p>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 1: RELIEF TASKS & DISPATCH OPERATIONS -->
+        <!-- ============================================================= -->
+        <section id="ngo-view-tasks" class="ngo-subview space-y-6">
+            
+            <!-- KPI CARDS -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center space-x-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400 shrink-0">
+                        <i data-lucide="clipboard-check" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Assigned Tasks</span>
+                        <strong id="kpi-total-tasks" class="text-xl font-black text-white">0</strong>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center space-x-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-amber-950 border border-amber-800 flex items-center justify-center text-amber-400 shrink-0">
+                        <i data-lucide="clock" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">In Progress</span>
+                        <strong id="kpi-active-tasks" class="text-xl font-black text-amber-400">0</strong>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center space-x-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 shrink-0">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Volunteers Ready</span>
+                        <strong id="kpi-avail-volunteers" class="text-xl font-black text-emerald-400">0</strong>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center space-x-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-blue-950 border border-blue-800 flex items-center justify-center text-blue-400 shrink-0">
+                        <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Missions Completed</span>
+                        <strong id="kpi-completed-tasks" class="text-xl font-black text-blue-400">0</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- INTERACTIVE INCIDENT MAP -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="font-black text-white text-sm flex items-center space-x-1.5">
+                            <i data-lucide="map-pin" class="w-4 h-4 text-purple-400"></i>
+                            <span>Assigned Incident Relief Locations</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Geospatial coordinates of emergency reports requiring NGO verification & relief assistance.</p>
+                    </div>
+                    <button onclick="refreshNgoDashboard()" class="text-purple-400 hover:text-purple-300 text-xs font-bold flex items-center space-x-1">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Refresh Map</span>
+                    </button>
+                </div>
+                <div id="ngo-map"></div>
+            </div>
+
+            <!-- TASK QUEUE & FILTER CONTROLS -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="font-black text-white text-base flex items-center space-x-2">
+                            <i data-lucide="inbox" class="w-4 h-4 text-purple-400"></i>
+                            <span>Assigned Disaster Assistance Tasks</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Incidents shared with your NGO by Disaster Management Coordinators.</p>
+                    </div>
+
+                    <!-- Filter Controls -->
+                    <div class="flex items-center space-x-2 text-xs">
+                        <select id="filter-task-status" onchange="applyTaskFilters()" class="bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1.5 text-slate-300 focus:outline-none focus:border-purple-500">
+                            <option value="ALL">All Statuses</option>
+                            <option value="ASSIGNED">Assigned (New)</option>
+                            <option value="UNDER_REVIEW">Under Review</option>
+                            <option value="ASSISTANCE_PLANNED">Assistance Planned</option>
+                            <option value="ASSISTANCE_IN_PROGRESS">In Progress</option>
+                            <option value="COMPLETED">Completed</option>
+                            <option value="DECLINED">Declined</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- TASK CARDS CONTAINER -->
+                <div id="ngo-tasks-container" class="space-y-3">
+                    <!-- Populated dynamically via ngo-app.js -->
+                    <div class="py-12 text-center text-slate-400 text-xs">
+                        <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                        <span>Loading assigned relief tasks...</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- TAB 2: VOLUNTEER MANAGEMENT ROSTER -->
+        <!-- ============================================================= -->
+        <section id="ngo-view-volunteers" class="ngo-subview hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div>
+                        <h3 class="font-black text-white text-base flex items-center space-x-2">
+                            <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Volunteer Management Roster</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Manage registered volunteers, field capabilities, operating sectors, and task dispatches.</p>
+                    </div>
+                    <button onclick="openAddVolunteerModal()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition shadow">
+                        <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        <span>Register Volunteer</span>
+                    </button>
+                </div>
+
+                <!-- Volunteer Roster Table -->
+                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Volunteer Name</th>
+                                <th class="p-3">Skills & Capabilities</th>
+                                <th class="p-3">Service Sectors</th>
+                                <th class="p-3">Availability</th>
+                                <th class="p-3">Assigned Mission</th>
+                                <th class="p-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="volunteers-table-body" class="divide-y divide-slate-800/80 bg-slate-900/60 font-mono text-[11px]">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="p-3 bg-purple-950/40 border border-purple-800/40 rounded-xl text-[11px] text-purple-300 flex items-center space-x-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+                    <span>Privacy Safeguard: Personal phone numbers and live GPS coordinates are protected and only accessible to authorized coordinators.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- TAB 3: RELIEF SUPPLIES & INVENTORY CAPACITY -->
+        <!-- ============================================================= -->
+        <section id="ngo-view-inventory" class="ngo-subview hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div>
+                        <h3 class="font-black text-white text-base flex items-center space-x-2">
+                            <i data-lucide="package" class="w-4 h-4 text-blue-400"></i>
+                            <span>Emergency Relief Supplies & Capacity</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Maintain deployable quantities of food packets, potable water, medical kits, and temporary shelter cots.</p>
+                    </div>
+                    <button onclick="openUpdateInventoryModal()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition shadow">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span>Update Supplies</span>
+                    </button>
+                </div>
+
+                <div id="ngo-inventory-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- TAB 4: GOVERNMENT DISASTER ALERTS (NDMA SACHET) -->
+        <!-- ============================================================= -->
+        <section id="ngo-view-alerts" class="ngo-subview hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+                    <div>
+                        <h3 class="font-black text-white text-base flex items-center space-x-2">
+                            <i data-lucide="shield-alert" class="w-4 h-4 text-amber-400"></i>
+                            <span>Authorized Government Disaster Warnings</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Official meteorological and multi-hazard advisories from the NDMA SACHET Portal and IMD.</p>
+                    </div>
+                    <div class="flex items-center space-x-2 text-xs">
+                        <span id="alerts-last-sync-badge" class="bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 font-mono text-slate-400">Last Sync: Live</span>
+                    </div>
+                </div>
+
+                <div id="ngo-alerts-list" class="space-y-3">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-400 space-y-1">
+                    <p class="font-bold text-slate-300">Official Attribution Notice:</p>
+                    <p class="text-[11px]">All warning advisories originate directly from designated government authorities (NDMA SACHET / IMD / State EOC). AISTER does not fabricate warnings or present AI model projections as official disaster declarations.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================= -->
+        <!-- TAB 5: INTER-AGENCY COORDINATION MESSAGES -->
+        <!-- ============================================================= -->
+        <section id="ngo-view-messages" class="ngo-subview hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="border-b border-slate-800 pb-3">
+                    <h3 class="font-black text-white text-base flex items-center space-x-2">
+                        <i data-lucide="message-square" class="w-4 h-4 text-purple-400"></i>
+                        <span>Secure Inter-Agency Coordination Channel</span>
+                    </h3>
+                    <p class="text-xs text-slate-400">Communicate directly with authorized response coordinators and emergency authorities regarding assigned incidents.</p>
+                </div>
+
+                <div id="ngo-messages-stream" class="space-y-3 max-h-[450px] overflow-y-auto pr-1">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 1: NGO AUTHENTICATION & PARTNERSHIP ONBOARDING -->
+    <!-- ============================================================= -->
+    <div id="ngo-auth-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-purple-700 text-white flex items-center justify-center font-bold">
+                        <i data-lucide="heart-handshake" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-black text-white text-base" id="ngo-modal-heading">NGO Operations Portal</h4>
+                        <p class="text-xs text-slate-400">Access or apply for disaster relief partnership</p>
+                    </div>
+                </div>
+                <button onclick="closeNgoAuthModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- TAB SWITCHER (LOGIN vs REGISTER) -->
+            <div class="flex border-b border-slate-800 bg-slate-950/50 text-xs font-bold">
+                <button onclick="switchNgoAuthMode('login')" id="btn-ngo-auth-login" class="flex-1 py-3 text-center text-purple-400 border-b-2 border-purple-500">
+                    Coordinator Login
+                </button>
+                <button onclick="switchNgoAuthMode('register')" id="btn-ngo-auth-register" class="flex-1 py-3 text-center text-slate-400 hover:text-slate-200">
+                    Apply for Partnership
+                </button>
+            </div>
+
+            <div class="p-5 overflow-y-auto space-y-4 flex-grow">
+                
+                <!-- LOGIN FORM -->
+                <form id="ngo-login-form" onsubmit="handleNgoLogin(event)" class="space-y-4 text-xs">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Official Email Address</label>
+                        <input type="email" id="ngo-login-email" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="coordinator@redcross-up.org">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Password</label>
+                        <input type="password" id="ngo-login-pass" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="••••••••">
+                    </div>
+
+                    <div id="ngo-login-error" class="hidden p-3 bg-red-950/60 border border-red-800 text-red-300 rounded-xl text-xs"></div>
+
+                    <button type="submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs shadow-lg transition">
+                        Authenticate & Enter NGO Dashboard
+                    </button>
+
+                    <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl text-[11px] text-slate-400">
+                        <strong class="text-white block mb-0.5">Demo Partners:</strong>
+                        <span>Login: <code class="text-purple-300">coordinator@redcross-up.org</code> &bull; Pass: <code class="text-purple-300">ngo123</code></span>
+                    </div>
+                </form>
+
+                <!-- REGISTRATION FORM -->
+                <form id="ngo-register-form" onsubmit="handleNgoRegistration(event)" class="hidden space-y-3.5 text-xs">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">NGO Organization Name *</label>
+                        <input type="text" id="reg-ngo-name" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="e.g. Life Care Relief Trust">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-bold text-slate-300 mb-1">Registration No. *</label>
+                            <input type="text" id="reg-ngo-regno" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="REG/2026/001">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-300 mb-1">NGO DARPAN ID</label>
+                            <input type="text" id="reg-ngo-darpan" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="UP/2026/0123456">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block font-bold text-slate-300 mb-1">Contact Person *</label>
+                            <input type="text" id="reg-ngo-contact" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="Nodal Coordinator">
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-300 mb-1">Emergency Phone *</label>
+                            <input type="tel" id="reg-ngo-phone" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="+91 94150 ...">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Official Email Address *</label>
+                        <input type="email" id="reg-ngo-email" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="contact@ngo.org">
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Operational Districts / Areas *</label>
+                        <input type="text" id="reg-ngo-areas" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="e.g. Lucknow, Kanpur, Ayodhya">
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Services Offered (Select all that apply) *</label>
+                        <div class="grid grid-cols-2 gap-1.5 text-[11px] text-slate-300">
+                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="services" value="FOOD_RATIONS" checked class="rounded border-slate-700 text-purple-600"> <span>Food & Rations</span></label>
+                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="services" value="POTABLE_WATER" checked class="rounded border-slate-700 text-purple-600"> <span>Drinking Water</span></label>
+                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="services" value="MEDICAL" class="rounded border-slate-700 text-purple-600"> <span>Medical & First-Aid</span></label>
+                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="services" value="TEMPORARY_SHELTER" class="rounded border-slate-700 text-purple-600"> <span>Temporary Shelter</span></label>
+                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="services" value="VOLUNTEERS" checked class="rounded border-slate-700 text-purple-600"> <span>Volunteers</span></label>
+                            <label class="flex items-center space-x-1.5"><input type="checkbox" name="services" value="BOAT_RESCUE" class="rounded border-slate-700 text-purple-600"> <span>Boat / Evacuation</span></label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Emergency Capabilities Summary</label>
+                        <textarea id="reg-ngo-capabilities" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="Description of vehicles, storage depots, trained medical personnel..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Verification Document Proof (PDF/Image)</label>
+                        <input type="file" id="reg-ngo-doc" accept=".pdf,image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-950 file:text-purple-300 hover:file:bg-purple-900">
+                    </div>
+
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Coordinator Access Password *</label>
+                        <input type="password" id="reg-ngo-password" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="Create secure password">
+                    </div>
+
+                    <div id="ngo-reg-error" class="hidden p-3 bg-red-950/60 border border-red-800 text-red-300 rounded-xl text-xs"></div>
+                    <div id="ngo-reg-success" class="hidden p-3 bg-emerald-950/60 border border-emerald-800 text-emerald-300 rounded-xl text-xs"></div>
+
+                    <button type="submit" id="reg-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-3 rounded-xl uppercase tracking-wider text-xs shadow-lg transition">
+                        Submit Application for Admin Verification
+                    </button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 2: TASK PROGRESS & STATUS UPDATER -->
+    <!-- ============================================================= -->
+    <div id="task-progress-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h4 class="font-black text-white text-base">Update Task Progress</h4>
+                    <p id="progress-task-id" class="text-xs text-purple-400 font-mono">Task #TASK-...</p>
+                </div>
+                <button onclick="closeTaskProgressModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleTaskProgressSubmit(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Progress Lifecycle Status *</label>
+                    <select id="modal-progress-status" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2.5 text-white font-bold text-sm focus:border-purple-500 focus:outline-none">
+                        <option value="Received">Received</option>
+                        <option value="Under Review">Under Review</option>
+                        <option value="Assistance Planned">Assistance Planned</option>
+                        <option value="Assistance in Progress">Assistance in Progress</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Verified People Assisted</label>
+                    <input type="number" id="modal-progress-people" min="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="e.g. 15">
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Field Operation Notes & Deployed Supplies</label>
+                    <textarea id="modal-progress-notes" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="Distributed 50 food packets and potable water pouches..."></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeTaskProgressModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs">Cancel</button>
+                    <button type="submit" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-5 py-2 rounded-xl text-xs shadow">Save & Transmit Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 3: ADD VOLUNTEER MODAL -->
+    <!-- ============================================================= -->
+    <div id="add-volunteer-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h4 class="font-black text-white text-base">Register Volunteer to Roster</h4>
+                <button onclick="closeAddVolunteerModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleSaveVolunteer(event)" class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Full Name *</label>
+                    <input type="text" id="vol-name" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="Volunteer Name">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Phone Number *</label>
+                        <input type="tel" id="vol-phone" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="+91 98765 ...">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Email (Optional)</label>
+                        <input type="email" id="vol-email" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="vol@ngo.org">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Skills & Specializations *</label>
+                    <input type="text" id="vol-skills" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="e.g. First-Aid, CPR, Boat Handling, Rations">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Assigned Service Sectors *</label>
+                    <input type="text" id="vol-areas" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="e.g. Hazratganj, Gomti Nagar">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeAddVolunteerModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs">Cancel</button>
+                    <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2 rounded-xl text-xs shadow">Save Volunteer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ============================================================= -->
+    <!-- MODAL 4: UPDATE INVENTORY MODAL -->
+    <!-- ============================================================= -->
+    <div id="update-inventory-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h4 class="font-black text-white text-base">Record Relief Inventory Capacity</h4>
+                <button onclick="closeUpdateInventoryModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleSaveInventory(event)" class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Resource Category *</label>
+                    <select id="inv-type" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                        <option value="FOOD_RATIONS">Emergency Dry Rations</option>
+                        <option value="POTABLE_WATER">Potable Drinking Water</option>
+                        <option value="MEDICAL_KITS">Trauma First-Aid Satchels</option>
+                        <option value="SHELTER_CAPACITY">Temporary Cots / Shelter Beds</option>
+                        <option value="VOLUNTEER_CREW">Field Volunteer Crew</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Title / Resource Description *</label>
+                    <input type="text" id="inv-name" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="e.g. 72-Hour Survival Rations">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Available Quantity *</label>
+                        <input type="number" id="inv-qty" required min="0" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="1000">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Unit Measure</label>
+                        <input type="text" id="inv-unit" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="packets / liters / cots">
+                    </div>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Warehouse / Staging Hub</label>
+                    <input type="text" id="inv-hub" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="e.g. Central Depot, Lucknow">
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeUpdateInventoryModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs">Cancel</button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-2 rounded-xl text-xs shadow">Save Capacity</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- FOOTER -->
+    <footer class="bg-slate-950 border-t border-slate-800 text-slate-400 py-4 text-xs mt-auto">
+        <div class="max-w-7xl mx-auto px-4 text-center space-x-2">
+            <span>AISTER Collaborative Disaster Relief Platform &bull; NGO & Volunteer Network</span>
+            <span>&bull;</span>
+            <a href="privacy-policy.html" class="text-purple-400 hover:text-purple-300 underline font-medium">Privacy Policy</a>
+            <span>&bull;</span>
+            <a href="authority.html" class="text-purple-400 hover:text-purple-300 underline font-medium">Authority Portal</a>
+        </div>
+    </footer>
+
+    <!-- App Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/socket.js"></script>
+    <script src="js/ngo-app.js"></script>
+</body>
+</html>

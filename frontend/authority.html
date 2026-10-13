@@ -98,11 +98,42 @@
                 <button id="nav-btn-database" onclick="switchAuthorityView('database')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
                     <i data-lucide="database" class="w-3.5 h-3.5 text-purple-400"></i>
                     <span>Database</span>
-                    <span id="nav-db-badge" class="text-[9px] bg-purple-950 text-purple-300 px-1 py-0.2 rounded border border-purple-800 font-mono">9+ Tables</span>
+                    <span id="nav-db-badge" class="text-[9px] bg-purple-950 text-purple-300 px-1 py-0.2 rounded border border-purple-800 font-mono">14+ Tables</span>
+                </button>
+                <button id="nav-btn-audit" onclick="switchAuthorityView('audit')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                    <span>Audit Logs</span>
+                </button>
+                <button id="nav-btn-ngos" onclick="switchAuthorityView('ngos')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
+                    <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-400"></i>
+                    <span>NGO Partners</span>
+                    <span id="nav-ngo-badge" class="text-[9px] bg-pink-950 text-pink-300 px-1.5 py-0.2 rounded border border-pink-800 font-mono">New</span>
+                </button>
+                <button id="nav-btn-alerts" onclick="switchAuthorityView('alerts')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
+                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i>
+                    <span>Govt Alerts</span>
+                </button>
+                <button id="nav-btn-ndrf" onclick="switchAuthorityView('ndrf')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
+                    <i data-lucide="radio" class="w-3.5 h-3.5 text-purple-400"></i>
+                    <span>NDRF Grid</span>
+                    <span id="ndrf-nav-badge" class="text-[9px] bg-purple-950 text-purple-300 px-1 py-0.2 rounded border border-purple-800 font-mono">Sandbox</span>
                 </button>
             </div>
 
             <div class="flex items-center space-x-2">
+                <!-- NDRF Live Gateway Status Pill (Sandbox Mode) -->
+                <button id="ndrf-status-pill" onclick="switchAuthorityView('ndrf')" title="National Disaster Response Force Gateway (Integration-Ready Sandbox Mode)" class="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 bg-purple-950/70 border border-purple-700/60 text-purple-200 hover:bg-purple-900/60 transition shadow-sm">
+                    <span id="ndrf-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="hidden xl:inline font-mono text-[11px] text-purple-300">NDRF GATEWAY:</span>
+                    <span id="ndrf-status-text" class="text-emerald-400 font-bold">SANDBOX READY</span>
+                </button>
+
+                <!-- Dedicated NGO Operations Portal Link -->
+                <a href="ngo.html" class="bg-purple-950 hover:bg-purple-900 border border-purple-800 text-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition shadow">
+                    <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-400"></i>
+                    <span>NGO Portal</span>
+                </a>
+
                 <!-- Return to Citizen App -->
                 <a href="index.html" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition shadow">
                     <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-purple-600"></i>
@@ -111,7 +142,7 @@
                 
                 <div class="hidden sm:flex items-center space-x-2 bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800/60 px-3 py-1.5 rounded-lg text-xs">
                     <i data-lucide="user-check" class="w-4 h-4 text-purple-600"></i>
-                    <span id="duty-officer-badge" class="font-bold text-purple-900 dark:text-purple-200">Duty Officer: NDRF Command</span>
+                    <span id="duty-officer-badge" class="font-bold text-purple-900 dark:text-purple-200">Duty Officer: Authority Command</span>
                 </div>
 
                 <button onclick="authorityLogout()" title="Logout" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-100 dark:bg-slate-900 dark:hover:bg-red-950/60 border border-slate-300 dark:border-slate-800 hover:border-red-400 text-slate-700 dark:text-slate-400 hover:text-red-600 transition">
@@ -138,6 +169,14 @@
                 <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-600"></i>
                 <span>Clusters</span>
             </button>
+            <button onclick="switchAuthorityView('ngos')" id="mob-auth-ngos" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-600"></i>
+                <span>NGO Partners</span>
+            </button>
+            <button onclick="switchAuthorityView('alerts')" id="mob-auth-alerts" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-600"></i>
+                <span>Govt Alerts</span>
+            </button>
             <button onclick="switchAuthorityView('analytics')" id="mob-auth-analytics" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
                 <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-purple-600"></i>
                 <span>Analytics</span>
@@ -145,6 +184,14 @@
             <button onclick="switchAuthorityView('database')" id="mob-auth-database" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
                 <i data-lucide="database" class="w-3.5 h-3.5 text-purple-600"></i>
                 <span>Database</span>
+            </button>
+            <button onclick="switchAuthorityView('audit')" id="mob-auth-audit" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <span>Audit</span>
+            </button>
+            <button onclick="switchAuthorityView('ndrf')" id="mob-auth-ndrf" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
+                <i data-lucide="radio" class="w-3.5 h-3.5 text-purple-600"></i>
+                <span>NDRF Grid</span>
             </button>
         </div>
     </header>
@@ -517,7 +564,357 @@
             </div>
         </div>
 
+        <!-- ============================================================= -->
+        <!-- VIEW 7: SECURITY & DISPATCH AUDIT LOGS (REQUIREMENT 8) -->
+        <!-- ============================================================= -->
+        <div id="view-audit" class="authority-subview hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-2xl font-black text-white flex items-center space-x-2">
+                        <i data-lucide="shield-check" class="w-6 h-6 text-purple-400"></i>
+                        <span>Dispatch & Administrative Audit Trail</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Immutable security log of automated capability assignments, incident escalations, squad acknowledgments, and triage state changes.</p>
+                </div>
+                <button onclick="fetchAuditLogs()" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition shadow">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Refresh Audit Logs</span>
+                </button>
+            </div>
+
+            <!-- Audit Logs Filter Bar & Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="relative overflow-x-auto rounded-xl border border-slate-800 max-h-[600px] overflow-y-auto">
+                    <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                        <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Timestamp</th>
+                                <th class="p-3">Action</th>
+                                <th class="p-3">Role / User</th>
+                                <th class="p-3">Entity Type</th>
+                                <th class="p-3">Entity ID</th>
+                                <th class="p-3">Details / Audit Metadata</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-logs-table-body" class="divide-y divide-slate-800/80 bg-slate-900/60 font-mono text-[11px]">
+                            <!-- Dynamic Audit Rows -->
+                        </tbody>
+                    </table>
+                    <div id="audit-logs-loading" class="hidden py-16 text-center text-slate-400">
+                        <div class="inline-block w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                        <p class="text-xs font-semibold">Querying immutable audit logs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- VIEW 8: NATIONAL DISASTER RESPONSE FORCE (NDRF 1078) COMMAND GRID -->
+        <!-- ============================================================= -->
+        <div id="view-ndrf" class="authority-subview hidden space-y-6">
+            <!-- NDRF Header & Action Controls -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-2xl font-black text-white flex items-center space-x-2.5">
+                        <span class="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-700 to-indigo-800 flex items-center justify-center text-white shadow-md">
+                            <i data-lucide="radio" class="w-4 h-4"></i>
+                        </span>
+                        <span>NDRF 1078 Emergency Operations Center Gateway</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Inter-agency Common Alerting Protocol (CAP v1.2) integration connecting ground rescue operations with the National Disaster Response Force Command Grid.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="testNdrfPing()" class="bg-purple-900/60 hover:bg-purple-800 text-purple-200 border border-purple-700/60 font-bold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition shadow">
+                        <i data-lucide="activity" class="w-3.5 h-3.5 text-emerald-400"></i>
+                        <span>Test EOC Handshake</span>
+                    </button>
+                    <button onclick="fetchNdrfTransmissionsList()" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition shadow">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Refresh Grid</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- NDRF Gateway KPI Metric Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center space-x-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400 font-bold shrink-0">
+                        <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Gateway State</span>
+                        <div class="flex items-center space-x-1.5 mt-0.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                            <span id="ndrf-kpi-status" class="text-sm font-black text-emerald-400">ONLINE (1078 EOC)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center space-x-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400 font-bold shrink-0">
+                        <i data-lucide="server" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Command Node</span>
+                        <strong id="ndrf-kpi-node" class="text-xs font-mono font-bold text-white block mt-0.5">NDRF-HQ-DELHI-01</strong>
+                        <span id="ndrf-kpi-mode" class="text-[10px] text-purple-300 font-mono">EOC Simulator</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center space-x-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400 font-bold shrink-0">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Battalion Grid</span>
+                        <strong id="ndrf-kpi-battalions" class="text-sm font-black text-white block mt-0.5">16 Battalions</strong>
+                        <span class="text-[10px] text-emerald-400 font-bold">18,500+ Personnel</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center space-x-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-purple-950 border border-purple-800 flex items-center justify-center text-purple-400 font-bold shrink-0">
+                        <i data-lucide="phone-call" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">National Control Room</span>
+                        <a href="tel:1078" class="text-sm font-black text-purple-400 hover:text-purple-300 block mt-0.5 font-mono">Dial 1078</a>
+                        <span class="text-[10px] text-slate-400 font-mono">011-24363260 (24/7)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Regional NDRF Battalions Deck -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-base font-black text-white flex items-center space-x-2">
+                            <i data-lucide="truck" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Regional NDRF Battalions & Response Sectors</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Live operational readiness, VHF tactical communication channels, and specialized response capabilities.</p>
+                    </div>
+                    <span class="text-xs font-mono text-purple-300 bg-purple-950 px-2.5 py-1 rounded-lg border border-purple-800">Standard Tier-1 Units</span>
+                </div>
+
+                <div id="ndrf-battalions-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+                    <!-- Dynamic Battalion Cards -->
+                </div>
+            </div>
+
+            <!-- Live NDRF CAD Transmissions Queue Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-base font-black text-white flex items-center space-x-2">
+                            <i data-lucide="radio" class="w-4 h-4 text-purple-400"></i>
+                            <span>CAD Transmissions & Incident Relay Log</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Chronological history of distress signals relayed to the National Disaster Response Force with Common Alerting Protocol (CAP v1.2) payloads.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span id="ndrf-tx-counter" class="text-xs font-mono font-bold text-slate-400">0 Transmissions</span>
+                    </div>
+                </div>
+
+                <div class="relative overflow-x-auto rounded-xl border border-slate-800 max-h-[500px] overflow-y-auto">
+                    <table class="w-full text-left text-xs text-slate-300 border-collapse">
+                        <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">CAD Ref ID</th>
+                                <th class="p-3">Incident ID</th>
+                                <th class="p-3">Battalion Dispatched</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3">Convoy ETA</th>
+                                <th class="p-3">Radio Channel</th>
+                                <th class="p-3">Timestamp</th>
+                                <th class="p-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ndrf-transmissions-table-body" class="divide-y divide-slate-800/80 bg-slate-900/60 font-mono text-[11px]">
+                            <!-- Dynamic Transmission Rows -->
+                        </tbody>
+                    </table>
+                    <div id="ndrf-transmissions-empty" class="hidden py-16 text-center text-slate-400">
+                        <i data-lucide="radio" class="w-8 h-8 text-slate-600 mx-auto mb-2"></i>
+                        <p class="text-xs font-semibold">No NDRF transmissions logged yet.</p>
+                        <p class="text-[10px] text-slate-500 mt-1">High-priority distress signals will automatically relay to NDRF 1078.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- VIEW 8: NGO PARTNERS & APPLICATION VERIFICATION QUEUE -->
+        <!-- ============================================================= -->
+        <div id="view-ngos" class="authority-subview hidden space-y-6">
+            <!-- NGO HEADER -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-2xl font-black text-white flex items-center space-x-2">
+                        <i data-lucide="heart-handshake" class="w-6 h-6 text-pink-400"></i>
+                        <span>NGO Partner Management & Verification Queue</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Review NGO registration credentials, DARPAN certifications, verify capacities, and approve or suspend disaster relief access.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="fetchAuthorityNgos()" class="bg-pink-700 hover:bg-pink-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-1.5 transition shadow">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Refresh Partners</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- PENDING VERIFICATION APPLICATIONS -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="flex items-center space-x-2">
+                        <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+                        <h3 class="font-black text-white text-base">Pending Applications Awaiting Administrator Verification</h3>
+                    </div>
+                    <span id="pending-ngos-count-badge" class="text-xs font-mono font-bold text-amber-300 bg-amber-950/80 px-2.5 py-0.5 rounded-lg border border-amber-800">0 Pending</span>
+                </div>
+
+                <div id="pending-ngos-container" class="space-y-3">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+
+            <!-- APPROVED PARTNER NGOS ROSTER -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="font-black text-white text-base flex items-center space-x-2">
+                            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                            <span>Verified Partner NGOs & Operational Readiness</span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Approved organizations authorized to receive disaster relief task assignments and mobilize volunteer teams.</p>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Organization Name</th>
+                                <th class="p-3">DARPAN / Reg ID</th>
+                                <th class="p-3">Contact Person</th>
+                                <th class="p-3">Operational Districts</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="approved-ngos-table-body" class="divide-y divide-slate-800/80 bg-slate-900/60 font-mono text-[11px]">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- VIEW 9: AUTHORIZED GOVERNMENT DISASTER WARNINGS (NDMA SACHET) -->
+        <!-- ============================================================= -->
+        <div id="view-alerts" class="authority-subview hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div>
+                    <h2 class="text-2xl font-black text-white flex items-center space-x-2">
+                        <i data-lucide="alert-triangle" class="w-6 h-6 text-amber-400"></i>
+                        <span>Authorized Public Disaster Warnings & SACHET Feed</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-1">Official meteorological and hazard alerts ingested from the NDMA SACHET portal & IMD divisions with strict provenance verification.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="syncAuthorityAlerts()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center space-x-1.5 shadow transition">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Sync NDMA Feed</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Provenance & Integrity Policy Banner -->
+            <div class="p-4 bg-slate-900 border border-purple-800/60 rounded-2xl text-xs text-slate-300 space-y-1.5 shadow-xl">
+                <div class="flex items-center space-x-2 font-bold text-purple-300">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+                    <span>GOVERNMENT WARNING DATA INTEGRITY STANDARD:</span>
+                </div>
+                <p class="text-[11px] leading-relaxed text-slate-400">
+                    Authorized public disaster alerts are displayed with explicit attribution to official government sources (NDMA SACHET, IMD, Central Water Commission). AISTER strictly avoids representing AI predictive models as official government warnings and tracks cache update ages to warn coordinators when upstream feeds are delayed.
+                </p>
+                <div id="authority-alerts-sync-meta" class="text-[10px] text-emerald-400 font-mono pt-1">
+                    Feed Status: Synchronized &bull; Source: NDMA SACHET Public Advisory Feed
+                </div>
+            </div>
+
+            <!-- Active Alerts Table -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                    <table class="w-full text-left text-xs text-slate-300">
+                        <thead class="bg-slate-950 text-slate-400 font-bold uppercase text-[10px] tracking-wider border-b border-slate-800">
+                            <tr>
+                                <th class="p-3">Ref ID</th>
+                                <th class="p-3">Source Agency</th>
+                                <th class="p-3">Hazard Type</th>
+                                <th class="p-3">Severity</th>
+                                <th class="p-3">Affected Area</th>
+                                <th class="p-3">Radius</th>
+                                <th class="p-3">Valid Until</th>
+                            </tr>
+                        </thead>
+                        <tbody id="authority-alerts-table-body" class="divide-y divide-slate-800/80 bg-slate-900/60 font-mono text-[11px]">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
     </main>
+
+    <!-- ASSIGN INCIDENT TO NGO MODAL -->
+    <div id="assign-ngo-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                    <h4 class="font-black text-white text-base">Assign Incident to Partner NGO</h4>
+                    <p id="assign-ngo-incident-id" class="text-xs text-purple-400 font-mono">Incident #INC-...</p>
+                </div>
+                <button onclick="closeAssignNgoModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form onsubmit="handleAssignNgoSubmit(event)" class="space-y-3.5 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Select Verified Partner NGO *</label>
+                    <select id="modal-select-ngo" required class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold text-sm focus:border-purple-500 focus:outline-none">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Requested Relief Services</label>
+                    <div class="grid grid-cols-2 gap-1.5 text-[11px] text-slate-300">
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="assign_services" value="FOOD_RATIONS" checked class="rounded border-slate-700 text-purple-600"> <span>Food & Rations</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="assign_services" value="POTABLE_WATER" checked class="rounded border-slate-700 text-purple-600"> <span>Drinking Water</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="assign_services" value="MEDICAL" class="rounded border-slate-700 text-purple-600"> <span>First-Aid & Triage</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="assign_services" value="TEMPORARY_SHELTER" class="rounded border-slate-700 text-purple-600"> <span>Shelter Cots</span></label>
+                        <label class="flex items-center space-x-1.5"><input type="checkbox" name="assign_services" value="VOLUNTEERS" checked class="rounded border-slate-700 text-purple-600"> <span>Volunteers</span></label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Coordinating Dispatch Notes</label>
+                    <textarea id="modal-assign-notes" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" placeholder="Provide instructions for field volunteer squad..."></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeAssignNgoModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs">Cancel</button>
+                    <button type="submit" class="bg-pink-700 hover:bg-pink-600 text-white font-bold px-5 py-2 rounded-xl text-xs shadow">Dispatch Task to NGO</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- DATABASE RECORD DETAIL INSPECTOR MODAL -->
     <div id="db-record-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">

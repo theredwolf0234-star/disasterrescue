@@ -77,6 +77,11 @@ const api = {
         return Boolean(this.getToken() && u && u.role === 'CITIZEN');
     },
 
+    isNGO() {
+        const u = this.getUser();
+        return Boolean(this.getToken() && u && u.role === 'NGO');
+    },
+
     getBaseUrl() {
         return API_BASE;
     },

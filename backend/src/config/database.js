@@ -383,6 +383,156 @@ async function createTables() {
         )
     `);
 
+    // 17. ndrf_transmissions (National Disaster Response Force EOC / CAD Gateway Transmissions)
+    await run(`
+        CREATE TABLE IF NOT EXISTS ndrf_transmissions (
+            id ${idType},
+            incident_id ${textType} NOT NULL,
+            cad_reference_id ${textType} NOT NULL,
+            battalion_code ${textType} NOT NULL,
+            battalion_name ${textType} NOT NULL,
+            status ${textType} NOT NULL DEFAULT 'TRANSMITTED',
+            relay_mode ${textType} NOT NULL DEFAULT 'SIMULATED',
+            endpoint_url ${textType},
+            priority ${textType} NOT NULL,
+            eoc_officer ${textType},
+            eta_minutes ${intType},
+            distance_km ${numType},
+            frequency_mhz ${textType},
+            cap_identifier ${textType},
+            cap_alert_xml ${textType},
+            cap_alert_json ${textType},
+            response_payload ${textType},
+            error_message ${textType},
+            created_at ${textType} DEFAULT (${tsDefault}),
+            updated_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
+    // 18. ngos (Registered Non-Governmental Organizations)
+    await run(`
+        CREATE TABLE IF NOT EXISTS ngos (
+            id ${idType},
+            name ${textType} NOT NULL,
+            registration_number ${textType} NOT NULL,
+            darpan_id ${textType},
+            tax_exemption_number ${textType},
+            contact_person ${textType} NOT NULL,
+            official_email ${textType} UNIQUE NOT NULL,
+            phone ${textType} NOT NULL,
+            operational_areas ${textType} NOT NULL,
+            services_offered ${textType} NOT NULL,
+            emergency_capabilities ${textType},
+            verification_doc_url ${textType},
+            status ${textType} NOT NULL DEFAULT 'PENDING',
+            reviewed_by ${textType},
+            reviewed_at ${textType},
+            rejection_reason ${textType},
+            created_at ${textType} DEFAULT (${tsDefault}),
+            updated_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
+    // 19. ngo_users (NGO Authorized Staff Credentials)
+    await run(`
+        CREATE TABLE IF NOT EXISTS ngo_users (
+            id ${idType},
+            ngo_id ${textType} NOT NULL,
+            full_name ${textType} NOT NULL,
+            email ${textType} UNIQUE NOT NULL,
+            password_hash ${textType} NOT NULL,
+            role ${textType} DEFAULT 'NGO',
+            is_active ${intType} DEFAULT 1,
+            created_at ${textType} DEFAULT (${tsDefault}),
+            updated_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
+    // 20. volunteers (Managed Volunteer Personnel Under NGOs)
+    await run(`
+        CREATE TABLE IF NOT EXISTS volunteers (
+            id ${idType},
+            ngo_id ${textType} NOT NULL,
+            full_name ${textType} NOT NULL,
+            phone ${textType} NOT NULL,
+            email ${textType},
+            skills ${textType} NOT NULL,
+            service_areas ${textType} NOT NULL,
+            availability_status ${textType} DEFAULT 'AVAILABLE',
+            assigned_incident_id ${textType},
+            assigned_task ${textType},
+            authorized_by ${textType},
+            created_at ${textType} DEFAULT (${tsDefault}),
+            updated_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
+    // 21. ngo_relief_inventory (NGO Relief Supplies, Rations, Water, Shelter Capacity)
+    await run(`
+        CREATE TABLE IF NOT EXISTS ngo_relief_inventory (
+            id ${idType},
+            ngo_id ${textType} NOT NULL,
+            resource_type ${textType} NOT NULL,
+            resource_name ${textType} NOT NULL,
+            available_quantity ${intType} DEFAULT 0,
+            unit_measure ${textType} DEFAULT 'units',
+            location_hub ${textType},
+            updated_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
+    // 22. incident_ngo_assignments (Disaster Relief Tasks Assigned to NGOs)
+    await run(`
+        CREATE TABLE IF NOT EXISTS incident_ngo_assignments (
+            id ${idType},
+            incident_id ${textType} NOT NULL,
+            ngo_id ${textType} NOT NULL,
+            assigned_by_role ${textType} NOT NULL,
+            assigned_by_id ${textType} NOT NULL,
+            requested_services ${textType},
+            status ${textType} NOT NULL DEFAULT 'ASSIGNED',
+            decline_reason ${textType},
+            assistance_notes ${textType},
+            people_assisted ${intType} DEFAULT 0,
+            created_at ${textType} DEFAULT (${tsDefault}),
+            updated_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
+    // 23. coordination_messages (Secure Inter-Agency Coordination Channel)
+    await run(`
+        CREATE TABLE IF NOT EXISTS coordination_messages (
+            id ${idType},
+            incident_id ${textType} NOT NULL,
+            sender_id ${textType} NOT NULL,
+            sender_role ${textType} NOT NULL,
+            sender_name ${textType} NOT NULL,
+            recipient_role ${textType} DEFAULT 'ALL',
+            message ${textType} NOT NULL,
+            is_urgent ${intType} DEFAULT 0,
+            created_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
+    // 24. government_alerts (Authorized NDMA SACHET / IMD Public Warnings)
+    await run(`
+        CREATE TABLE IF NOT EXISTS government_alerts (
+            id ${idType},
+            alert_identifier ${textType} UNIQUE NOT NULL,
+            source_agency ${textType} NOT NULL,
+            hazard_type ${textType} NOT NULL,
+            severity ${textType} NOT NULL,
+            affected_area ${textType} NOT NULL,
+            centroid_lat ${numType} NOT NULL,
+            centroid_lng ${numType} NOT NULL,
+            radius_km ${numType} DEFAULT 25.0,
+            official_instructions ${textType} NOT NULL,
+            effective_from ${textType} NOT NULL,
+            expires_at ${textType} NOT NULL,
+            is_active ${intType} DEFAULT 1,
+            last_synced_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
 
     // Migrations for incidents table
     try { await run(`ALTER TABLE incidents ADD COLUMN risk_score ${intType} DEFAULT 70`); } catch (e) {}
@@ -396,12 +546,34 @@ async function createTables() {
     try { await run(`ALTER TABLE incidents ADD COLUMN gps_accuracy ${numType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN gps_timestamp ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN idempotency_key ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN dispatch_team_id ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN dispatch_eta_minutes ${intType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN dispatch_distance_km ${numType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN dispatch_notes ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ack_deadline ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN acknowledged_at ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN escalation_level ${intType} DEFAULT 0`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ndrf_cad_id ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ndrf_status ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ndrf_battalion ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ndrf_relayed_at ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN assigned_ngo_id ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ngo_assistance_status ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ai_duplicate_of_id ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ai_verification_summary ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ai_missing_info_flags ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ai_alert_zone_match ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ai_recommended_assistance ${textType}`); } catch (e) {}
 
     // Migrations for rescue_teams table
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN members ${intType} DEFAULT 6`); } catch (e) {}
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN type ${textType} DEFAULT 'Rapid Response'`); } catch (e) {}
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN vehicle ${textType} DEFAULT 'All-Terrain Rescue Vehicle'`); } catch (e) {}
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN equipment ${textType} DEFAULT 'First-Aid, Inflatable Rafts, Cutters'`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN capabilities ${textType} DEFAULT 'General Rescue, First-Aid'`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN active_incident_count ${intType} DEFAULT 0`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN last_ack_at ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE weather_reports ADD COLUMN forecast_json ${textType}`); } catch (e) {}
 
     // Performance Indexes
     try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status)`); } catch (e) {}
@@ -409,9 +581,26 @@ async function createTables() {
     try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_created ON incidents(created_at)`); } catch (e) {}
     try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_category ON incidents(category)`); } catch (e) {}
     try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_team ON incidents(assigned_rescue_team)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_ndrf_cad ON incidents(ndrf_cad_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_ngo ON incidents(assigned_ngo_id)`); } catch (e) {}
     try { await run(`CREATE INDEX IF NOT EXISTS idx_rescue_teams_status ON rescue_teams(status)`); } catch (e) {}
     try { await run(`CREATE INDEX IF NOT EXISTS idx_media_incident ON media(incident_id)`); } catch (e) {}
     try { await run(`CREATE INDEX IF NOT EXISTS idx_risk_incident ON risk_analysis(incident_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ndrf_tx_incident ON ndrf_transmissions(incident_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ndrf_tx_cad ON ndrf_transmissions(cad_reference_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ndrf_tx_status ON ndrf_transmissions(status)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ngos_status ON ngos(status)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ngos_email ON ngos(official_email)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ngo_users_email ON ngo_users(email)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ngo_users_ngo ON ngo_users(ngo_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_volunteers_ngo ON volunteers(ngo_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_volunteers_status ON volunteers(availability_status)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ngo_inventory_ngo ON ngo_relief_inventory(ngo_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ngo_tasks_incident ON incident_ngo_assignments(incident_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ngo_tasks_ngo ON incident_ngo_assignments(ngo_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_ngo_tasks_status ON incident_ngo_assignments(status)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_coord_msg_incident ON coordination_messages(incident_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_gov_alerts_active ON government_alerts(is_active)`); } catch (e) {}
 
     console.log('[DB] Core relational database tables and performance indexes verified.');
     await seedDefaultAdminAndAuthority();
@@ -539,6 +728,181 @@ async function seedDefaultAdminAndAuthority() {
                     r
                 );
             }
+        }
+
+        // 7. Ensure partner NGOs exist if table is empty
+        const ngoCount = await get(`SELECT COUNT(*) as cnt FROM ngos`);
+        if (!ngoCount || Number(ngoCount.cnt) === 0) {
+            const ngos = [
+                [
+                    'NGO_REDCROSS_UP',
+                    'Indian Red Cross Society (UP State Branch)',
+                    'REG/UP/SOCIETY/1920/001',
+                    'UP/2021/0284910',
+                    'AAATI0123F',
+                    'Dr. Alok Srivastava (Disaster Response Nodal)',
+                    'coordinator@redcross-up.org',
+                    '+91 94150 22334',
+                    'Lucknow, Varanasi, Ayodhya, Prayagraj, Gorakhpur',
+                    JSON.stringify(['MEDICAL', 'FOOD_RATIONS', 'POTABLE_WATER', 'VOLUNTEERS', 'FIRST_AID_TRAINING']),
+                    'Field Mobile Medical Units, 120 Certified First-Aid Responders, Emergency Blood Stock, Triage Tents',
+                    '/uploads/docs/redcross_darpan_cert.pdf',
+                    'APPROVED',
+                    'AUTH_admin_aister23',
+                    new Date().toISOString()
+                ],
+                [
+                    'NGO_GOONJ_RELIEF',
+                    'Goonj Disaster Relief & Rehabilitation Network',
+                    'REG/DL/TRUST/1999/4821',
+                    'DL/2018/0192834',
+                    'AAATG9876E',
+                    'Meenakshi Gupta (Emergency Operations Head)',
+                    'relief@goonj-up.org',
+                    '+91 98110 33445',
+                    'Lucknow, Kanpur, Sitapur, Barabanki, Unnao',
+                    JSON.stringify(['FOOD_RATIONS', 'CLOTHING', 'SHELTER_KITS', 'SANITATION', 'DIGNITY_KITS']),
+                    'Central Relief Warehouse in Lucknow, 4 Distribution Fleets, 3500 Ration & Cloth Kits on Standby',
+                    '/uploads/docs/goonj_darpan_cert.pdf',
+                    'APPROVED',
+                    'AUTH_admin_aister23',
+                    new Date().toISOString()
+                ],
+                [
+                    'NGO_SEVA_BHARATI',
+                    'Seva Bharati Disaster Relief Mission',
+                    'REG/UP/TRUST/2004/1102',
+                    'UP/2023/0394812',
+                    'AAATS4567D',
+                    'Ramesh Chandra Verma',
+                    'contact@sevabharati-up.org',
+                    '+91 94500 55667',
+                    'Lucknow Urban & Rural',
+                    JSON.stringify(['COMMUNITY_KITCHEN', 'VOLUNTEER_MOBILIZATION', 'TEMPORARY_SHELTER']),
+                    '18 Community Kitchen Hubs, 80 Local Volunteers ready for debris clearance',
+                    '/uploads/docs/seva_bharati_doc.pdf',
+                    'PENDING',
+                    null,
+                    null
+                ]
+            ];
+
+            for (const n of ngos) {
+                await run(
+                    `INSERT INTO ngos (id, name, registration_number, darpan_id, tax_exemption_number, contact_person, official_email, phone, operational_areas, services_offered, emergency_capabilities, verification_doc_url, status, reviewed_by, reviewed_at, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+                    n
+                );
+            }
+            console.log('[DB] Partner NGOs seeded and verified.');
+        }
+
+        // 8. Ensure NGO staff user credentials exist
+        const ngoUserCount = await get(`SELECT COUNT(*) as cnt FROM ngo_users`);
+        if (!ngoUserCount || Number(ngoUserCount.cnt) === 0) {
+            const ngoHash = await bcrypt.hash('ngo123', 10);
+            const ngoUsers = [
+                ['NGO_USR_01', 'NGO_REDCROSS_UP', 'Dr. Alok Srivastava', 'coordinator@redcross-up.org', ngoHash],
+                ['NGO_USR_02', 'NGO_GOONJ_RELIEF', 'Meenakshi Gupta', 'relief@goonj-up.org', ngoHash]
+            ];
+
+            for (const u of ngoUsers) {
+                await run(
+                    `INSERT INTO ngo_users (id, ngo_id, full_name, email, password_hash, role, is_active, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, 'NGO', 1, datetime('now'), datetime('now'))`,
+                    u
+                );
+            }
+            console.log('[DB] NGO coordinator accounts verified (password: ngo123).');
+        }
+
+        // 9. Ensure default NGO volunteers exist
+        const volCount = await get(`SELECT COUNT(*) as cnt FROM volunteers`);
+        if (!volCount || Number(volCount.cnt) === 0) {
+            const volunteers = [
+                ['VOL_01', 'NGO_REDCROSS_UP', 'Anil Verma', '+91 98765 43210', 'anil.v@redcross.org', 'Advanced First-Aid, CPR, Triage Sorting', 'Hazratganj, Qaiserbagh', 'AVAILABLE', 'Dr. Alok Srivastava'],
+                ['VOL_02', 'NGO_REDCROSS_UP', 'Sunita Mishra', '+91 98765 43211', 'sunita.m@redcross.org', 'Nursing, Patient Evacuation, Psychosocial Support', 'Chowk, Old Lucknow', 'AVAILABLE', 'Dr. Alok Srivastava'],
+                ['VOL_03', 'NGO_GOONJ_RELIEF', 'Vikas Pandey', '+91 98765 43212', 'vikas.p@goonj.org', 'Heavy Logistics, Truck Driving, Debris Clearance', 'Gomti Nagar, Indira Nagar', 'AVAILABLE', 'Meenakshi Gupta'],
+                ['VOL_04', 'NGO_GOONJ_RELIEF', 'Pooja Tiwari', '+91 98765 43213', 'pooja.t@goonj.org', 'Food Rations Packing, Community Kitchen Management', 'Alambagh, Charbagh', 'AVAILABLE', 'Meenakshi Gupta']
+            ];
+
+            for (const v of volunteers) {
+                await run(
+                    `INSERT INTO volunteers (id, ngo_id, full_name, phone, email, skills, service_areas, availability_status, authorized_by, created_at, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 'AVAILABLE', ?, datetime('now'), datetime('now'))`,
+                    v
+                );
+            }
+        }
+
+        // 10. Ensure default NGO relief inventory exists
+        const invCount = await get(`SELECT COUNT(*) as cnt FROM ngo_relief_inventory`);
+        if (!invCount || Number(invCount.cnt) === 0) {
+            const inventory = [
+                ['NGO_INV_01', 'NGO_REDCROSS_UP', 'MEDICAL_KITS', 'Trauma First-Aid Field Satchels', 150, 'kits', 'Red Cross Hazratganj Medical Depot'],
+                ['NGO_INV_02', 'NGO_REDCROSS_UP', 'POTABLE_WATER', 'Clean Drinking Water Packets (1L)', 3500, 'liters', 'Red Cross Gomti Relief Center'],
+                ['NGO_INV_03', 'NGO_GOONJ_RELIEF', 'FOOD_RATIONS', '72-Hour Dry Ration Packs (Dal, Rice, Biscuits)', 1200, 'packets', 'Goonj Central Logistics Depot, Transport Nagar'],
+                ['NGO_INV_04', 'NGO_GOONJ_RELIEF', 'SHELTER_CAPACITY', 'Emergency Tarpaulins & Folding Cots', 300, 'cots', 'Goonj Regional Staging Warehouse'],
+                ['NGO_INV_05', 'NGO_GOONJ_RELIEF', 'VOLUNTEER_CREW', 'Trained Relief Logistics Volunteers', 45, 'volunteers', 'Lucknow Urban Sector Hub']
+            ];
+
+            for (const i of inventory) {
+                await run(
+                    `INSERT INTO ngo_relief_inventory (id, ngo_id, resource_type, resource_name, available_quantity, unit_measure, location_hub, updated_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+                    i
+                );
+            }
+        }
+
+        // 11. Ensure authorized NDMA SACHET public alerts exist
+        const alertCount = await get(`SELECT COUNT(*) as cnt FROM government_alerts`);
+        if (!alertCount || Number(alertCount.cnt) === 0) {
+            const now = new Date();
+            const tomorrow = new Date(Date.now() + 48 * 3600 * 1000);
+            const alerts = [
+                [
+                    'GOV_ALT_01',
+                    'SACHET-UP-2026-FL-001',
+                    'NDMA SACHET (Official Disaster Alert Portal)',
+                    'Riverine Flood / High Inundation Warning',
+                    'SEVERE',
+                    'Lucknow, Gomti River Basin Low-Lying Catchments',
+                    26.8525,
+                    80.9500,
+                    15.0,
+                    'Gomti River water discharge elevated. Residents along low-lying riverfronts must move to designated multi-hazard shelters. Avoid approaching riverbanks or submerged underpasses.',
+                    now.toISOString(),
+                    tomorrow.toISOString(),
+                    1,
+                    now.toISOString()
+                ],
+                [
+                    'GOV_ALT_02',
+                    'SACHET-UP-2026-HW-002',
+                    'IMD / NDMA (Meteorological Division)',
+                    'Severe Heatwave & Dehydration Advisory',
+                    'MODERATE',
+                    'Central Uttar Pradesh Urban Corridors',
+                    26.8467,
+                    80.9462,
+                    30.0,
+                    'Temperatures forecast exceeding 42°C with high UV index. Stay hydrated, avoid direct sun exposure between 11:00 AM and 4:00 PM, and utilize municipal hydration kiosks.',
+                    now.toISOString(),
+                    tomorrow.toISOString(),
+                    1,
+                    now.toISOString()
+                ]
+            ];
+
+            for (const a of alerts) {
+                await run(
+                    `INSERT INTO government_alerts (id, alert_identifier, source_agency, hazard_type, severity, affected_area, centroid_lat, centroid_lng, radius_km, official_instructions, effective_from, expires_at, is_active, last_synced_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    a
+                );
+            }
+            console.log('[DB] Authorized NDMA SACHET Government Alerts seeded.');
         }
     } catch (seedErr) {
         console.warn('[DB] Auto-seed warning:', seedErr.message);

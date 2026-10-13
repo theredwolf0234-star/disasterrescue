@@ -121,7 +121,7 @@ async function seed() {
         );
     }
 
-    // 4. Rescue Teams
+    // 4. Rescue Teams with Verified Tactical Capabilities
     const teams = [
         {
             id: 'TEAM_NDRF_01',
@@ -129,6 +129,7 @@ async function seed() {
             unit_code: 'NDRF-ALPHA',
             team_leader: 'Capt. Rajesh Varma',
             contact_phone: '+91 94150 11223',
+            capabilities: 'flood,collapse,landslide,cyclone,rapid_response',
             status: 'AVAILABLE',
             current_lat: 26.8480,
             current_lng: 80.9420
@@ -139,7 +140,8 @@ async function seed() {
             unit_code: 'SDRF-BOAT-4',
             team_leader: 'Insp. Amit Singh',
             contact_phone: '+91 94150 44556',
-            status: 'DISPATCHED',
+            capabilities: 'flood,watercraft,tsunami,storm,rapid_response',
+            status: 'AVAILABLE',
             current_lat: 26.8520,
             current_lng: 80.9380
         },
@@ -149,17 +151,29 @@ async function seed() {
             unit_code: 'MED-PARAMEDIC-2',
             team_leader: 'Dr. Priya Saxena',
             contact_phone: '+91 94150 77889',
-            status: 'STANDBY',
+            capabilities: 'medical,trauma,ambulance,first_aid',
+            status: 'AVAILABLE',
             current_lat: 26.8400,
             current_lng: 80.9500
+        },
+        {
+            id: 'TEAM_FIRE_04',
+            name: 'Hazratganj Fire & Hazmat Extrication Unit 1',
+            unit_code: 'FIRE-HAZMAT-1',
+            team_leader: 'Officer Vikram Rathore',
+            contact_phone: '+91 94150 88990',
+            capabilities: 'fire,hazmat,collapse,gas_leak,structural',
+            status: 'AVAILABLE',
+            current_lat: 26.8450,
+            current_lng: 80.9390
         }
     ];
 
     for (const t of teams) {
         await db.run(
-            `INSERT OR REPLACE INTO rescue_teams (id, name, unit_code, team_leader, contact_phone, status, assigned_incident_id, current_lat, current_lng, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, datetime('now'), datetime('now'))`,
-            [t.id, t.name, t.unit_code, t.team_leader, t.contact_phone, t.status, t.current_lat, t.current_lng]
+            `INSERT OR REPLACE INTO rescue_teams (id, name, unit_code, team_leader, contact_phone, capabilities, status, assigned_incident_id, current_lat, current_lng, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, datetime('now'), datetime('now'))`,
+            [t.id, t.name, t.unit_code, t.team_leader, t.contact_phone, t.capabilities, t.status, t.current_lat, t.current_lng]
         );
     }
 

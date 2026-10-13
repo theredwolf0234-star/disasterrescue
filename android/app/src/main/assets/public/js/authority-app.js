@@ -74,7 +74,8 @@ async function initAuthorityDashboard() {
         fetchIncidentsList(),
         fetchSheltersList(),
         fetchRescueTeamsList(),
-        loadDatabaseOverview(false)
+        loadDatabaseOverview(false),
+        fetchNdrfGatewayStatus()
     ]);
 
     // 5. Wire Real-Time Socket Listeners
@@ -88,6 +89,18 @@ async function initAuthorityDashboard() {
 
     onRealtimeEvent('incident:location_updated', (locData) => {
         handleIncidentLocationUpdated(locData);
+    });
+
+    onRealtimeEvent('ndrf:transmitted', (data) => {
+        showToast(`📡 NDRF CAD RELAY: Assigned to SOS #${data.incidentId}! Ref: ${data.cadReferenceId}`, 'success');
+        fetchNdrfGatewayStatus();
+        if (currentAuthorityView === 'ndrf') fetchNdrfTransmissionsList();
+    });
+
+    onRealtimeEvent('ndrf:status_update', (data) => {
+        showToast(`⚡ NDRF EOC Update: CAD ${data.cadReferenceId} -> ${data.status}`, 'info');
+        fetchNdrfGatewayStatus();
+        if (currentAuthorityView === 'ndrf') fetchNdrfTransmissionsList();
     });
 
     onRealtimeEvent('alert:critical', (data) => {
@@ -1087,6 +1100,20 @@ function renderIncidentInspectModal(inc) {
 
             <!-- MANDATORY ACTION BUTTONS (SECTION 13) -->
             <div class="bg-slate-950 p-3 rounded-xl border border-purple-800/60 flex flex-wrap gap-2">
+                <button onclick="autoAssignIncident('${inc.id}')" class="bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-black px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow border border-purple-500/50">
+                    <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-300"></i>
+                    <span>AUTO-ASSIGN SQUAD</span>
+                </button>
+                <button onclick="escalateIncident('${inc.id}')" class="bg-rose-700 hover:bg-rose-600 text-white font-black px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow border border-rose-500/50">
+                    <i data-lucide="arrow-up-circle" class="w-3.5 h-3.5 text-amber-200"></i>
+                    <span>ESCALATE (${inc.escalation_level ? 'TIER ' + inc.escalation_level : 'TIER 0'})</span>
+                </button>
+                ${(inc.dispatch_team_id || inc.assigned_rescue_team) && !inc.acknowledged_at ? `
+                <button onclick="teamAcknowledgeIncident('${inc.dispatch_team_id || inc.assigned_rescue_team}', '${inc.id}')" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow animate-pulse">
+                    <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
+                    <span>SQUAD ACK</span>
+                </button>
+                ` : ''}
                 <button onclick="acknowledgeIncident('${inc.id}')" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow">
                     <i data-lucide="check" class="w-3.5 h-3.5"></i>
                     <span>ACKNOWLEDGE</span>
@@ -1115,6 +1142,18 @@ function renderIncidentInspectModal(inc) {
                     <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
                     <span>GENERATE REPORT</span>
                 </button>
+                <button onclick="relayIncidentToNdrfManual('${inc.id}')" class="bg-gradient-to-r from-purple-800 to-indigo-700 hover:from-purple-700 hover:to-indigo-600 text-white font-black px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow border border-purple-500/50">
+                    <i data-lucide="radio" class="w-3.5 h-3.5 text-purple-300"></i>
+                    <span>RELAY TO NDRF 1078</span>
+                </button>
+                <button onclick="promptAssignNgo('${inc.id}')" class="bg-gradient-to-r from-pink-800 to-purple-700 hover:from-pink-700 hover:to-purple-600 text-white font-black px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow border border-pink-500/50">
+                    <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-300"></i>
+                    <span>ASSIGN TO NGO</span>
+                </button>
+                <button onclick="downloadCapXml('${inc.id}')" class="bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-700/60 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1 transition">
+                    <i data-lucide="file-code" class="w-3.5 h-3.5"></i>
+                    <span>CAP v1.2 XML</span>
+                </button>
             </div>
 
             <!-- Incident Overview Details -->
@@ -1128,12 +1167,110 @@ function renderIncidentInspectModal(inc) {
                     <span class="text-emerald-400 font-bold uppercase text-sm">${inc.status}</span>
                 </div>
                 <div>
-                    <span class="text-slate-400 block text-[10px] uppercase font-bold">People Affected</span>
-                    <span class="text-white font-bold">${inc.count || 1} Person(s)</span>
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Assigned Squad</span>
+                    <span class="text-purple-300 font-bold text-sm block">${inc.assigned_rescue_team || 'Pending Team Dispatch'}</span>
+                    ${inc.dispatch_eta_minutes ? `<span class="inline-block text-amber-300 text-[11px] font-semibold mt-0.5">⏱ ETA: ~${inc.dispatch_eta_minutes} mins (${inc.dispatch_distance_km || '?'} km)</span>` : ''}
                 </div>
                 <div>
-                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Assigned Squad</span>
-                    <span class="text-purple-300 font-semibold">${inc.assigned_rescue_team || 'Pending Team Dispatch'}</span>
+                    <span class="text-slate-400 block text-[10px] uppercase font-bold">Acknowledgment & Escalation</span>
+                    ${inc.acknowledged_at 
+                        ? `<span class="text-emerald-400 font-bold block text-xs">✓ Acknowledged (${new Date(inc.acknowledged_at).toLocaleTimeString()})</span>` 
+                        : inc.ack_deadline 
+                        ? `<span class="text-amber-400 font-bold block text-xs animate-pulse">⏱ Ack Deadline: ${new Date(inc.ack_deadline).toLocaleTimeString()}</span>` 
+                        : `<span class="text-slate-400 text-xs">Awaiting Squad Dispatch</span>`}
+                    <span class="text-purple-400 text-[10px] block font-mono mt-0.5">Escalation Tier: ${inc.escalation_level || 0}</span>
+                </div>
+
+                <!-- AI-ASSISTED VERIFICATION & ADVISORY TRIAGE CARD (HUMAN-IN-THE-LOOP) -->
+                ${(inc.ai_verification_summary || inc.ai_recommended_assistance || inc.ai_duplicate_of_id) ? `
+                <div class="sm:col-span-2 bg-gradient-to-r from-purple-950/80 via-slate-900 to-indigo-950/80 p-4 rounded-xl border border-purple-600/70 space-y-2.5 shadow-xl">
+                    <div class="flex items-center justify-between border-b border-purple-800/60 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
+                            <span class="font-black text-white text-xs uppercase tracking-wider">AI-Assisted Verification & Triage</span>
+                        </div>
+                        <span class="text-[9px] bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-800 font-bold uppercase">Human Review Required</span>
+                    </div>
+
+                    <p class="text-xs text-purple-200 leading-relaxed font-medium">${inc.ai_verification_summary || 'Multi-hazard situational triage compiled.'}</p>
+
+                    ${inc.ai_duplicate_of_id ? `
+                        <div class="p-2 bg-amber-950/80 border border-amber-600 rounded-lg text-amber-200 text-xs flex items-center space-x-2">
+                            <i data-lucide="copy" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                            <span><strong>POTENTIAL DUPLICATE INCIDENT:</strong> Spatial/temporal match with Incident <strong>#${inc.ai_duplicate_of_id}</strong>. Verify before independent dispatch.</span>
+                        </div>
+                    ` : ''}
+
+                    <div class="text-[10px] text-slate-400 italic">
+                        Compliance Rule: AI findings do not confirm a disaster or dispatch rescue squads. Final decisions require human authority sign-off.
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- ASSIGNED NGO PARTNER CARD -->
+                ${inc.assigned_ngo_id ? `
+                <div class="sm:col-span-2 bg-slate-950 p-3.5 rounded-xl border border-pink-700/60 space-y-2 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="heart-handshake" class="w-4 h-4 text-pink-400"></i>
+                            <span class="font-black text-white text-xs uppercase">Assigned Partner NGO: ${inc.assigned_ngo_id}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-pink-950 text-pink-300 border border-pink-800">
+                            Status: ${inc.ngo_assistance_status || 'ASSIGNED'}
+                        </span>
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- NDRF EOC CAD Live Telemetry Card -->
+                <div class="sm:col-span-2 bg-gradient-to-r from-slate-950 via-purple-950/40 to-slate-950 p-4 rounded-xl border border-purple-700/60 space-y-3 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full ${inc.ndrf_cad_id ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}"></span>
+                            <span class="font-black text-white text-xs uppercase tracking-wider">NDRF 1078 Emergency Operations Grid</span>
+                        </div>
+                        <span class="text-[10px] font-mono ${inc.ndrf_cad_id ? 'bg-purple-950 text-purple-300 border border-purple-700' : 'bg-slate-900 text-slate-400 border border-slate-800'} px-2 py-0.5 rounded font-bold">
+                            ${inc.ndrf_cad_id ? 'CAD RELAYED' : 'NOT RELAYED'}
+                        </span>
+                    </div>
+
+                    ${inc.ndrf_cad_id ? `
+                    <div class="grid sm:grid-cols-3 gap-2.5 text-[11px] pt-1">
+                        <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                            <span class="text-slate-400 text-[10px] block">CAD Reference</span>
+                            <strong class="font-mono text-purple-300 text-xs">${inc.ndrf_cad_id}</strong>
+                        </div>
+                        <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                            <span class="text-slate-400 text-[10px] block">Assigned Battalion</span>
+                            <span class="text-emerald-300 font-bold">${inc.ndrf_battalion || '11th Bn NDRF (Lucknow)'}</span>
+                        </div>
+                        <div class="bg-slate-900/90 p-2.5 rounded-lg border border-slate-800">
+                            <span class="text-slate-400 text-[10px] block">NDRF Operational Status</span>
+                            <span class="text-purple-300 font-bold uppercase">${inc.ndrf_status || 'ACKNOWLEDGED'}</span>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+                        <span class="text-[10px] text-slate-400 font-mono">VHF: 156.800 MHz • Emergency Helpline: 1078</span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="downloadCapXml('${inc.id}')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-purple-300 px-2 py-1 rounded border border-purple-800 font-bold transition flex items-center space-x-1">
+                                <i data-lucide="download" class="w-3 h-3"></i>
+                                <span>CAP v1.2 XML</span>
+                            </button>
+                            <button onclick="simulateNdrfStatusStep('${inc.ndrf_cad_id}', '${inc.ndrf_status === 'ON_SCENE' ? 'RESOLVED' : inc.ndrf_status === 'EN_ROUTE' ? 'ON_SCENE' : inc.ndrf_status === 'MOBILIZED' ? 'EN_ROUTE' : 'MOBILIZED'}')" class="text-[10px] bg-purple-700 hover:bg-purple-600 text-white px-2 py-1 rounded font-bold transition flex items-center space-x-1 shadow">
+                                <i data-lucide="step-forward" class="w-3 h-3"></i>
+                                <span>Advance Status</span>
+                            </button>
+                        </div>
+                    </div>
+                    ` : `
+                    <div class="flex items-center justify-between pt-1">
+                        <p class="text-[11px] text-slate-400">Forward this beacon to the National Disaster Response Force Command Center.</p>
+                        <button onclick="relayIncidentToNdrfManual('${inc.id}')" class="bg-purple-700 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow flex items-center space-x-1">
+                            <i data-lucide="radio" class="w-3.5 h-3.5"></i>
+                            <span>Relay Now</span>
+                        </button>
+                    </div>
+                    `}
                 </div>
 
                 <!-- Live Citizen GPS Telemetry Card -->
@@ -1514,6 +1651,138 @@ async function quickResolveIncident(id) {
     }
 }
 
+// -------------------------------------------------------------
+// AUTOMATED CAPABILITY DISPATCH & ESCALATION (REQUIREMENTS 4 & 8)
+// -------------------------------------------------------------
+async function autoAssignIncident(id) {
+    try {
+        showToast(`Executing automated capability matching for SOS [${id}]...`, 'info');
+        const res = await api.post(`/api/incidents/${id}/auto-dispatch`, {});
+        if (!res.success) throw new Error(res.message || 'Auto-dispatch failed');
+
+        const dispatchStatus = res.data?.dispatchStatus;
+        const team = res.data?.team;
+
+        if (dispatchStatus === 'ASSIGNED' && team) {
+            showToast(`⚡ Assigned Squad: ${team.name} • ETA: ~${team.etaMinutes}m (${team.distanceKm} km)`, 'success');
+        } else if (dispatchStatus === 'AWAITING_ASSISTANCE') {
+            showToast(`⚠️ No eligible squad currently available matching capabilities. Escalation level raised.`, 'warning');
+        } else {
+            showToast(res.message || 'Auto-dispatch complete', 'info');
+        }
+
+        await inspectIncident(id);
+        await fetchOverviewStats();
+        await fetchIncidentsList();
+        if (typeof renderRescueTeamsFleet === 'function') await renderRescueTeamsFleet();
+    } catch (e) {
+        showToast(e.message || 'Automated dispatch failed', 'error');
+    }
+}
+
+async function escalateIncident(id) {
+    try {
+        showToast(`Triggering incident escalation for SOS [${id}]...`, 'info');
+        const res = await api.post(`/api/incidents/${id}/escalate`, {
+            reason: 'Incident escalated manually from Command Headquarters'
+        });
+        if (!res.success) throw new Error(res.message || 'Escalation failed');
+
+        const lvl = res.data?.escalationLevel || 1;
+        showToast(`🚨 Incident [${id}] escalated to Tier ${lvl}! Regional dispatch notified.`, 'warning');
+
+        await inspectIncident(id);
+        await fetchOverviewStats();
+        await fetchIncidentsList();
+    } catch (e) {
+        showToast(e.message || 'Failed to escalate incident', 'error');
+    }
+}
+
+async function teamAcknowledgeIncident(teamId, incidentId) {
+    try {
+        showToast(`Recording squad deployment acknowledgment...`, 'info');
+        const res = await api.post(`/api/rescue-teams/${teamId}/acknowledge`, {
+            incidentId: incidentId,
+            status: 'TEAM_EN_ROUTE'
+        });
+        if (!res.success) throw new Error(res.message || 'Acknowledgment failed');
+
+        showToast(`✓ Squad acknowledgment confirmed. Status: TEAM EN ROUTE.`, 'success');
+
+        await inspectIncident(incidentId);
+        await fetchOverviewStats();
+        await fetchIncidentsList();
+        if (typeof renderRescueTeamsFleet === 'function') await renderRescueTeamsFleet();
+    } catch (e) {
+        showToast(e.message || 'Failed to acknowledge dispatch', 'error');
+    }
+}
+
+async function fetchAuditLogs() {
+    const tbody = document.getElementById('audit-logs-table-body');
+    const loading = document.getElementById('audit-logs-loading');
+    if (!tbody) return;
+
+    if (loading) loading.classList.remove('hidden');
+
+    try {
+        const res = await api.get('/api/audit-logs?limit=100');
+        if (!res.success) throw new Error(res.message || 'Failed to fetch audit logs');
+
+        const logs = res.data || [];
+        if (logs.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500 italic">No audit log records recorded yet.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = logs.map(log => {
+            const timeStr = log.created_at ? new Date(log.created_at).toLocaleString() : 'N/A';
+            let detailsFormatted = log.details;
+            try {
+                if (typeof log.details === 'string' && (log.details.startsWith('{') || log.details.startsWith('['))) {
+                    const parsed = JSON.parse(log.details);
+                    detailsFormatted = JSON.stringify(parsed, null, 1);
+                }
+            } catch (e) {
+                // keep string
+            }
+
+            const actionColor = (log.action && (log.action.includes('DISPATCH') || log.action.includes('ASSIGN')))
+                ? 'text-purple-400 bg-purple-950/70 border-purple-800'
+                : (log.action && (log.action.includes('ESCALAT') || log.action.includes('CRITICAL')))
+                ? 'text-rose-400 bg-rose-950/70 border-rose-800'
+                : (log.action && (log.action.includes('ACK') || log.action.includes('RESOLV')))
+                ? 'text-emerald-400 bg-emerald-950/70 border-emerald-800'
+                : 'text-blue-300 bg-blue-950/70 border-blue-800';
+
+            return `
+                <tr class="hover:bg-slate-800/40 border-b border-slate-800/60 transition">
+                    <td class="p-3 whitespace-nowrap text-slate-400 font-mono text-[10px]">${escapeHtml(timeStr)}</td>
+                    <td class="p-3 whitespace-nowrap">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${actionColor}">${escapeHtml(log.action || 'UNKNOWN')}</span>
+                    </td>
+                    <td class="p-3 whitespace-nowrap">
+                        <span class="text-slate-200 font-bold block">${escapeHtml(log.user_role || 'SYSTEM')}</span>
+                        <span class="text-slate-500 text-[9px] block truncate max-w-[110px] font-mono">${escapeHtml(log.user_id || '')}</span>
+                    </td>
+                    <td class="p-3 whitespace-nowrap text-purple-300 font-semibold">${escapeHtml(log.entity_type || 'INCIDENT')}</td>
+                    <td class="p-3 whitespace-nowrap font-mono text-[11px] text-amber-300">${escapeHtml(log.entity_id || '—')}</td>
+                    <td class="p-3 text-slate-300 break-all max-w-md font-sans text-xs">
+                        <code class="text-[10px] font-mono text-slate-300">${escapeHtml(detailsFormatted || '—')}</code>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-rose-400">Failed to load audit trail: ${escapeHtml(err.message)}</td></tr>`;
+        showToast(err.message || 'Audit log load failed', 'error');
+    } finally {
+        if (loading) loading.classList.add('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+
 function handleIncomingSOSAlert(incident) {
     allIncidents.unshift(incident);
     renderIncidentQueue();
@@ -1643,7 +1912,7 @@ function switchAuthorityView(viewName) {
     if (target) target.classList.remove('hidden');
 
     // Reset all nav button classes (desktop & mobile)
-    const viewNames = ['tactical', 'teams', 'resources', 'clusters', 'analytics', 'database'];
+    const viewNames = ['tactical', 'teams', 'resources', 'clusters', 'analytics', 'database', 'audit', 'ndrf', 'ngos', 'alerts'];
     viewNames.forEach(v => {
         const btn = document.getElementById(`nav-btn-${v}`);
         if (btn) {
@@ -1678,6 +1947,14 @@ function switchAuthorityView(viewName) {
         fetchIncidentClusters();
     } else if (viewName === 'analytics') {
         fetchAnalyticsSummary();
+    } else if (viewName === 'audit') {
+        fetchAuditLogs();
+    } else if (viewName === 'ndrf') {
+        fetchNdrfOperationsData();
+    } else if (viewName === 'ngos') {
+        fetchAuthorityNgos();
+    } else if (viewName === 'alerts') {
+        fetchAuthorityAlerts();
     } else if (viewName === 'tactical') {
         if (authorityMap && typeof authorityMap.resize === 'function') {
             setTimeout(() => authorityMap.resize(), 100);
@@ -2428,6 +2705,542 @@ window.refreshDatabaseView = refreshDatabaseView;
 window.inspectDbRow = inspectDbRow;
 window.closeDbRecordModal = closeDbRecordModal;
 window.copyDbModalJson = copyDbModalJson;
+window.autoAssignIncident = autoAssignIncident;
+window.escalateIncident = escalateIncident;
+window.teamAcknowledgeIncident = teamAcknowledgeIncident;
+window.fetchAuditLogs = fetchAuditLogs;
+
+// -------------------------------------------------------------
+// NATIONAL DISASTER RESPONSE FORCE (NDRF 1078) OPERATIONS
+// -------------------------------------------------------------
+let allNdrfBattalions = [];
+let allNdrfTransmissions = [];
+
+async function fetchNdrfOperationsData() {
+    await Promise.all([
+        fetchNdrfGatewayStatus(),
+        fetchNdrfBattalions(),
+        fetchNdrfTransmissionsList()
+    ]);
+}
+
+async function fetchNdrfGatewayStatus() {
+    try {
+        const res = await api.get('/api/ndrf/status');
+        if (res.success && res.data) {
+            const data = res.data;
+            const statusText = document.getElementById('ndrf-status-text');
+            const statusDot = document.getElementById('ndrf-status-dot');
+            if (statusText) statusText.innerText = data.status === 'ONLINE' ? '1078 ACTIVE' : 'STANDBY';
+            if (statusDot) {
+                statusDot.className = data.status === 'ONLINE' ? 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse' : 'w-2 h-2 rounded-full bg-amber-400';
+            }
+
+            const kpiStatus = document.getElementById('ndrf-kpi-status');
+            if (kpiStatus) kpiStatus.innerText = `${data.status} (1078 EOC)`;
+
+            const kpiNode = document.getElementById('ndrf-kpi-node');
+            if (kpiNode) kpiNode.innerText = data.commandNode || 'NDRF-HQ-DELHI-01';
+
+            const kpiMode = document.getElementById('ndrf-kpi-mode');
+            if (kpiMode) kpiMode.innerText = data.gatewayMode === 'EXTERNAL_CAD_WEBHOOK' ? 'Live Webhook CAD' : 'EOC Simulator';
+
+            const kpiBattalions = document.getElementById('ndrf-kpi-battalions');
+            if (kpiBattalions) kpiBattalions.innerText = `${data.activeBattalions || 16} Battalions`;
+
+            const txCounter = document.getElementById('ndrf-tx-counter');
+            if (txCounter) txCounter.innerText = `${data.totalTransmissions || 0} Transmissions Logged`;
+        }
+    } catch (e) {
+        console.warn('[NDRF] Failed to fetch gateway status:', e.message);
+    }
+}
+
+async function fetchNdrfBattalions() {
+    const container = document.getElementById('ndrf-battalions-grid');
+    if (!container) return;
+
+    try {
+        const res = await api.get('/api/ndrf/battalions');
+        if (res.success && res.data) {
+            allNdrfBattalions = res.data;
+            container.innerHTML = allNdrfBattalions.map(bn => `
+                <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3 shadow-md hover:border-purple-600/60 transition">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-xs font-bold text-purple-400 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800">${bn.code}</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded ${bn.status === 'OPERATIONAL' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-slate-800 text-slate-300'}">
+                            ● ${bn.status}
+                        </span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white text-sm">${bn.name}</h4>
+                        <p class="text-[11px] text-slate-400 mt-0.5">${bn.headquarters}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[10px] font-mono bg-slate-900/80 p-2 rounded-lg border border-slate-800/80">
+                        <div>
+                            <span class="text-slate-500 block">Duty Officer:</span>
+                            <span class="text-slate-300">${bn.dutyOfficer}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block">Tactical VHF:</span>
+                            <span class="text-purple-300 font-bold">${bn.tacticalFrequency}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block">Ready Squads:</span>
+                            <span class="text-emerald-400 font-bold">${bn.availableTeams} Active Teams</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-500 block">Helpline:</span>
+                            <a href="tel:${bn.hotline}" class="text-purple-400 font-bold underline">Dial ${bn.hotline}</a>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-1 pt-1">
+                        ${(bn.specialties || []).map(s => `
+                            <span class="text-[9px] bg-slate-900 text-slate-400 px-1.5 py-0.5 rounded border border-slate-800">${s}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    } catch (e) {
+        console.warn('[NDRF] Failed to fetch battalions:', e.message);
+    }
+}
+
+async function fetchNdrfTransmissionsList() {
+    const tbody = document.getElementById('ndrf-transmissions-table-body');
+    const emptyEl = document.getElementById('ndrf-transmissions-empty');
+    if (!tbody) return;
+
+    try {
+        const res = await api.get('/api/ndrf/transmissions');
+        if (res.success && res.data) {
+            allNdrfTransmissions = res.data;
+            const txCounter = document.getElementById('ndrf-tx-counter');
+            if (txCounter) txCounter.innerText = `${allNdrfTransmissions.length} Transmissions Logged`;
+
+            if (allNdrfTransmissions.length === 0) {
+                tbody.innerHTML = '';
+                if (emptyEl) emptyEl.classList.remove('hidden');
+                return;
+            }
+
+            if (emptyEl) emptyEl.classList.add('hidden');
+            tbody.innerHTML = allNdrfTransmissions.map(tx => {
+                const statusColor = tx.status === 'RESOLVED' ? 'text-emerald-400 bg-emerald-950/80 border-emerald-800'
+                    : tx.status === 'ON_SCENE' ? 'text-blue-400 bg-blue-950/80 border-blue-800'
+                    : tx.status === 'EN_ROUTE' ? 'text-amber-400 bg-amber-950/80 border-amber-800'
+                    : 'text-purple-300 bg-purple-950/80 border-purple-800';
+
+                return `
+                    <tr class="hover:bg-slate-800/40 transition">
+                        <td class="p-3 font-bold text-purple-400">${tx.cad_reference_id}</td>
+                        <td class="p-3">
+                            <button onclick="inspectIncident('${tx.incident_id}')" class="text-white hover:text-purple-300 underline font-bold">
+                                ${tx.incident_id}
+                            </button>
+                        </td>
+                        <td class="p-3 font-sans text-slate-200">
+                            <strong>${tx.battalion_name}</strong>
+                            <span class="block text-[10px] text-slate-400">${tx.battalion_code} • ${tx.eoc_officer || ''}</span>
+                        </td>
+                        <td class="p-3">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase border ${statusColor}">
+                                ${tx.status}
+                            </span>
+                        </td>
+                        <td class="p-3 text-amber-300 font-bold">
+                            ~${tx.eta_minutes || 10} Mins (${tx.distance_km ? Number(tx.distance_km).toFixed(1) + ' km' : 'Sector Grid'})
+                        </td>
+                        <td class="p-3 text-slate-400 font-mono text-[10px]">
+                            ${tx.frequency_mhz || '156.800 MHz'}
+                        </td>
+                        <td class="p-3 text-slate-400 text-[10px]">
+                            ${new Date(tx.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                        </td>
+                        <td class="p-3 text-right">
+                            <div class="flex items-center justify-end space-x-1.5">
+                                <button onclick="downloadCapXml('${tx.incident_id}')" title="Download CAP v1.2 XML" class="bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 px-2 py-1 rounded text-[10px] font-bold transition flex items-center space-x-1">
+                                    <i data-lucide="file-code" class="w-3 h-3"></i>
+                                    <span>CAP XML</span>
+                                </button>
+                                <button onclick="simulateNdrfStatusStep('${tx.cad_reference_id}', '${tx.status === 'ON_SCENE' ? 'RESOLVED' : tx.status === 'EN_ROUTE' ? 'ON_SCENE' : tx.status === 'MOBILIZED' ? 'EN_ROUTE' : 'MOBILIZED'}')" title="Advance tactical deployment state" class="bg-purple-700 hover:bg-purple-600 text-white px-2 py-1 rounded text-[10px] font-bold transition flex items-center space-x-1 shadow">
+                                    <i data-lucide="step-forward" class="w-3 h-3"></i>
+                                    <span>Advance</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    } catch (e) {
+        console.warn('[NDRF] Failed to fetch transmissions:', e.message);
+    }
+}
+
+async function testNdrfPing() {
+    try {
+        showToast('Initiating handshake ping to NDRF EOC Command Gateway...', 'info');
+        const res = await api.post('/api/ndrf/ping', {});
+        if (res.success && res.data) {
+            const data = res.data;
+            showToast(`✓ NDRF EOC Connected! Roundtrip: ${data.latencyMs}ms (${data.mode}) • Node: ${data.node}`, 'success');
+            await fetchNdrfGatewayStatus();
+        } else {
+            showToast('NDRF Ping returned unexpected response', 'warning');
+        }
+    } catch (e) {
+        showToast(`NDRF EOC Ping failed: ${e.message}`, 'error');
+    }
+}
+
+async function relayIncidentToNdrfManual(incidentId) {
+    try {
+        showToast(`Transmitting distress beacon ${incidentId} to NDRF Command (1078 EOC)...`, 'info');
+        const res = await api.post(`/api/ndrf/relay/${incidentId}`, {});
+        if (res.success && res.data) {
+            const d = res.data;
+            showToast(`📡 Dispatched to ${d.battalion.name}! CAD Ref: ${d.cadReferenceId} • ETA: ~${d.etaMinutes}m`, 'success');
+            await inspectIncident(incidentId);
+            await fetchOverviewStats();
+            await fetchIncidentsList();
+            if (currentAuthorityView === 'ndrf') fetchNdrfTransmissionsList();
+        } else {
+            showToast(res.message || 'NDRF relay failed', 'error');
+        }
+    } catch (e) {
+        showToast(`Failed to relay to NDRF: ${e.message}`, 'error');
+    }
+}
+
+async function simulateNdrfStatusStep(cadId, nextStatus) {
+    try {
+        showToast(`Updating NDRF CAD status [${cadId}] -> ${nextStatus}...`, 'info');
+        const res = await api.post(`/api/ndrf/simulate-update/${cadId}`, {
+            status: nextStatus,
+            notes: `Tactical convoy telemetry updated to ${nextStatus} via Command Console.`
+        });
+        if (res.success) {
+            showToast(`✓ NDRF Unit status advanced to: ${nextStatus}`, 'success');
+            if (currentInspectedIncident && currentInspectedIncident.id) {
+                await inspectIncident(currentInspectedIncident.id);
+            }
+            await fetchNdrfTransmissionsList();
+            await fetchIncidentsList();
+        }
+    } catch (e) {
+        showToast(`Failed to update status: ${e.message}`, 'error');
+    }
+}
+
+function downloadCapXml(incidentId) {
+    try {
+        showToast(`Generating OASIS Common Alerting Protocol (CAP v1.2) XML dossier...`, 'info');
+        const url = `${api.getBaseUrl()}/api/ndrf/cap/${incidentId}?format=xml`;
+        window.open(url, '_blank');
+    } catch (e) {
+        showToast(`Unable to export CAP XML: ${e.message}`, 'error');
+    }
+}
+
+window.fetchNdrfOperationsData = fetchNdrfOperationsData;
+window.fetchNdrfGatewayStatus = fetchNdrfGatewayStatus;
+window.fetchNdrfBattalions = fetchNdrfBattalions;
+window.fetchNdrfTransmissionsList = fetchNdrfTransmissionsList;
+window.testNdrfPing = testNdrfPing;
+window.relayIncidentToNdrfManual = relayIncidentToNdrfManual;
+window.simulateNdrfStatusStep = simulateNdrfStatusStep;
+window.downloadCapXml = downloadCapXml;
+
+// -------------------------------------------------------------
+// NGO PARTNERS & APPLICATION VERIFICATION QUEUE
+// -------------------------------------------------------------
+let allAuthorityNgos = [];
+
+async function fetchAuthorityNgos() {
+    try {
+        const res = await api.get('/api/ngo/directory');
+        if (res.success && res.data) {
+            allAuthorityNgos = res.data.ngos || [];
+            renderAuthorityNgos(allAuthorityNgos);
+        }
+    } catch (e) {
+        console.warn('Failed to fetch authority NGOs:', e.message);
+    }
+}
+
+function renderAuthorityNgos(ngos = []) {
+    const pendingContainer = document.getElementById('pending-ngos-container');
+    const approvedTbody = document.getElementById('approved-ngos-table-body');
+    const pendingCountBadge = document.getElementById('pending-ngos-count-badge');
+
+    const pending = ngos.filter(n => n.status === 'PENDING');
+    const approved = ngos.filter(n => n.status !== 'PENDING');
+
+    if (pendingCountBadge) pendingCountBadge.innerText = `${pending.length} Pending Application(s)`;
+
+    // 1. Render Pending Queue
+    if (pendingContainer) {
+        if (pending.length === 0) {
+            pendingContainer.innerHTML = `<div class="p-8 text-center text-slate-500 text-xs bg-slate-950/60 rounded-xl border border-slate-800">No pending NGO applications awaiting verification.</div>`;
+        } else {
+            pendingContainer.innerHTML = pending.map(n => `
+                <div class="bg-slate-950 p-4 rounded-xl border border-amber-800/80 space-y-3 shadow-md">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+                        <div>
+                            <h4 class="font-bold text-white text-sm">${n.name}</h4>
+                            <span class="text-[10px] text-amber-300 font-mono">Reg: ${n.registration_number} &bull; DARPAN: ${n.darpan_id || 'Not Provided'}</span>
+                        </div>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-950 text-amber-300 border border-amber-800">
+                            PENDING VERIFICATION
+                        </span>
+                    </div>
+
+                    <div class="grid sm:grid-cols-3 gap-2 text-xs bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
+                        <div>
+                            <span class="text-[10px] text-slate-400 block uppercase font-bold">Contact Person</span>
+                            <span class="text-white">${n.contact_person}</span>
+                            <div class="text-purple-300 font-mono text-[11px]">${n.phone}</div>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block uppercase font-bold">Operational Districts</span>
+                            <span class="text-slate-300">${n.operational_areas}</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block uppercase font-bold">Official Email</span>
+                            <span class="text-slate-300 font-mono text-[11px]">${n.official_email}</span>
+                        </div>
+                    </div>
+
+                    ${n.emergency_capabilities ? `
+                        <p class="text-[11px] text-slate-300 bg-slate-900 p-2 rounded border border-slate-800">
+                            <strong>Capabilities:</strong> ${n.emergency_capabilities}
+                        </p>
+                    ` : ''}
+
+                    <div class="flex items-center justify-between pt-1">
+                        <div>
+                            ${n.verification_doc_url ? `
+                                <a href="${n.verification_doc_url}" target="_blank" class="text-xs text-purple-400 hover:text-purple-300 underline font-bold flex items-center space-x-1">
+                                    <i data-lucide="file-check" class="w-3.5 h-3.5"></i>
+                                    <span>Inspect Submitted Proof Document ↗</span>
+                                </a>
+                            ` : '<span class="text-[10px] text-slate-500 italic">No document attached</span>'}
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="updateAuthorityNgoStatus('${n.id}', 'APPROVED')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1 shadow transition">
+                                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                                <span>Approve Partner</span>
+                            </button>
+                            <button onclick="promptRejectNgo('${n.id}')" class="bg-slate-800 hover:bg-red-950 text-slate-300 hover:text-red-300 border border-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1 transition">
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                                <span>Reject</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    // 2. Render Approved / Suspended Roster
+    if (approvedTbody) {
+        if (approved.length === 0) {
+            approvedTbody.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-500">No partner NGOs registered yet.</td></tr>`;
+        } else {
+            approvedTbody.innerHTML = approved.map(n => `
+                <tr class="hover:bg-slate-800/40 transition">
+                    <td class="p-3 font-bold text-white">${n.name}</td>
+                    <td class="p-3 text-purple-300 font-mono">${n.darpan_id || n.registration_number}</td>
+                    <td class="p-3 text-slate-300">${n.contact_person} (${n.phone})</td>
+                    <td class="p-3 text-slate-400 font-normal">${n.operational_areas}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${n.status === 'APPROVED' ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-red-950 text-red-300 border border-red-800'}">
+                            ${n.status}
+                        </span>
+                    </td>
+                    <td class="p-3 text-right">
+                        ${n.status === 'APPROVED' ? `
+                            <button onclick="updateAuthorityNgoStatus('${n.id}', 'SUSPENDED', 'Administrative Review')" class="text-xs text-red-400 hover:text-red-300 font-bold px-2.5 py-1 rounded-lg border border-red-900/60 bg-red-950/30">
+                                Suspend
+                            </button>
+                        ` : `
+                            <button onclick="updateAuthorityNgoStatus('${n.id}', 'APPROVED')" class="text-xs text-emerald-400 hover:text-emerald-300 font-bold px-2.5 py-1 rounded-lg border border-emerald-900/60 bg-emerald-950/30">
+                                Restore
+                            </button>
+                        `}
+                    </td>
+                </tr>
+            `).join('');
+        }
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function updateAuthorityNgoStatus(id, status, reason = null) {
+    try {
+        const res = await api.patch(`/api/ngo/organization/${id}/status`, { status, reason });
+        if (!res.success) throw new Error(res.message || 'Status update failed');
+        showToast(`✓ NGO status updated to ${status}.`, 'success');
+        fetchAuthorityNgos();
+    } catch (e) {
+        showToast(e.message || 'Failed to update NGO status', 'error');
+    }
+}
+
+function promptRejectNgo(id) {
+    const reason = prompt('Specify rejection justification:');
+    if (reason && reason.trim().length > 3) {
+        updateAuthorityNgoStatus(id, 'REJECTED', reason.trim());
+    }
+}
+
+// -------------------------------------------------------------
+// ASSIGN INCIDENT TO NGO WORKFLOW
+// -------------------------------------------------------------
+let activeAssignNgoIncidentId = null;
+
+async function promptAssignNgo(incidentId) {
+    activeAssignNgoIncidentId = incidentId;
+    const modal = document.getElementById('assign-ngo-modal');
+    const select = document.getElementById('modal-select-ngo');
+    if (!modal || !select) return;
+
+    document.getElementById('assign-ngo-incident-id').innerText = `Incident #${incidentId}`;
+    select.innerHTML = '<option value="">Loading approved NGOs...</option>';
+    modal.classList.remove('hidden');
+
+    try {
+        const res = await api.get('/api/ngo/directory?status=APPROVED');
+        if (res.success && res.data) {
+            const approvedNgos = res.data.ngos || [];
+            if (approvedNgos.length === 0) {
+                select.innerHTML = '<option value="">No approved partner NGOs available</option>';
+            } else {
+                select.innerHTML = approvedNgos.map(n => `
+                    <option value="${n.id}">${n.name} &bull; ${n.contact_person} (${n.operational_areas})</option>
+                `).join('');
+            }
+        }
+    } catch (e) {
+        select.innerHTML = '<option value="">Failed to load NGOs</option>';
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeAssignNgoModal() {
+    activeAssignNgoIncidentId = null;
+    document.getElementById('assign-ngo-modal')?.classList.add('hidden');
+}
+
+async function handleAssignNgoSubmit(e) {
+    e.preventDefault();
+    if (!activeAssignNgoIncidentId) return;
+
+    const ngoId = document.getElementById('modal-select-ngo').value;
+    const notes = document.getElementById('modal-assign-notes').value.trim();
+    const services = Array.from(document.querySelectorAll('input[name="assign_services"]:checked')).map(cb => cb.value);
+
+    if (!ngoId) {
+        showToast('Please select a verified NGO.', 'error');
+        return;
+    }
+
+    try {
+        const res = await api.post('/api/ngo/assign', {
+            incidentId: activeAssignNgoIncidentId,
+            ngoId,
+            requestedServices: services,
+            notes
+        });
+
+        if (!res.success) throw new Error(res.message || 'Assignment failed');
+
+        showToast(`✓ Incident #${activeAssignNgoIncidentId} assigned to NGO!`, 'success');
+        closeAssignNgoModal();
+        if (currentInspectedIncident && currentInspectedIncident.id === activeAssignNgoIncidentId) {
+            inspectIncident(activeAssignNgoIncidentId);
+        }
+        fetchIncidentsList();
+    } catch (err) {
+        showToast(err.message || 'Failed to assign incident to NGO', 'error');
+    }
+}
+
+// -------------------------------------------------------------
+// GOVERNMENT DISASTER ALERTS (NDMA SACHET) FOR AUTHORITY CONSOLE
+// -------------------------------------------------------------
+async function fetchAuthorityAlerts() {
+    try {
+        const res = await api.get('/api/alerts');
+        if (res.success && res.data) {
+            renderAuthorityAlerts(res.data.alerts || [], res.data.metadata || {});
+        }
+    } catch (e) {
+        console.warn('Authority alerts load error:', e.message);
+    }
+}
+
+function renderAuthorityAlerts(alerts = [], meta = {}) {
+    const tbody = document.getElementById('authority-alerts-table-body');
+    const syncMeta = document.getElementById('authority-alerts-sync-meta');
+
+    if (syncMeta && meta.lastSyncAt) {
+        syncMeta.innerText = meta.isCacheOutdated 
+            ? `⚠️ Cached Warning (${meta.cacheAgeMinutes} mins ago) • Source: ${meta.sourceAgency}`
+            : `Feed Status: Synchronized (${new Date(meta.lastSyncAt).toLocaleTimeString()}) • Source: ${meta.sourceAgency}`;
+    }
+
+    if (!tbody) return;
+
+    if (alerts.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-500">No active government disaster alerts.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = alerts.map(a => `
+        <tr class="hover:bg-slate-800/40 transition">
+            <td class="p-3 font-mono text-purple-300 font-bold">${a.alert_identifier}</td>
+            <td class="p-3 text-amber-300 font-bold">${a.source_agency}</td>
+            <td class="p-3 text-white font-bold">${a.hazard_type}</td>
+            <td class="p-3">
+                <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-950 text-amber-300 border border-amber-800">
+                    ${a.severity}
+                </span>
+            </td>
+            <td class="p-3 text-slate-300">${a.affected_area}</td>
+            <td class="p-3 font-mono text-slate-400">~${a.radius_km || 25} km</td>
+            <td class="p-3 text-slate-400 font-mono">${new Date(a.expires_at).toLocaleDateString()}</td>
+        </tr>
+    `).join('');
+}
+
+async function syncAuthorityAlerts() {
+    try {
+        showToast('Synchronizing NDMA SACHET public emergency warnings...', 'info');
+        const res = await api.post('/api/alerts/sync', {});
+        if (res.success) {
+            showToast('✓ Government alerts synchronized successfully!', 'success');
+            fetchAuthorityAlerts();
+        }
+    } catch (e) {
+        showToast(`Failed to sync alerts: ${e.message}`, 'error');
+    }
+}
+
+window.fetchAuthorityNgos = fetchAuthorityNgos;
+window.updateAuthorityNgoStatus = updateAuthorityNgoStatus;
+window.promptRejectNgo = promptRejectNgo;
+window.promptAssignNgo = promptAssignNgo;
+window.closeAssignNgoModal = closeAssignNgoModal;
+window.handleAssignNgoSubmit = handleAssignNgoSubmit;
+window.fetchAuthorityAlerts = fetchAuthorityAlerts;
+window.syncAuthorityAlerts = syncAuthorityAlerts;
 
 // Smartphone Back Navigation for Authority Portal
 function handleSmartphoneBack() {

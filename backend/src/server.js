@@ -28,6 +28,9 @@ const resourceRoutes = require('./routes/resourceRoutes');
 const safeRouteRoutes = require('./routes/safeRouteRoutes');
 const clusterRoutes = require('./routes/clusterRoutes');
 const riskRoutes = require('./routes/riskRoutes');
+const ndrfRoutes = require('./routes/ndrfRoutes');
+const ngoRoutes = require('./routes/ngoRoutes');
+const alertRoutes = require('./routes/governmentAlertRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -235,6 +238,9 @@ app.use('/api/geocode', geocodeRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/audit-logs', auditRoutes);
 app.use('/api/database', databaseRoutes);
+app.use('/api/ndrf', ndrfRoutes);
+app.use('/api/ngo', ngoRoutes);
+app.use('/api/alerts', alertRoutes);
 
 // 10. SPA / Static routing fallbacks
 app.get('/', (req, res) => {
