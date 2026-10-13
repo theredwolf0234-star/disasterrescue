@@ -18,6 +18,8 @@ try {
     const lines = list.split('\r\n').filter(Boolean);
     console.log('\n=== TOTAL ENTRIES ===', lines.length);
     console.log('=== META-INF ===', lines.filter(l => l.startsWith('META-INF')));
+    const libs = lines.filter(l => l.startsWith('lib/'));
+    console.log('=== NATIVE LIBS (' + libs.length + ') ===', libs);
 } catch (e) {
     console.error(e.message);
 }
