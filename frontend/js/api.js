@@ -127,51 +127,62 @@ const api = {
             config.body = options.body;
         }
 
-        try {
-            const response = await fetch(url, config);
-            let data;
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-                data = await response.json();
-            } else {
-                data = { success: response.ok, message: await response.text() };
-            }
+        let attempts = 0;
+        const maxAttempts = (options.method && options.method.toUpperCase() === 'POST' && !endpoint.includes('sos_onetap')) ? 1 : 2;
 
-            if (!response.ok) {
-                // If 401 Unauthorized or expired token, clear stale credentials
-                if (response.status === 401) {
-                    this.clearAuth();
+        while (attempts < maxAttempts) {
+            attempts++;
+            try {
+                const response = await fetch(url, config);
+                let data;
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    data = { success: response.ok, message: await response.text() };
                 }
 
-                let friendlyMsg = data.message || `Request failed with status ${response.status}`;
-                if (response.status === 401) {
-                    friendlyMsg = data.message || 'Session expired or unauthorized. Please log in again.';
-                } else if (response.status === 403) {
-                    friendlyMsg = data.message || 'Permission denied: Role lacks authorization.';
-                } else if (response.status === 404) {
-                    friendlyMsg = data.message || 'Incident or requested resource not found.';
-                } else if (response.status === 503) {
-                    friendlyMsg = data.message || 'Database disconnected or backend unavailable.';
+                if (!response.ok) {
+                    if (response.status === 401) {
+                        this.clearAuth();
+                    }
+
+                    let friendlyMsg = data.message || `Request failed with status ${response.status}`;
+                    if (response.status === 401) {
+                        friendlyMsg = data.message || 'Session expired or unauthorized. Please log in again.';
+                    } else if (response.status === 403) {
+                        friendlyMsg = data.message || 'Permission denied: Role lacks authorization.';
+                    } else if (response.status === 404) {
+                        friendlyMsg = data.message || 'Incident or requested resource not found.';
+                    } else if (response.status === 503) {
+                        friendlyMsg = data.message || 'Database disconnected or backend unavailable.';
+                    }
+
+                    const err = new Error(friendlyMsg);
+                    err.status = response.status;
+                    err.errorCode = data.errorCode || (response.status === 401 ? 'UNAUTHORIZED' : response.status === 403 ? 'FORBIDDEN' : 'API_ERROR');
+                    err.data = data;
+                    throw err;
                 }
 
-                const err = new Error(friendlyMsg);
-                err.status = response.status;
-                err.errorCode = data.errorCode || (response.status === 401 ? 'UNAUTHORIZED' : response.status === 403 ? 'FORBIDDEN' : 'API_ERROR');
-                err.data = data;
+                return data;
+            } catch (err) {
+                const isNetworkErr = err.name === 'TypeError' && err.message && err.message.toLowerCase().includes('fetch');
+                if (attempts < maxAttempts && isNetworkErr) {
+                    console.warn(`[API] Retrying ${endpoint} (attempt ${attempts + 1}/${maxAttempts}) after network pause...`);
+                    await new Promise(r => setTimeout(r, 1200));
+                    continue;
+                }
+                if (isNetworkErr) {
+                    console.error(`[API Network Error] ${options.method || 'GET'} ${endpoint}: Backend unreachable.`);
+                    const networkErr = new Error('Backend connection failed: Unable to connect to command server.');
+                    networkErr.status = 0;
+                    networkErr.errorCode = 'BACKEND_UNAVAILABLE';
+                    throw networkErr;
+                }
+                console.error(`[API Error] ${options.method || 'GET'} ${endpoint}:`, err.message);
                 throw err;
             }
-
-            return data;
-        } catch (err) {
-            if (err.name === 'TypeError' && err.message && err.message.toLowerCase().includes('fetch')) {
-                console.error(`[API Network Error] ${options.method || 'GET'} ${endpoint}: Backend unreachable.`);
-                const networkErr = new Error('Backend connection failed: Unable to connect to command server.');
-                networkErr.status = 0;
-                networkErr.errorCode = 'BACKEND_UNAVAILABLE';
-                throw networkErr;
-            }
-            console.error(`[API Error] ${options.method || 'GET'} ${endpoint}:`, err.message);
-            throw err;
         }
     },
 

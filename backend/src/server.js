@@ -49,17 +49,24 @@ app.use(helmet({
 // 2. CORS Configuration
 app.use(cors({
     origin: (origin, callback) => {
-        // Allow all in dev, or match FRONTEND_URL
-        if (!origin || FRONTEND_URL === '*' || origin === FRONTEND_URL) {
-            callback(null, true);
-        } else {
-            callback(null, true); // Permissive for local testing across ports
-        }
+        // Permissive origin resolution for web and mobile Capacitor WebViews
+        callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'Idempotency-Key',
+        'idempotency-key',
+        'X-Requested-With',
+        'Accept',
+        'Origin',
+        'Cache-Control'
+    ],
+    exposedHeaders: ['Content-Disposition', 'Content-Length']
 }));
+app.options('*', cors());
 
 // 3. Request Logging
 if (NODE_ENV !== 'test') {
