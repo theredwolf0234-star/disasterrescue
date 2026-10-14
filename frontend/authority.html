@@ -163,14 +163,32 @@
                     <span id="duty-officer-badge" class="font-bold text-purple-900 dark:text-purple-200">Duty Officer: Authority Command</span>
                 </div>
 
-                <button onclick="authorityLogout()" title="Logout" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-100 dark:bg-slate-900 dark:hover:bg-red-950/60 border border-slate-300 dark:border-slate-800 hover:border-red-400 text-slate-700 dark:text-slate-400 hover:text-red-600 transition">
-                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                <!-- Prominent Desktop Log Out Button -->
+                <button id="btn-authority-logout" onclick="authorityLogout()" type="button" title="Sign Out of Authority Command" class="bg-red-600 hover:bg-red-500 text-white font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 shadow transition active:scale-95">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                    <span>Log Out</span>
+                </button>
+
+                <!-- Prominent Desktop Login Button (Shown when logged out) -->
+                <button id="btn-authority-login" onclick="showAuthorityLoginModal()" type="button" title="Sign In to Admin Command Portal" class="hidden bg-purple-700 hover:bg-purple-600 text-white font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 shadow transition active:scale-95">
+                    <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                    <span>Admin Login</span>
                 </button>
             </div>
         </div>
 
         <!-- Mobile / Tablet Authority Switcher Strip -->
         <div id="authority-mobile-nav" class="lg:hidden flex items-center overflow-x-auto py-2 border-t border-slate-200 dark:border-slate-800 px-3 text-xs gap-1.5 no-scrollbar bg-white dark:bg-slate-900 shadow-sm">
+            <!-- Mobile Log Out Button -->
+            <button onclick="authorityLogout()" id="mob-auth-logout" class="auth-mob-btn px-3 py-1.5 rounded-full bg-red-600 text-white font-extrabold whitespace-nowrap flex items-center space-x-1 shadow">
+                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                <span>Log Out</span>
+            </button>
+            <!-- Mobile Login Button (Shown when logged out) -->
+            <button onclick="showAuthorityLoginModal()" id="mob-auth-login" class="auth-mob-btn hidden px-3 py-1.5 rounded-full bg-purple-700 text-white font-extrabold whitespace-nowrap flex items-center space-x-1 shadow">
+                <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+                <span>Admin Login</span>
+            </button>
             <button onclick="toggleAuthorityTheme()" id="mob-auth-theme" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1 shadow-sm">
                 <span id="mob-auth-theme-icon">🌙</span>
                 <span id="mob-auth-theme-text">Dark / Bright</span>

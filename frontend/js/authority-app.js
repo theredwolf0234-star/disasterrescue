@@ -107,14 +107,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.initAuthorityTheme();
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    // Check query params: if auto=1 or direct link without credentials, perform instant seamless demo login
+    // Check query params: if auto=1 or demo=1, perform instant demo login
     const urlParams = new URLSearchParams(window.location.search);
     const shouldAutoLogin = urlParams.has('auto') || urlParams.get('demo') === '1';
 
     let user = api.getUser();
     let token = api.getToken();
 
-    if (shouldAutoLogin || (!token && !user)) {
+    if (shouldAutoLogin && (!token || !user)) {
         try {
             const res = await api.post('/api/auth/authority-login', { username: 'AISTER23', password: '@aster23' });
             if (res.success && res.data) {
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (!token || !user) {
-        showAuthorityLoginModal();
+        showAuthorityLoggedOutState();
         return;
     }
 
@@ -158,6 +158,17 @@ async function initAuthorityDashboard() {
     if (authMain) authMain.classList.remove('hidden');
     const authLoading = document.getElementById('authority-auth-loading');
     if (authLoading) authLoading.classList.add('hidden');
+
+    // Switch Navbar Controls from Login to Logout
+    const btnLogout = document.getElementById('btn-authority-logout');
+    const btnLogin = document.getElementById('btn-authority-login');
+    if (btnLogout) btnLogout.classList.remove('hidden');
+    if (btnLogin) btnLogin.classList.add('hidden');
+
+    const mobLogout = document.getElementById('mob-auth-logout');
+    const mobLogin = document.getElementById('mob-auth-login');
+    if (mobLogout) mobLogout.classList.remove('hidden');
+    if (mobLogin) mobLogin.classList.add('hidden');
 
     updateOfficerBadge();
 
@@ -290,73 +301,45 @@ function switchAuthorityAccount() {
     showAuthorityLoginModal();
 }
 
-// Authentication Modal for Authority
-function showAuthorityLoginModal(customMessage = null) {
-    let modal = document.getElementById('auth-login-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'auth-login-modal';
-        modal.className = 'fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-4';
-        document.body.appendChild(modal);
+function showAuthorityLoggedOutState(customMessage = null) {
+    const authMain = document.getElementById('authority-main');
+    if (authMain) authMain.classList.add('hidden');
+    const authLoading = document.getElementById('authority-auth-loading');
+    if (authLoading) authLoading.classList.remove('hidden');
+
+    const btnLogout = document.getElementById('btn-authority-logout');
+    const btnLogin = document.getElementById('btn-authority-login');
+    if (btnLogout) btnLogout.classList.add('hidden');
+    if (btnLogin) btnLogin.classList.remove('hidden');
+
+    const mobLogout = document.getElementById('mob-auth-logout');
+    const mobLogin = document.getElementById('mob-auth-login');
+    if (mobLogout) mobLogout.classList.add('hidden');
+    if (mobLogin) mobLogin.classList.remove('hidden');
+
+    const badge = document.getElementById('duty-officer-badge');
+    if (badge) badge.innerText = 'Officer: Logged Out';
+
+    if (customMessage) {
+        const errBox = document.getElementById('auth-login-error');
+        if (errBox) {
+            errBox.innerText = customMessage;
+            errBox.classList.remove('hidden');
+        }
     }
 
-    modal.innerHTML = `
-        <div class="bg-slate-900 border border-purple-800/80 rounded-2xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-5 text-slate-200">
-            <div class="flex items-center space-x-3 border-b border-slate-800 pb-4">
-                <div class="w-12 h-12 rounded-xl bg-purple-700 text-white flex items-center justify-center font-bold shadow-lg shadow-purple-950">
-                    <i data-lucide="shield-alert" class="w-6 h-6"></i>
-                </div>
-                <div>
-                    <h3 class="font-black text-white text-lg tracking-tight">Authority Command Login</h3>
-                    <p class="text-xs text-slate-400">Authorized NDRF / First Responder Access Only</p>
-                </div>
-            </div>
-
-            ${customMessage ? `
-                <div class="p-3 bg-amber-950/60 border border-amber-800 text-amber-200 rounded-xl text-xs font-semibold">
-                    ${customMessage}
-                </div>
-            ` : ''}
-
-            <!-- 1-CLICK INSTANT DEMO LOGIN BUTTON -->
-            <button type="button" onclick="quickAdminLogin('AISTER23', '@aster23')" id="btn-quick-admin-login-modal" class="w-full bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 hover:from-purple-600 hover:to-indigo-500 text-white font-black py-3.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-xl shadow-purple-950 transition active:scale-95">
-                <i data-lucide="zap" class="w-4 h-4 text-yellow-300"></i>
-                <span>⚡ Instant Commander Access (AISTER23)</span>
-            </button>
-
-            <div class="flex items-center justify-center space-x-2 text-[10px] text-slate-500 uppercase font-semibold">
-                <div class="h-px bg-slate-800 flex-1"></div>
-                <span>OR SIGN IN MANUALLY</span>
-                <div class="h-px bg-slate-800 flex-1"></div>
-            </div>
-
-            <form onsubmit="handleAuthorityLogin(event)" class="space-y-4 text-xs">
-                <div>
-                    <label class="block text-slate-200 font-bold uppercase mb-1">Badge ID or Admin Username</label>
-                    <input type="text" id="auth-username" value="AISTER23" required autocomplete="username" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="e.g. ndrf_commander or AISTER23">
-                </div>
-
-                <div>
-                    <label class="block text-slate-200 font-bold uppercase mb-1">Passcode / Key</label>
-                    <input type="password" id="auth-password" value="@aster23" required autocomplete="current-password" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="••••••••">
-                </div>
-
-                <div id="auth-login-error" class="hidden p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-xl text-xs"></div>
-
-                <button type="submit" id="auth-login-submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-extrabold py-3 rounded-xl uppercase text-xs shadow-lg transition">
-                    Authenticate & Access Command Grid
-                </button>
-
-                <div class="pt-2 text-center border-t border-slate-200 dark:border-slate-800">
-                    <a href="index.html" class="inline-flex items-center space-x-1 text-slate-500 hover:text-purple-600 text-xs font-semibold">
-                        <span>← Return to Citizen App</span>
-                    </a>
-                </div>
-            </form>
-        </div>
-    `;
-    modal.classList.remove('hidden');
     if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Authentication Modal for Authority
+function showAuthorityLoginModal(customMessage = null) {
+    showAuthorityLoggedOutState(customMessage);
+    const authLoading = document.getElementById('authority-auth-loading');
+    if (authLoading) {
+        authLoading.scrollIntoView({ behavior: 'smooth' });
+        const usernameInput = document.getElementById('auth-username');
+        if (usernameInput) usernameInput.focus();
+    }
 }
 
 async function handleAuthorityLogin(e) {
@@ -369,7 +352,7 @@ async function handleAuthorityLogin(e) {
     try {
         submitBtn.disabled = true;
         submitBtn.innerText = 'Verifying Credentials...';
-        errBox.classList.add('hidden');
+        if (errBox) errBox.classList.add('hidden');
 
         const res = await api.post('/api/auth/authority-login', { username, password });
         if (!res.success || !res.data) throw new Error(res.message || 'Authentication failed');
@@ -383,24 +366,36 @@ async function handleAuthorityLogin(e) {
         api.setToken(token, user);
 
         const modal = document.getElementById('auth-login-modal');
-        if (modal) modal.classList.add('hidden');
+        if (modal) modal.remove();
+
+        const authLoading = document.getElementById('authority-auth-loading');
+        if (authLoading) authLoading.classList.add('hidden');
 
         showToast(`Welcome, Officer ${user.username}. Authority clearance verified.`, 'success');
         await initAuthorityDashboard();
     } catch (err) {
-        errBox.innerText = err.message || 'Login failed. Please check badge ID and passcode.';
-        errBox.classList.remove('hidden');
+        if (errBox) {
+            errBox.innerText = err.message || 'Login failed. Please check badge ID and passcode.';
+            errBox.classList.remove('hidden');
+        }
     } finally {
         submitBtn.disabled = false;
-        submitBtn.innerText = 'Authenticate & Access Command Grid';
+        submitBtn.innerText = 'Authenticate & Access Command Grid →';
     }
 }
 
 function authorityLogout() {
-    if (confirm('Log out from Authority Command HQ?')) {
-        api.clearAuth();
-        window.location.reload();
+    api.clearAuth();
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.pathname);
     }
+    const modal = document.getElementById('auth-login-modal');
+    if (modal) modal.remove();
+    const denied = document.getElementById('access-denied-screen');
+    if (denied) denied.remove();
+
+    showAuthorityLoggedOutState();
+    showToast('Signed out from Authority Command HQ. Enter credentials to sign in.', 'info');
 }
 
 // Mapbox Tactical Map Initialization
