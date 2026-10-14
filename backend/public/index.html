@@ -425,12 +425,12 @@
             <div class="max-w-5xl mx-auto px-4 text-center flex flex-col items-center">
                 <div class="inline-flex items-center space-x-2 bg-slate-900/90 backdrop-blur border border-purple-500/40 rounded-full px-3.5 py-1.5 text-xs text-slate-200 mb-6 shadow-xl">
                     <span class="relative flex h-2.5 w-2.5">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                      <span id="live-hero-dot-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span id="live-hero-dot" class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                     </span>
-                    <span id="live-hero-location" class="text-purple-300 font-bold" data-i18n="heroQuerying">Querying Regional Grid...</span>
+                    <span id="live-hero-location" class="text-purple-300 font-bold" data-i18n="heroQuerying">Acquiring GPS Satellite Signal...</span>
                     <span class="text-slate-500">|</span>
-                    <span class="text-emerald-400 font-semibold" data-i18n="heroActive">Live Telemetry Active</span>
+                    <span id="live-hero-telemetry-status" class="text-amber-400 font-semibold" data-i18n="heroActive">Connecting Telemetry...</span>
                 </div>
 
                 <h1 class="text-3xl sm:text-5xl lg:text-7xl font-extrabold text-white tracking-tight leading-tight drop-shadow-2xl max-w-4xl" data-i18n="tagline">
@@ -603,7 +603,7 @@
                             </button>
                             <a href="/downloads/AISTER-AI-DisasterRescueCoordinator-release.apk" download class="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-6 py-3.5 rounded-xl text-sm shadow-xl shadow-emerald-950/50 flex items-center space-x-2 transition transform hover:scale-105">
                                 <i data-lucide="download" class="w-5 h-5"></i>
-                                <span>Download Signed APK (5.3 MB)</span>
+                                <span>Download Signed APK (8.7 MB)</span>
                             </a>
                             <button type="button" onclick="openApkModal()" class="bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-800/60 font-bold px-4 py-3.5 rounded-xl text-sm transition flex items-center space-x-2">
                                 <i data-lucide="qr-code" class="w-4 h-4"></i>
@@ -631,7 +631,7 @@
                         <div class="bg-slate-900/90 rounded-xl p-3 border border-slate-800 text-left text-xs space-y-2">
                             <div class="flex justify-between items-center text-[11px]">
                                 <span class="text-slate-400">Package:</span>
-                                <span class="text-slate-300 font-mono text-[10px]">com.rescueai.disasterrescue</span>
+                                <span class="text-slate-300 font-mono text-[10px]">com.aister.app</span>
                             </div>
                             <div class="flex justify-between items-center text-[11px]">
                                 <span class="text-slate-400">Architecture:</span>
@@ -1836,9 +1836,9 @@
                         <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-purple-400"></i>
                         <span>Refresh List</span>
                     </button>
-                    <button onclick="openSosModal()" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-2 shadow-lg transition">
+                    <button onclick="switchTab('report')" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center space-x-2 shadow-lg transition">
                         <i data-lucide="plus" class="w-4 h-4"></i>
-                        <span>File New SOS Signal</span>
+                        <span>File New Emergency Report</span>
                     </button>
                 </div>
             </div>
@@ -2283,119 +2283,17 @@
                 <span data-i18n="instantVoiceSos">⚡ SEND INSTANT VOICE SOS (ZERO DELAY)</span>
             </button>
 
-            <div class="flex items-center my-2 text-slate-500 text-[10px] font-bold uppercase tracking-wider">
-                <span class="flex-grow border-t border-slate-800"></span>
-                <span class="px-2">or specify manual incident details</span>
-                <span class="flex-grow border-t border-slate-800"></span>
+            <!-- Action 3: Detailed Incident Report Navigation -->
+            <button type="button" onclick="document.getElementById('sos-modal').classList.add('hidden'); switchTab('report');" class="w-full bg-slate-800 hover:bg-slate-700 text-purple-200 hover:text-white font-bold py-3.5 rounded-xl text-xs flex items-center justify-center space-x-2 border border-slate-700 hover:border-purple-600 shadow-md transition">
+                <i data-lucide="file-text" class="w-4 h-4 text-purple-400"></i>
+                <span>📝 Open Detailed Report Form (Photos, Location & Details) →</span>
+            </button>
+
+            <div class="p-3.5 bg-slate-950/90 border border-slate-800 rounded-xl text-[11px] text-slate-400 text-center space-y-1">
+                <div class="font-bold text-slate-200">Life-Safety Emergency Directive:</div>
+                <div>In immediate life threat, call <a href="tel:112" class="text-red-400 font-bold underline">112 National Emergency</a> or <a href="tel:1078" class="text-purple-400 font-bold underline">1078 NDRF</a>.</div>
+                <div class="text-[10px] text-slate-500">AISTER coordinates community & responder resources and does not replace emergency 112 services.</div>
             </div>
-
-            <form id="sos-form" onsubmit="handleSosSubmit(event)" class="space-y-4 text-xs">
-                <div>
-                    <label class="block font-bold text-slate-800 dark:text-slate-200 uppercase mb-1.5 text-xs" data-i18n="categoryLabel">Emergency Category</label>
-                    
-                    <!-- High-Contrast Touch Category Tiles (Replaces OS dialog with crisp UI) -->
-                    <div id="sos-category-grid" class="grid grid-cols-2 gap-2 mb-2 max-h-52 overflow-y-auto p-0.5">
-                        <button type="button" data-val="Flood" onclick="selectSosCategory('Flood')" class="sos-cat-btn active flex items-center space-x-2 p-2.5 rounded-xl border border-purple-500 bg-purple-50 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 text-left transition font-bold text-xs shadow-sm">
-                            <span class="text-base">🌊</span>
-                            <span class="flex-1 truncate">Flood / Water</span>
-                            <i data-lucide="check" class="cat-check-icon w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                        <button type="button" data-val="Landslide" onclick="selectSosCategory('Landslide')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
-                            <span class="text-base">⛰️</span>
-                            <span class="flex-1 truncate">Landslide</span>
-                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                        <button type="button" data-val="Earthquake" onclick="selectSosCategory('Earthquake')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
-                            <span class="text-base">🏚️</span>
-                            <span class="flex-1 truncate">Earthquake</span>
-                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                        <button type="button" data-val="Cyclone" onclick="selectSosCategory('Cyclone')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
-                            <span class="text-base">🌀</span>
-                            <span class="flex-1 truncate">Cyclone / Gale</span>
-                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                        <button type="button" data-val="Fire" onclick="selectSosCategory('Fire')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
-                            <span class="text-base">🔥</span>
-                            <span class="flex-1 truncate">Fire / Burn</span>
-                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                        <button type="button" data-val="Lightning" onclick="selectSosCategory('Lightning')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
-                            <span class="text-base">⚡</span>
-                            <span class="flex-1 truncate">Lightning</span>
-                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                        <button type="button" data-val="Building collapse" onclick="selectSosCategory('Building collapse')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
-                            <span class="text-base">🏗️</span>
-                            <span class="flex-1 truncate">Collapse</span>
-                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                        <button type="button" data-val="Road accident" onclick="selectSosCategory('Road accident')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
-                            <span class="text-base">🚗</span>
-                            <span class="flex-1 truncate">Road Accident</span>
-                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                        <button type="button" data-val="Medical Emergency" onclick="selectSosCategory('Medical Emergency')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
-                            <span class="text-base">🚑</span>
-                            <span class="flex-1 truncate">Medical / Trauma</span>
-                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                        <button type="button" data-val="Other" onclick="selectSosCategory('Other')" class="sos-cat-btn flex items-center space-x-2 p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 text-left transition font-semibold text-xs shadow-sm">
-                            <span class="text-base">🚨</span>
-                            <span class="flex-1 truncate">Other Emergency</span>
-                            <i data-lucide="check" class="cat-check-icon hidden w-3.5 h-3.5 text-purple-600 dark:text-purple-400"></i>
-                        </button>
-                    </div>
-
-                    <!-- Synchronized Underlying Select for Form Processing -->
-                    <select id="sos-category" class="hidden">
-                        <option value="Flood" selected>Flood / Waterlogging</option>
-                        <option value="Landslide">Landslide</option>
-                        <option value="Earthquake">Earthquake</option>
-                        <option value="Cyclone">Cyclone / Gale</option>
-                        <option value="Fire">Fire / Burn Hazard</option>
-                        <option value="Lightning">Lightning</option>
-                        <option value="Building collapse">Building Collapse</option>
-                        <option value="Road accident">Road Accident</option>
-                        <option value="Medical Emergency">Medical Emergency / Traumatic Injury</option>
-                        <option value="Other">Other Emergency</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block font-bold text-slate-300 uppercase mb-1" data-i18n="victimsLabel">Victims / People Affected</label>
-                    <input type="number" id="sos-count" value="1" min="1" max="500" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:border-purple-500 focus:outline-none" required>
-                </div>
-
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <label class="block font-bold text-slate-300 uppercase" data-i18n="detailsLabel">Situation Details & Landmarks</label>
-                        <button type="button" onclick="voiceEngine.toggle()" class="text-purple-400 hover:text-purple-300 font-semibold underline flex items-center space-x-1">
-                            <i data-lucide="mic" class="w-3 h-3"></i>
-                            <span>Voice Dictate</span>
-                        </button>
-                    </div>
-                    <textarea id="sos-details" rows="3" required placeholder="Describe condition, rising water levels, injuries, or prominent street landmarks..." class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none"></textarea>
-                </div>
-
-                <div>
-                    <label class="block font-bold text-slate-300 uppercase mb-1" data-i18n="landmarkLabel">Physical Address / Nearby Landmark (Optional)</label>
-                    <input type="text" id="sos-address" placeholder="e.g. Near Hazratganj Metro Gate 2, Lucknow" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="block font-bold text-slate-300 uppercase mb-1" data-i18n="evidenceLabel">Attach Photo / Video Evidence (Optional)</label>
-                    <input type="file" id="sos-evidence" accept="image/*,video/*" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-400 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-900 file:text-purple-200 hover:file:bg-purple-800">
-                </div>
-
-                <div class="p-3 bg-purple-950/40 border border-purple-800/40 rounded-xl text-[11px] text-purple-200">
-                    📡 High-precision GPS coordinates will be captured and verified to enable NDRF/field squads to route safely.
-                </div>
-
-                <button type="submit" id="sos-submit-btn" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3.5 rounded-xl uppercase text-sm shadow-xl transition">
-                    Dispatch Beacon to Command HQ
-                </button>
-            </form>
         </div>
     </div>
 

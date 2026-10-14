@@ -49,6 +49,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initAuthorityDashboard() {
+    const authMain = document.getElementById('authority-main');
+    if (authMain) authMain.classList.remove('hidden');
+    const authLoading = document.getElementById('authority-auth-loading');
+    if (authLoading) authLoading.classList.add('hidden');
+
     updateOfficerBadge();
 
     // 1. Initialize Real-Time Socket Connection with AUTHORITY room

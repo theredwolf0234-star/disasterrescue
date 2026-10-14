@@ -124,15 +124,31 @@ function startCitizenLocationTracking() {
             if (userMarker) userMarker.setLngLat(liveUserCoordinates);
             else renderUserGpsMarker();
 
+            const heroDot = document.getElementById('live-hero-dot');
+            const heroPulse = document.getElementById('live-hero-dot-pulse');
+            const heroStatus = document.getElementById('live-hero-telemetry-status');
+
             if (accuracy && accuracy > 200) {
                 if (statusText) {
                     statusText.innerHTML = `<span class="text-amber-400 font-bold">⚠️ GPS Active (Low Accuracy ±${Math.round(accuracy)}m):</span> ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}° • Please enter address details for faster response.`;
+                }
+                if (heroStatus) {
+                    heroStatus.className = 'text-amber-400 font-semibold';
+                    heroStatus.innerText = `GPS Active (Low ±${Math.round(accuracy)}m)`;
                 }
             } else {
                 if (statusText) {
                     statusText.innerHTML = `<span class="text-emerald-400 font-bold">✓ Live GPS Active (±${Math.round(accuracy || 0)}m):</span> ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°`;
                 }
+                if (heroStatus) {
+                    heroStatus.className = 'text-emerald-400 font-semibold';
+                    heroStatus.innerText = `Live GPS Verified (±${Math.round(accuracy || 0)}m)`;
+                }
             }
+
+            if (heroDot) heroDot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500';
+            if (heroPulse) heroPulse.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+
             if (heroText) {
                 heroText.innerText = `${latitude.toFixed(3)}°N, ${longitude.toFixed(3)}°E`;
             }
@@ -177,6 +193,16 @@ function startCitizenLocationTracking() {
                 msg = '⚠️ GPS signal unavailable. Please enable device location or enter address manually.';
             } else if (error.code === error.TIMEOUT) {
                 msg = '⚠️ GPS query timed out. Please retry or enter address manually.';
+            }
+
+            const heroDot = document.getElementById('live-hero-dot');
+            const heroPulse = document.getElementById('live-hero-dot-pulse');
+            const heroStatus = document.getElementById('live-hero-telemetry-status');
+            if (heroPulse) heroPulse.className = 'hidden';
+            if (heroDot) heroDot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500';
+            if (heroStatus) {
+                heroStatus.className = 'text-amber-400 font-semibold';
+                heroStatus.innerText = 'GPS Denied / Landmark Mode';
             }
 
             if (statusText) statusText.innerHTML = `<span class="text-amber-400 font-semibold">${msg}</span>`;

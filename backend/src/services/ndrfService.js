@@ -205,6 +205,10 @@ function generateCapAlert(incident, cadReferenceId, battalion) {
     const lng = Number(incident.longitude).toFixed(6);
     const address = incident.readable_address || `Coordinates [${lat}, ${lng}]`;
 
+    const isLive = Boolean(incident && incident._isLiveCad);
+    const statusVal = isLive ? (process.env.NODE_ENV === 'production' ? 'Actual' : 'Test') : 'Test';
+    const headlinePrefix = isLive ? `[${severity.toUpperCase()} SOS]` : `[SIMULATED PROTOCOL] [${severity.toUpperCase()} SOS]`;
+
     // CAP v1.2 JSON
     const capJson = {
         alert: {
@@ -212,10 +216,10 @@ function generateCapAlert(incident, cadReferenceId, battalion) {
             identifier: capIdentifier,
             sender: "ndrf-cad-relay@disaster-rescue.gov.in",
             sent: timestampIso,
-            status: process.env.NODE_ENV === 'production' ? 'Actual' : 'Test',
+            status: statusVal,
             msgType: "Alert",
             scope: "Restricted",
-            restriction: "NDRF 1078 CAD Network",
+            restriction: "NDRF 1078 CAD Network (Simulated Test Environment)",
             code: ["IPAWS-CAP", "NDMA-CAP-IN"],
             info: {
                 category: mapping.capCategory,
@@ -225,15 +229,16 @@ function generateCapAlert(incident, cadReferenceId, battalion) {
                 certainty: mapping.certainty,
                 eventCode: { valueName: "SAME", value: "EAN" },
                 expires: new Date(Date.now() + 6 * 3600 * 1000).toISOString(),
-                headline: `[${severity.toUpperCase()} SOS] ${incident.category} Emergency - ${incident.count || 1} Person(s) Distressed`,
-                description: incident.details || 'Distress beacon received via RESCUE AI Ground Coordinator.',
-                instruction: `Deploy ${battalion.name} quick reaction team. Tactical Frequency: ${battalion.tacticalFrequency}. National Hotline: ${battalion.hotline}.`,
+                headline: `${headlinePrefix} ${incident.category} Emergency - ${incident.count || 1} Person(s) Distressed`,
+                description: incident.details || 'Distress beacon received via RESCUE AI Ground Coordinator (Sandbox Simulation).',
+                instruction: `Deploy ${battalion.name} quick reaction team. Tactical Frequency: ${battalion.tacticalFrequency}. National Hotline: ${battalion.hotline}. Notice: Sandbox test only.`,
                 web: `https://disaster-rescuecoordinator.onrender.com/authority#incident-${incident.id}`,
-                contact: `NDRF Control Room (24/7): 1078 / +91-11-24363260`,
+                contact: `NDRF Control Room (24/7): 1078 / +91-11-24363260 (Real Emergencies)`,
                 parameter: [
                     { valueName: "CADReferenceID", value: cadReferenceId },
                     { valueName: "AssignedBattalion", value: battalion.code },
-                    { valueName: "IncidentID", value: incident.id },
+                    { valueName: "RelayMode", value: isLive ? "LIVE_CAD" : "SIMULATED_SANDBOX" },
+                    { valueName: "OfficialDispatchNotice", value: isLive ? "AUTHORIZED_CAD" : "PROTOCOL_SIMULATION_ONLY" },
                     { valueName: "VictimCount", value: String(incident.count || 1) },
                     { valueName: "RiskScore", value: String(incident.risk_score || 75) }
                 ],
@@ -252,10 +257,10 @@ function generateCapAlert(incident, cadReferenceId, battalion) {
   <identifier>${capIdentifier}</identifier>
   <sender>ndrf-cad-relay@disaster-rescue.gov.in</sender>
   <sent>${timestampIso}</sent>
-  <status>${process.env.NODE_ENV === 'production' ? 'Actual' : 'Test'}</status>
+  <status>${statusVal}</status>
   <msgType>Alert</msgType>
   <scope>Restricted</scope>
-  <restriction>NDRF 1078 CAD Network</restriction>
+  <restriction>NDRF 1078 CAD Network (Simulated Test Environment)</restriction>
   <info>
     <category>${mapping.capCategory}</category>
     <event>${mapping.event}</event>
@@ -474,7 +479,10 @@ async function relayIncidentToNdrf(incidentId, options = {}) {
     );
 
     // 8. Record chronological timeline update
-    const timelineNote = `[NDRF 1078 GATEWAY] Distress alert transmitted to National Disaster Response Force Command EOC. CAD Ref: ${cadReferenceId}. Unit Assigned: ${battalion.name} (${battalion.code}). Duty Officer: ${eocOfficer}. Tactical VHF: ${frequencyMhz}. Convoy ETA: ~${etaMinutes} mins. Mode: ${relayMode}.`;
+    const isLiveCadDispatched = relayMode === 'EXTERNAL_CAD';
+    const timelineNote = isLiveCadDispatched
+        ? `[NDRF 1078 GATEWAY] Live alert transmitted to National Disaster Response Force Command EOC. CAD Ref: ${cadReferenceId}. Unit Assigned: ${battalion.name} (${battalion.code}). Duty Officer: ${eocOfficer}. Tactical VHF: ${frequencyMhz}. Convoy ETA: ~${etaMinutes} mins. Mode: LIVE_CAD.`
+        : `[NDRF 1078 GATEWAY] Distress alert transmitted to National Disaster Response Force Command EOC. CAD Ref: ${cadReferenceId}. Unit Assigned: ${battalion.name} (${battalion.code}). Duty Officer: ${eocOfficer}. Tactical VHF: ${frequencyMhz}. Convoy ETA: ~${etaMinutes} mins. Mode: ${relayMode}. [SANDBOX NOTICE: Protocol test verified; no real government convoy dispatched without authorized live CAD API link. Call 112 or 1078 for actual emergencies.]`;
     await db.run(
         `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
          VALUES (?, ?, ?, 'AUTHORITY', ?, ?, ?, datetime('now'))`,
@@ -596,6 +604,8 @@ async function getNdrfGatewayStatus() {
         totalTransmissions,
         activeDispatches,
         externalEndpoint: externalCadUrl ? externalCadUrl.replace(/(:\/\/)([^@]+@)/, '$1***@') : 'Local EOC Simulator Active',
+        isLiveCadConnected: Boolean(externalCadUrl && externalCadUrl.trim()),
+        simulationNotice: 'CAD Sandbox Environment. No real civilian emergency vehicles dispatched without official API authorization.',
         latencyMs: externalCadUrl ? 42 : 4,
         supportedProtocols: ['CAP-1.2 (OASIS)', 'JSON-CAD-v2', 'REST/Webhook', 'VHF-Radio-Telemetry'],
         timestamp: new Date().toISOString()

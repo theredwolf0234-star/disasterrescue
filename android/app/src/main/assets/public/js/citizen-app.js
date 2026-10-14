@@ -1420,12 +1420,33 @@ async function flushOfflineQueue() {
 function handleNetworkOnline() {
     updateOfflineBanner(false);
     showToast('Internet connection restored.', 'success');
+
+    const heroDot = document.getElementById('live-hero-dot');
+    const heroPulse = document.getElementById('live-hero-dot-pulse');
+    const heroStatus = document.getElementById('live-hero-telemetry-status');
+    if (heroDot) heroDot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500';
+    if (heroPulse) heroPulse.className = 'animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75';
+    if (heroStatus) {
+        heroStatus.className = 'text-emerald-400 font-semibold';
+        heroStatus.innerText = 'Online • Synchronized';
+    }
+
     flushOfflineQueue();
 }
 
 function handleNetworkOffline() {
     updateOfflineBanner(true);
     showToast('Network disconnected. Emergency reporting switched to local storage draft cache.', 'warning');
+
+    const heroDot = document.getElementById('live-hero-dot');
+    const heroPulse = document.getElementById('live-hero-dot-pulse');
+    const heroStatus = document.getElementById('live-hero-telemetry-status');
+    if (heroPulse) heroPulse.className = 'hidden';
+    if (heroDot) heroDot.className = 'relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500';
+    if (heroStatus) {
+        heroStatus.className = 'text-rose-400 font-semibold';
+        heroStatus.innerText = 'Offline Mode (Local Draft Queue)';
+    }
 }
 
 function updateOfflineBanner(isOffline, queueCount = 0) {

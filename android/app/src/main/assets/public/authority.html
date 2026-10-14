@@ -196,8 +196,17 @@
         </div>
     </header>
 
-    <!-- COMMAND DASHBOARD CONTENT -->
-    <main class="flex-grow p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+    <!-- AUTHENTICATION CHECK GATE SCREEN (DISPLAYED UNTIL TOKEN & ROLE VERIFIED) -->
+    <div id="authority-auth-loading" class="flex-grow flex flex-col items-center justify-center p-12 text-center text-slate-400 space-y-4">
+        <div class="w-14 h-14 rounded-2xl bg-purple-700 text-white flex items-center justify-center font-bold shadow-xl shadow-purple-950/80 animate-pulse border border-purple-400/40">
+            <i data-lucide="shield-check" class="w-7 h-7"></i>
+        </div>
+        <div class="text-base font-black text-white tracking-wide uppercase">Verifying Command Access & Permissions</div>
+        <p class="text-xs text-slate-400 max-w-sm">Authenticating server session against government emergency operations protocol...</p>
+    </div>
+
+    <!-- COMMAND DASHBOARD CONTENT (HIDDEN BY DEFAULT UNTIL SERVER-SIDE AUTH VERIFIED) -->
+    <main id="authority-main" class="hidden flex-grow p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
 
         <!-- ============================================================= -->
         <!-- VIEW 1: TACTICAL OPERATIONS GRID (MAP, QUEUE, SHELTERS) -->
@@ -486,15 +495,15 @@
                     </div>
                     <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
                         <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Total Database Records</span>
-                        <span id="db-total-records-badge" class="font-extrabold text-purple-300 text-sm">540+ rows</span>
+                        <span id="db-total-records-badge" class="font-extrabold text-purple-300 text-sm">Loading records...</span>
                     </div>
                     <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
                         <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Storage Allocation</span>
-                        <span id="db-size-badge" class="font-extrabold text-white text-sm">224 KB</span>
+                        <span id="db-size-badge" class="font-extrabold text-white text-sm">Calculating...</span>
                     </div>
                     <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
                         <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Active Relational Tables</span>
-                        <span id="db-tables-count-badge" class="font-extrabold text-emerald-400 text-sm">14 Relational Tables</span>
+                        <span id="db-tables-count-badge" class="font-extrabold text-emerald-400 text-sm">Querying schema...</span>
                     </div>
                 </div>
             </div>
