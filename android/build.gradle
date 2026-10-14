@@ -22,7 +22,12 @@ allprojects {
         google()
         mavenCentral()
     }
-    buildDir = new File("C:/Users/satyam pathak/.android_builds/aister", project.name)
+    def customBuildDir = System.getenv("ANDROID_BUILD_DIR")
+    if (customBuildDir) {
+        buildDir = new File(customBuildDir, project.name)
+    } else if (System.getProperty("os.name").toLowerCase().contains("windows") && new File("C:/Users/satyam pathak").exists()) {
+        buildDir = new File("C:/Users/satyam pathak/.android_builds/aister", project.name)
+    }
 }
 
 task clean(type: Delete) {
