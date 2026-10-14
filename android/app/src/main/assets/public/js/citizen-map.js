@@ -493,6 +493,7 @@ function renderRouteOnMap(waypoints, routeInfo) {
     if (routeBox && distText) {
         distText.innerHTML = `
             <span>${routeInfo.summary || `${routeInfo.distanceKm} km • ETA: ${routeInfo.etaMinutes} mins`}</span>
+            ${routeInfo.source ? `<span class="block text-[10px] text-purple-300 font-mono mt-0.5">🛣️ ${routeInfo.source}</span>` : ''}
             ${routeInfo.avoidedHazards && routeInfo.avoidedHazards.length > 0 ? `<span class="block text-[10px] text-emerald-400 mt-0.5">🛡️ Bypassing: ${routeInfo.avoidedHazards.join(', ')}</span>` : ''}
         `;
         routeBox.classList.remove('hidden');

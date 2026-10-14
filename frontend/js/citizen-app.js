@@ -27,24 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
     updateCitizenAuthUI();
     loadCitizenProfile();
 
-    // 2.1 Load Stored Manual Location if available
-    try {
-        const savedLoc = JSON.parse(localStorage.getItem('aister_manual_location') || '{}');
-        if (savedLoc.lng && savedLoc.lat) {
-            if (typeof window.setLiveUserCoordinates === 'function') {
-                window.setLiveUserCoordinates(savedLoc.lng, savedLoc.lat, 20);
-            }
-            const hudLoc = document.getElementById('hud-location-name');
-            const hdrBadge = document.getElementById('header-location-badge');
-            if (hudLoc && savedLoc.name) hudLoc.innerText = savedLoc.name;
-            if (hdrBadge && savedLoc.name) hdrBadge.innerText = savedLoc.name.split(',')[0];
-        }
-    } catch(e) {}
-
-    // 3. Initialize Live Disaster Map & Location Tracking Immediately
-    if (typeof initCitizenMap === 'function') {
-        setTimeout(initCitizenMap, 100);
-    } else if (typeof startCitizenLocationTracking === 'function') {
+    // 3. Start real-time GPS tracking immediately
+    if (typeof startCitizenLocationTracking === 'function') {
         startCitizenLocationTracking();
     }
 
@@ -54,20 +38,19 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchGovernmentAlerts();
     setInterval(fetchGovernmentAlerts, 90000); // 90s refresh for NDMA SACHET public alerts
 
-    // 5. Network connectivity monitoring
+    // 5. Network connectivity monitoring (Section 32 & Requirement 11)
     window.addEventListener('online', handleNetworkOnline);
     window.addEventListener('offline', handleNetworkOffline);
     checkOfflineQueue();
 
-    // 6. Direct Hash Navigation (#home, #alerts, #reports, #profile, etc.)
-    const validTabs = ['home', 'alerts', 'reports', 'profile', 'report', 'risk', 'shelters', 'hospitals', 'contacts', 'weather', 'app', 'help', 'about'];
+    // 6. Direct Hash Navigation (#app, #map, #risk, #report)
     const initHash = window.location.hash.replace('#', '');
-    if (initHash && validTabs.includes(initHash)) {
+    if (initHash && ['app', 'report', 'risk', 'map', 'reports', 'shelters', 'hospitals', 'contacts', 'help', 'about'].includes(initHash)) {
         setTimeout(() => switchTab(initHash), 50);
     }
     window.addEventListener('hashchange', () => {
         const h = window.location.hash.replace('#', '');
-        if (h && validTabs.includes(h)) {
+        if (h && ['app', 'report', 'risk', 'map', 'reports', 'shelters', 'hospitals', 'contacts', 'help', 'about', 'home'].includes(h)) {
             switchTab(h);
         }
     });
@@ -482,12 +465,7 @@ document.addEventListener('click', (e) => {
 // -------------------------------------------------------------
 // NAVIGATION TAB SWITCHER (ALL PLATFORM SECTIONS)
 // -------------------------------------------------------------
-// -------------------------------------------------------------
-// NAVIGATION TAB SWITCHER (4 CORE TABS + SECONDARY MODULES)
-// -------------------------------------------------------------
 function switchTab(tabId) {
-    if (tabId === 'map') tabId = 'home';
-
     document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
     const target = document.getElementById(`page-${tabId}`);
     if (target) target.classList.remove('hidden');
@@ -502,36 +480,51 @@ function switchTab(tabId) {
     if (activeBtn) {
         activeBtn.classList.remove('text-slate-400');
         activeBtn.classList.add('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
+    } else {
+        const moreBtn = document.getElementById('nav-more-btn');
+        if (moreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about', 'app', 'risk', 'reports'].includes(tabId)) {
+            moreBtn.classList.remove('text-slate-400');
+            moreBtn.classList.add('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
+        }
     }
 
-    // Bottom nav highlighting (Strictly 4 Core Tabs: Home, Alerts, My Reports, Profile)
+    // Mobile bottom nav highlighting
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
-        btn.classList.remove('text-sky-400', 'font-bold');
-        btn.classList.add('text-slate-400');
+        btn.classList.remove('text-purple-600', 'dark:text-purple-400', 'font-bold');
+        btn.classList.add('text-slate-500', 'dark:text-slate-400');
     });
 
     const mobActiveBtn = document.getElementById(`mob-tab-${tabId}`);
     if (mobActiveBtn) {
-        mobActiveBtn.classList.remove('text-slate-400');
-        mobActiveBtn.classList.add('text-sky-400', 'font-bold');
+        mobActiveBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
+        mobActiveBtn.classList.add('text-purple-600', 'dark:text-purple-400', 'font-bold');
+    } else {
+        const mobMoreBtn = document.getElementById('mob-tab-more');
+        if (mobMoreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about', 'app', 'risk', 'reports'].includes(tabId)) {
+            mobMoreBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
+            mobMoreBtn.classList.add('text-purple-600', 'dark:text-purple-400', 'font-bold');
+        }
     }
 
-    // Auto-close side menu drawer & popup panels
-    toggleSideMenu(false);
-    document.getElementById('map-layers-panel')?.classList.add('hidden');
+    // Mobile Quick Chips bar highlighting
+    document.querySelectorAll('#quick-features-bar button').forEach(b => {
+        b.classList.remove('ring-2', 'ring-purple-600');
+    });
+    const chipBtn = document.querySelector(`#quick-features-bar button[onclick*="'${tabId}'"]`);
+    if (chipBtn) chipBtn.classList.add('ring-2', 'ring-purple-600');
 
-    if (tabId === 'home') {
+    // Auto-close dropdowns
+    document.getElementById('nav-more-menu')?.classList.add('hidden');
+    document.getElementById('mobile-more-menu')?.classList.add('hidden');
+    document.getElementById('mobile-more-backdrop')?.classList.add('hidden');
+
+    if (tabId === 'map') {
         setTimeout(() => {
             if (typeof initCitizenMap === 'function' && !mapboxMap) initCitizenMap();
             else if (mapboxMap) mapboxMap.resize();
-        }, 100);
-    } else if (tabId === 'alerts') {
-        renderAlertsPage();
-        fetchGovernmentAlerts();
+        }, 150);
     } else if (tabId === 'reports') {
         fetchCitizenReports();
-    } else if (tabId === 'profile') {
-        loadCitizenProfileSettings();
     } else if (tabId === 'shelters') {
         fetchSheltersDirectory();
     } else if (tabId === 'hospitals') {
@@ -557,368 +550,6 @@ function switchTab(tabId) {
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-
-// -------------------------------------------------------------
-// SIDE MENU DRAWER (Consolidated all platform features in one side)
-// -------------------------------------------------------------
-function toggleSideMenu(force) {
-    const drawer = document.getElementById('side-menu-drawer');
-    const backdrop = document.getElementById('side-menu-backdrop');
-    if (!drawer) return;
-    const isCurrentlyOpen = !drawer.classList.contains('-translate-x-full');
-    const shouldOpen = force !== undefined ? force : !isCurrentlyOpen;
-    if (shouldOpen) {
-        drawer.classList.remove('-translate-x-full');
-        if (backdrop) backdrop.classList.remove('hidden');
-    } else {
-        drawer.classList.add('-translate-x-full');
-        if (backdrop) backdrop.classList.add('hidden');
-    }
-}
-window.toggleSideMenu = toggleSideMenu;
-
-// -------------------------------------------------------------
-// LOCATION CONSENT & MANUAL SELECTION (Requirement 1 & UI/UX)
-// -------------------------------------------------------------
-function openManualLocationModal() {
-    document.getElementById('manual-location-modal')?.classList.remove('hidden');
-}
-function closeManualLocationModal() {
-    document.getElementById('manual-location-modal')?.classList.add('hidden');
-}
-function dismissLocationBanner() {
-    document.getElementById('location-permission-banner')?.classList.add('hidden');
-}
-
-function setManualCoordinates(lng, lat, cityName) {
-    if (typeof window.setLiveUserCoordinates === 'function') {
-        window.setLiveUserCoordinates(lng, lat, 15);
-    }
-    
-    // Save preference
-    try {
-        localStorage.setItem('aister_manual_location', JSON.stringify({ lng, lat, name: cityName }));
-    } catch(e) {}
-
-    // Update HUD & header
-    const hudLoc = document.getElementById('hud-location-name');
-    const hdrBadge = document.getElementById('header-location-badge');
-    const profInput = document.getElementById('prof-manual-city');
-    if (hudLoc) hudLoc.innerText = cityName;
-    if (hdrBadge) hdrBadge.innerText = cityName.split(',')[0];
-    if (profInput) profInput.value = cityName;
-
-    // Recenter map
-    if (typeof mapboxMap !== 'undefined' && mapboxMap) {
-        mapboxMap.flyTo({ center: [lng, lat], zoom: 13, duration: 1200 });
-        if (typeof renderUserGpsMarker === 'function') renderUserGpsMarker();
-    }
-
-    // Refresh weather & risk for this new location
-    if (typeof fetchRealtimeWeatherData === 'function') {
-        fetchRealtimeWeatherData(lat, lng);
-    }
-    if (typeof runModularRiskAssessment === 'function') {
-        runModularRiskAssessment();
-    }
-
-    closeManualLocationModal();
-    dismissLocationBanner();
-    showToast(`Disaster telemetry focused on: ${cityName}`, 'info');
-}
-
-function detectLiveGpsFromModal() {
-    requestGpsPermissionDirectly();
-    closeManualLocationModal();
-}
-
-function requestGpsPermissionDirectly() {
-    if (!("geolocation" in navigator)) {
-        showToast('Geolocation is not supported by your browser.', 'warning');
-        return;
-    }
-    showToast('Querying GPS satellites for high-accuracy fix...', 'info');
-    navigator.geolocation.getCurrentPosition(
-        (pos) => {
-            const { latitude, longitude, accuracy } = pos.coords;
-            if (typeof window.setLiveUserCoordinates === 'function') {
-                window.setLiveUserCoordinates(longitude, latitude, accuracy);
-            }
-            if (typeof mapboxMap !== 'undefined' && mapboxMap) {
-                mapboxMap.flyTo({ center: [longitude, latitude], zoom: 14 });
-                if (typeof renderUserGpsMarker === 'function') renderUserGpsMarker();
-            }
-            dismissLocationBanner();
-            showToast(`GPS Position Locked (±${Math.round(accuracy)}m)`, 'success');
-            
-            // Reverse geocode
-            api.get(`/api/geocode/reverse?lat=${latitude}&lng=${longitude}`)
-                .then(geo => {
-                    const placeName = geo && geo.text ? geo.text : `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`;
-                    const hudLoc = document.getElementById('hud-location-name');
-                    const hdrBadge = document.getElementById('header-location-badge');
-                    if (hudLoc) hudLoc.innerText = placeName;
-                    if (hdrBadge) hdrBadge.innerText = placeName;
-                })
-                .catch(() => {});
-        },
-        (err) => {
-            showToast('GPS permission was denied or unavailable. Please pick a district manually.', 'warning');
-            openManualLocationModal();
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-    );
-}
-
-async function geocodeManualLocation() {
-    const input = document.getElementById('manual-custom-city-input');
-    const query = input ? input.value.trim() : '';
-    if (!query) return;
-
-    try {
-        const res = await api.get(`/api/geocode/search?q=${encodeURIComponent(query)}`);
-        if (res.success && res.features && res.features.length > 0) {
-            const place = res.features[0];
-            const [lng, lat] = place.center;
-            setManualCoordinates(lng, lat, place.place_name || place.text);
-        } else {
-            showToast('City not recognized. Please pick one from the quick buttons.', 'warning');
-        }
-    } catch(e) {
-        showToast('Geocoding request failed. Check network.', 'error');
-    }
-}
-
-// -------------------------------------------------------------
-// EXPLAINABLE AI RISK MODAL & MAP LAYERS PANEL
-// -------------------------------------------------------------
-function openAiRiskModal() {
-    document.getElementById('ai-risk-modal')?.classList.remove('hidden');
-}
-function closeAiRiskModal() {
-    document.getElementById('ai-risk-modal')?.classList.add('hidden');
-}
-function toggleMapLayersPanel() {
-    const panel = document.getElementById('map-layers-panel');
-    if (panel) panel.classList.toggle('hidden');
-}
-
-// -------------------------------------------------------------
-// ALERTS PAGE & AUTOMATIC DISASTER MONITORING
-// -------------------------------------------------------------
-let currentAlertsFilter = 'all';
-
-function filterAlertsTab(filter) {
-    currentAlertsFilter = filter;
-    document.querySelectorAll('.alerts-filter-btn').forEach(btn => {
-        btn.classList.remove('bg-sky-600', 'text-white');
-        btn.classList.add('bg-slate-900', 'border', 'border-slate-800', 'text-slate-300');
-    });
-    const activeBtn = document.getElementById(`alerts-filter-${filter}`);
-    if (activeBtn) {
-        activeBtn.classList.remove('bg-slate-900', 'border', 'border-slate-800', 'text-slate-300');
-        activeBtn.classList.add('bg-sky-600', 'text-white');
-    }
-
-    const secOfficial = document.getElementById('alerts-section-official');
-    const secAi = document.getElementById('alerts-section-ai');
-    const secCommunity = document.getElementById('alerts-section-community');
-
-    if (filter === 'all') {
-        secOfficial?.classList.remove('hidden');
-        secAi?.classList.remove('hidden');
-        secCommunity?.classList.remove('hidden');
-    } else if (filter === 'official') {
-        secOfficial?.classList.remove('hidden');
-        secAi?.classList.add('hidden');
-        secCommunity?.classList.add('hidden');
-    } else if (filter === 'ai') {
-        secOfficial?.classList.add('hidden');
-        secAi?.classList.remove('hidden');
-        secCommunity?.classList.add('hidden');
-    } else if (filter === 'community') {
-        secOfficial?.classList.add('hidden');
-        secAi?.classList.add('hidden');
-        secCommunity?.classList.remove('hidden');
-    }
-}
-
-async function renderAlertsPage() {
-    // 1. Render Official NDMA SACHET feed
-    const officialContainer = document.getElementById('alerts-official-feed');
-    if (officialContainer) {
-        try {
-            const res = await api.get('/api/alerts');
-            const alertList = (res && res.data && res.data.alerts) ? res.data.alerts : (res && res.alerts ? res.alerts : []);
-            if (!Array.isArray(alertList) || alertList.length === 0) {
-                officialContainer.innerHTML = `
-                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center text-slate-400 text-xs">
-                        <i data-lucide="check-circle" class="w-8 h-8 text-emerald-400 mx-auto mb-2"></i>
-                        <p class="font-bold text-white">No Active Severe Government Alerts</p>
-                        <p class="text-[11px] text-slate-400 mt-1">Regional monitoring sectors are operating normally under standard baseline telemetry.</p>
-                    </div>
-                `;
-            } else {
-                officialContainer.innerHTML = alertList.filter(a => a.is_active).map(a => {
-                    const isSevere = a.severity === 'SEVERE' || a.severity === 'EXTREME';
-                    const badgeClass = isSevere ? 'bg-red-950 text-red-300 border-red-700' : 'bg-amber-950 text-amber-300 border-amber-700';
-                    return `
-                        <div class="bg-slate-900 border border-slate-800 hover:border-amber-600/60 rounded-2xl p-5 space-y-3 transition shadow-lg">
-                            <div class="flex items-center justify-between">
-                                <div class="flex items-center space-x-2">
-                                    <span class="px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase border ${badgeClass}">
-                                        ${a.severity} WARNING
-                                    </span>
-                                    <span class="font-mono text-[10px] text-slate-400">${a.alert_identifier}</span>
-                                </div>
-                                <span class="text-[10px] text-amber-400 font-bold uppercase tracking-wider">NDMA SACHET</span>
-                            </div>
-                            <div>
-                                <h3 class="text-base font-black text-white">${a.hazard_type}</h3>
-                                <p class="text-xs text-slate-300 mt-1 leading-relaxed">${a.official_instructions}</p>
-                            </div>
-                            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-[11px] text-slate-400 space-y-1">
-                                <div class="flex justify-between">
-                                    <span>Affected Sector:</span>
-                                    <strong class="text-slate-200">${a.affected_area} (±${a.radius_km}km)</strong>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Source Agency:</span>
-                                    <span class="text-sky-300">${a.source_agency}</span>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>Effective Until:</span>
-                                    <span class="font-mono text-slate-300">${new Date(a.expires_at).toLocaleString('en-IN')}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-        } catch(e) {
-            console.warn('Failed to load official alerts:', e);
-        }
-    }
-
-    // 2. Render Unverified Citizen Reports feed
-    const communityContainer = document.getElementById('alerts-community-feed');
-    if (communityContainer) {
-        try {
-            const res = await api.get('/api/incidents?limit=6');
-            const incidents = (res && res.data) ? res.data : (Array.isArray(res) ? res : []);
-            if (!Array.isArray(incidents) || incidents.length === 0) {
-                communityContainer.innerHTML = `
-                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center text-slate-400 text-xs">
-                        No recent citizen incident reports.
-                    </div>
-                `;
-            } else {
-                communityContainer.innerHTML = incidents.slice(0, 5).map(inc => {
-                    const isUnverified = inc.status === 'SUBMITTED' || inc.status === 'TRIAGED';
-                    return `
-                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 space-y-2 text-xs">
-                            <div class="flex items-center justify-between">
-                                <span class="font-bold text-white flex items-center space-x-1.5">
-                                    <span>⚠️</span>
-                                    <span>${inc.category || 'Disaster Incident'}</span>
-                                </span>
-                                <span class="px-2 py-0.5 rounded text-[9px] font-black uppercase ${isUnverified ? 'bg-purple-950 text-purple-300 border border-purple-800' : 'bg-emerald-950 text-emerald-300 border border-emerald-800'}">
-                                    ${isUnverified ? 'UNVERIFIED REPORT' : inc.status}
-                                </span>
-                            </div>
-                            <p class="text-[11px] text-slate-300 line-clamp-2">${inc.details || 'Emergency incident reported by citizen.'}</p>
-                            <div class="flex justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-800">
-                                <span>Ref: #${inc.id}</span>
-                                <span>${new Date(inc.created_at || Date.now()).toLocaleTimeString()}</span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-        } catch(e) {
-            console.warn('Failed to load community incidents:', e);
-        }
-    }
-
-    if (typeof lucide !== 'undefined') lucide.createIcons();
-}
-
-// -------------------------------------------------------------
-// CITIZEN PROFILE SETTINGS & GEOLOCATION CONSENT
-// -------------------------------------------------------------
-function loadCitizenProfileSettings() {
-    const nameInput = document.getElementById('prof-name-input');
-    const phoneInput = document.getElementById('prof-phone-input');
-    const iceInput = document.getElementById('prof-ice-input');
-    const medicalInput = document.getElementById('prof-medical-input');
-    const manualCity = document.getElementById('prof-manual-city');
-    const consentToggle = document.getElementById('consent-gps-toggle');
-
-    try {
-        const saved = JSON.parse(localStorage.getItem('aister_citizen_profile') || '{}');
-        if (nameInput) nameInput.value = saved.name || citizenProfile.name || '';
-        if (phoneInput) phoneInput.value = saved.phone || citizenProfile.phone || '';
-        if (iceInput) iceInput.value = saved.ice || citizenProfile.emergencyPhone || '';
-        if (medicalInput) medicalInput.value = saved.medical || citizenProfile.bloodGroup || '';
-
-        const savedLoc = JSON.parse(localStorage.getItem('aister_manual_location') || '{}');
-        if (manualCity && savedLoc.name) manualCity.value = savedLoc.name;
-
-        const consent = localStorage.getItem('aister_gps_consent');
-        if (consentToggle && consent !== null) consentToggle.checked = (consent === 'true');
-    } catch(e) {}
-}
-
-function saveCitizenProfileSettings() {
-    const name = document.getElementById('prof-name-input')?.value.trim();
-    const phone = document.getElementById('prof-phone-input')?.value.trim();
-    const ice = document.getElementById('prof-ice-input')?.value.trim();
-    const medical = document.getElementById('prof-medical-input')?.value.trim();
-    const consent = document.getElementById('consent-gps-toggle')?.checked;
-
-    const data = { name, phone, ice, medical };
-    citizenProfile.name = name || citizenProfile.name;
-    citizenProfile.phone = phone || citizenProfile.phone;
-    citizenProfile.emergencyPhone = ice || citizenProfile.emergencyPhone;
-    citizenProfile.bloodGroup = medical || citizenProfile.bloodGroup;
-
-    try {
-        localStorage.setItem('aister_citizen_profile', JSON.stringify(data));
-        localStorage.setItem('aister_gps_consent', String(consent));
-        showToast('Emergency profile & consent settings updated.', 'success');
-    } catch(e) {
-        showToast('Saved profile locally.', 'info');
-    }
-}
-
-function handleGpsConsentChange(checked) {
-    try {
-        localStorage.setItem('aister_gps_consent', String(checked));
-        if (checked) {
-            showToast('Live GPS monitoring enabled.', 'success');
-            if (typeof startCitizenLocationTracking === 'function') startCitizenLocationTracking();
-        } else {
-            showToast('GPS tracking disabled. Manual location will be utilized.', 'info');
-            openManualLocationModal();
-        }
-    } catch(e) {}
-}
-
-window.openManualLocationModal = openManualLocationModal;
-window.closeManualLocationModal = closeManualLocationModal;
-window.dismissLocationBanner = dismissLocationBanner;
-window.setManualCoordinates = setManualCoordinates;
-window.detectLiveGpsFromModal = detectLiveGpsFromModal;
-window.requestGpsPermissionDirectly = requestGpsPermissionDirectly;
-window.geocodeManualLocation = geocodeManualLocation;
-window.openAiRiskModal = openAiRiskModal;
-window.closeAiRiskModal = closeAiRiskModal;
-window.toggleMapLayersPanel = toggleMapLayersPanel;
-window.filterAlertsTab = filterAlertsTab;
-window.renderAlertsPage = renderAlertsPage;
-window.loadCitizenProfileSettings = loadCitizenProfileSettings;
-window.saveCitizenProfileSettings = saveCitizenProfileSettings;
-window.handleGpsConsentChange = handleGpsConsentChange;
 
 // -------------------------------------------------------------
 // ONE-TAP AUTOMATIC SOS RESCUE COCKPIT (CRITICAL REQUIREMENT 1)
@@ -1072,9 +703,9 @@ function renderActiveSosCockpit(inc, coords, gpsTelemetry) {
     const ndrfDetailsEl = document.getElementById('cockpit-ndrf-details');
     if (ndrfDetailsEl) {
         if (inc.ndrf_cad_id) {
-            ndrfDetailsEl.innerText = `${inc.ndrf_battalion || '11th Battalion NDRF'} • Ref: ${inc.ndrf_cad_id} • Status: ${inc.ndrf_status || 'ACKNOWLEDGED'}`;
+            ndrfDetailsEl.innerText = `${inc.ndrf_battalion || '11th Battalion NDRF'} • CAD Ref: ${inc.ndrf_cad_id} • Status: ${inc.ndrf_status || 'TRANSMITTED'} [Sandbox Protocol]`;
         } else {
-            ndrfDetailsEl.innerText = 'National Control Room Connected (1078 EOC) • High-Priority Alert Relayed';
+            ndrfDetailsEl.innerText = 'Prototype CAD Gateway Active • In immediate life danger, dial 112 / 1078 directly';
         }
     }
 
@@ -1589,6 +1220,11 @@ async function handleFullReportSubmit(e) {
             return;
         }
 
+        const idempotencyKey = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const gpsTelemetry = (typeof window.getGpsTelemetry === 'function')
+            ? window.getGpsTelemetry()
+            : { isVerifiedGps: true, accuracy: null, timestamp: new Date().toISOString() };
+
         let res;
         const hasEvidence = evidenceInput && evidenceInput.files && evidenceInput.files.length > 0;
         const hasAudio = voiceEngine && voiceEngine.recordedAudioBlob;
@@ -1600,16 +1236,31 @@ async function handleFullReportSubmit(e) {
             formData.append('details', details);
             formData.append('latitude', coords[0].toString());
             formData.append('longitude', coords[1].toString());
+            formData.append('idempotency_key', idempotencyKey);
+            formData.append('is_verified_gps', gpsTelemetry.isVerifiedGps ? '1' : '0');
+            if (gpsTelemetry.accuracy !== null && gpsTelemetry.accuracy !== undefined) {
+                formData.append('gps_accuracy', gpsTelemetry.accuracy.toString());
+            }
+            formData.append('gps_timestamp', gpsTelemetry.timestamp || new Date().toISOString());
             if (address) formData.append('address', address);
 
             if (hasEvidence) formData.append('evidence', evidenceInput.files[0]);
             else if (hasAudio) formData.append('evidence', voiceEngine.recordedAudioBlob, 'voice-sos.webm');
 
-            res = await api.postMultipart('/api/incidents', formData);
+            res = await api.postMultipart('/api/incidents', formData, { 'Idempotency-Key': idempotencyKey });
         } else {
             res = await api.post('/api/incidents', {
-                category, count, details, latitude: coords[0], longitude: coords[1], address: address || undefined
-            });
+                category,
+                count,
+                details,
+                latitude: coords[0],
+                longitude: coords[1],
+                address: address || undefined,
+                idempotency_key: idempotencyKey,
+                is_verified_gps: gpsTelemetry.isVerifiedGps ? 1 : 0,
+                gps_accuracy: gpsTelemetry.accuracy,
+                gps_timestamp: gpsTelemetry.timestamp || new Date().toISOString()
+            }, { 'Idempotency-Key': idempotencyKey });
         }
 
         if (!res.success) throw new Error(res.message || 'Report submission failed');
@@ -1629,7 +1280,22 @@ async function handleFullReportSubmit(e) {
         showDispatchSuccessModal(incident);
 
     } catch (err) {
-        showToast(err.message || 'Failed to submit disaster report. Please retry.', 'error');
+        if (err.errorCode === 'BACKEND_UNAVAILABLE' || !navigator.onLine) {
+            saveOfflineReport({
+                category,
+                count,
+                details,
+                address,
+                latitude: coords[0],
+                longitude: coords[1],
+                timestamp: new Date().toISOString()
+            });
+            document.getElementById('full-disaster-form').reset();
+            const previewCard = document.getElementById('evidence-preview-card');
+            if (previewCard) previewCard.classList.add('hidden');
+        } else {
+            showToast(err.message || 'Failed to submit disaster report. Please retry.', 'error');
+        }
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;

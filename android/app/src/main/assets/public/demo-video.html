@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AISTER / RESCUE AI — Project Presentation & Video Showcase</title>
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons & Tailwind CSS -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #070A12;
+            color: #E2E8F0;
+        }
+        .neon-glow {
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.35);
+        }
+        .glass-card {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+        .gradient-border {
+            border-image: linear-gradient(135deg, #06B6D4, #3B82F6, #8B5CF6) 1;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+    <!-- TOP CONVOCATION ACADEMIC ACCREDITATION HEADER -->
+    <header class="w-full bg-slate-900/90 border-b border-cyan-900/40 px-4 py-3 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+            <div class="flex items-center space-x-3">
+                <img src="assets/icon.png" alt="AISTER Logo" class="w-10 h-10 rounded-xl shadow-lg border border-cyan-500/30">
+                <div>
+                    <h1 class="text-base sm:text-lg font-bold text-white tracking-tight flex items-center gap-2">
+                        <span>AISTER / RESCUE AI</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-700/50 font-semibold font-mono">LIVE DEMO</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Autonomous AI Disaster Rescue Coordinator & Tactical Triage Platform</p>
+                </div>
+            </div>
+            <div class="text-xs bg-slate-800/80 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-300">
+                <span class="text-cyan-400 font-bold">7th Convocation 2026</span> &bull; Maharishi University (Lucknow & Noida Campuses)
+            </div>
+        </div>
+    </header>
+
+    <!-- HERO & VIDEO PRESENTATION VIEWPORT -->
+    <main class="max-w-6xl mx-auto w-full px-4 py-6 sm:py-10 space-y-8 flex-1">
+        
+        <!-- INTRO CALLOUT -->
+        <div class="text-center space-y-2">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold tracking-wide">
+                <i data-lucide="video" class="w-3.5 h-3.5"></i> OFFICIAL PROJECT VIDEO & INTERACTIVE PRESENTATION
+            </div>
+            <h2 class="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+                Mission-Critical Disaster Coordination in Action
+            </h2>
+            <p class="text-sm sm:text-base text-slate-400 max-w-2xl mx-auto">
+                Watch the complete demonstration walkthrough showing real-time GPS beaconing, AI casualty triage, and tactical NDRF commander fleet dispatch.
+            </p>
+        </div>
+
+        <!-- VIDEO PRESENTATION STAGE -->
+        <div class="glass-card rounded-2xl overflow-hidden shadow-2xl border border-slate-700/60">
+            <!-- Video Container / Canvas Demo Player -->
+            <div class="relative bg-slate-950 aspect-video w-full flex items-center justify-center overflow-hidden group">
+                
+                <!-- Video / Animated Showcase Canvas -->
+                <canvas id="demo-canvas" width="1280" height="720" class="w-full h-full object-cover"></canvas>
+                
+                <!-- Overlay HUD & Controls -->
+                <div id="video-hud" class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-slate-950/60 flex flex-col justify-between p-4 sm:p-6 transition-opacity duration-300">
+                    <div class="flex items-center justify-between text-xs text-slate-300">
+                        <div class="flex items-center gap-2 bg-slate-900/80 px-3 py-1 rounded-full border border-slate-700">
+                            <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                            <span class="font-mono font-bold" id="hud-chapter-title">CHAPTER 1: RAPID SOS CITIZEN BEACON</span>
+                        </div>
+                        <div class="font-mono text-cyan-400 font-semibold bg-slate-900/80 px-2.5 py-1 rounded-full border border-slate-700">
+                            1080p 60FPS TELEMETRY
+                        </div>
+                    </div>
+
+                    <!-- Center Play/Pause Big Button -->
+                    <div class="flex items-center justify-center">
+                        <button id="btn-toggle-play" onclick="togglePlayback()" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-cyan-500/90 hover:bg-cyan-400 text-slate-950 flex items-center justify-center shadow-xl transition-transform hover:scale-110 active:scale-95">
+                            <i id="play-icon" data-lucide="pause" class="w-8 h-8 fill-current"></i>
+                        </button>
+                    </div>
+
+                    <!-- Bottom Scrubber & Chapter Markers -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs font-mono text-slate-400">
+                            <span id="video-time">00:00 / 03:00</span>
+                            <span id="chapter-label" class="text-cyan-300 font-medium">Demonstration Walkthrough</span>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2 cursor-pointer overflow-hidden relative" onclick="seekVideo(event)">
+                            <div id="video-progress" class="bg-gradient-to-r from-cyan-500 to-blue-500 h-full w-0 transition-all duration-200"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CHAPTER QUICK LINKS -->
+            <div class="bg-slate-900/80 border-t border-slate-800 p-4 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                <button onclick="jumpToChapter(0)" class="p-2.5 rounded-xl bg-slate-800/60 hover:bg-cyan-950/60 border border-slate-700 hover:border-cyan-500 text-left transition-colors">
+                    <div class="text-cyan-400 font-bold font-mono">01 &bull; 00:00</div>
+                    <div class="text-white font-medium truncate">1-Click SOS Beacon</div>
+                </button>
+                <button onclick="jumpToChapter(1)" class="p-2.5 rounded-xl bg-slate-800/60 hover:bg-cyan-950/60 border border-slate-700 hover:border-cyan-500 text-left transition-colors">
+                    <div class="text-cyan-400 font-bold font-mono">02 &bull; 00:45</div>
+                    <div class="text-white font-medium truncate">AI Risk & Triage</div>
+                </button>
+                <button onclick="jumpToChapter(2)" class="p-2.5 rounded-xl bg-slate-800/60 hover:bg-cyan-950/60 border border-slate-700 hover:border-cyan-500 text-left transition-colors">
+                    <div class="text-cyan-400 font-bold font-mono">03 &bull; 01:30</div>
+                    <div class="text-white font-medium truncate">NDRF Tactical Map</div>
+                </button>
+                <button onclick="jumpToChapter(3)" class="p-2.5 rounded-xl bg-slate-800/60 hover:bg-cyan-950/60 border border-slate-700 hover:border-cyan-500 text-left transition-colors">
+                    <div class="text-cyan-400 font-bold font-mono">04 &bull; 02:15</div>
+                    <div class="text-white font-medium truncate">Fleet Dispatch</div>
+                </button>
+            </div>
+        </div>
+
+        <!-- ACTION BUTTONS: TEST LIVE APPLICATION -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <a href="index.html" class="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-cyan-900/40 to-slate-900 border border-cyan-600/40 hover:border-cyan-400 hover:shadow-lg transition-all group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                        <i data-lucide="smartphone" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-bold text-white group-hover:text-cyan-300">Launch Citizen Portal</div>
+                        <div class="text-xs text-slate-400">Mobile SOS & Real-time Triage</div>
+                    </div>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-cyan-400 transform group-hover:translate-x-1 transition-transform"></i>
+            </a>
+
+            <a href="authority.html" class="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-purple-900/40 to-slate-900 border border-purple-600/40 hover:border-purple-400 hover:shadow-lg transition-all group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                        <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-bold text-white group-hover:text-purple-300">Authority Command HQ</div>
+                        <div class="text-xs text-slate-400">NDRF Tactical Map & Fleets</div>
+                    </div>
+                </div>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-purple-400 transform group-hover:translate-x-1 transition-transform"></i>
+            </a>
+
+            <a href="https://github.com/theredwolf0234-star/disasterrescue" target="_blank" rel="noopener noreferrer" class="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700 hover:border-slate-500 hover:shadow-lg transition-all group">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-slate-700/40 text-white flex items-center justify-center">
+                        <i data-lucide="github" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <div class="text-sm font-bold text-white">GitHub Repository</div>
+                        <div class="text-xs text-slate-400">Source Code & Documentation</div>
+                    </div>
+                </div>
+                <i data-lucide="external-link" class="w-4 h-4 text-slate-400 group-hover:text-white transition-colors"></i>
+            </a>
+        </div>
+
+        <!-- PROJECT PRESENTATION & ACADEMIC CREDENTIALS -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Project Summary -->
+            <div class="md:col-span-2 glass-card rounded-2xl p-6 space-y-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="award" class="w-5 h-5 text-cyan-400"></i> Project Overview & Architecture
+                </h3>
+                <p class="text-sm text-slate-300 leading-relaxed">
+                    <strong>AISTER</strong> (AI Disaster Rescue Coordinator) is an end-to-end mission-critical disaster management system. When natural disasters, flash floods, or seismic tremors collapse infrastructure, AISTER provides resilient emergency triage:
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300">
+                    <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+                        <span class="font-bold text-cyan-400">🚨 Instant SOS Beaconing:</span>
+                        <p>High-precision GPS coordinates, casualty count, and offline-first queue synchronization.</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+                        <span class="font-bold text-purple-400">🧠 Deterministic AI Risk Engine:</span>
+                        <p>Transparent casualty scoring algorithm (0-100) prioritizing critical threats over minor relief.</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+                        <span class="font-bold text-emerald-400">🗺️ Tactical Command Dashboard:</span>
+                        <p>Real-time NDRF and SDRF fleet tracking with live status and Dijkstra hazard routing.</p>
+                    </div>
+                    <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1">
+                        <span class="font-bold text-amber-400">⛺ Shelter & Resource Ledger:</span>
+                        <p>Live inventory management for drinking water, ration packets, medical kits, and beds.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team & Convocation Dossier -->
+            <div class="glass-card rounded-2xl p-6 space-y-4">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i data-lucide="users" class="w-5 h-5 text-cyan-400"></i> Presentation Team
+                </h3>
+                <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2">
+                    <div class="w-12 h-12 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-400 flex items-center justify-center font-bold text-lg">
+                        SP
+                    </div>
+                    <div>
+                        <div class="text-base font-bold text-white">Satyam Pathak</div>
+                        <div class="text-xs font-semibold text-cyan-400">Lead Full-Stack & System Architect</div>
+                        <div class="text-xs text-slate-400 mt-1">B.Tech CSE - 3rd Year (Data Science)</div>
+                    </div>
+                </div>
+
+                <div class="text-xs text-slate-400 space-y-1 border-t border-slate-800 pt-3">
+                    <div><strong>Presented For:</strong> 7th Convocation 2026</div>
+                    <div><strong>Host Venue:</strong> Maharishi University Lucknow Campus</div>
+                    <div><strong>Department:</strong> MSOET, Maharishi University of Information Technology, Noida Campus</div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full bg-slate-950 border-t border-slate-800 py-4 px-4 text-center text-xs text-slate-500">
+        <p>© 2026 AISTER / RESCUE AI. Maharishi University of Information Technology (Lucknow & Noida Campuses). All rights reserved.</p>
+    </footer>
+
+    <!-- INTERACTIVE PRESENTATION SIMULATION SCRIPT -->
+    <script>
+        lucide.createIcons();
+
+        const canvas = document.getElementById('demo-canvas');
+        const ctx = canvas.getContext('2d');
+        const progressEl = document.getElementById('video-progress');
+        const timeEl = document.getElementById('video-time');
+        const chapterTitleEl = document.getElementById('hud-chapter-title');
+        const chapterLabelEl = document.getElementById('chapter-label');
+        const playIcon = document.getElementById('play-icon');
+
+        let isPlaying = true;
+        let currentTime = 0;
+        const totalDuration = 180; // 3 minutes demo
+        let lastFrameTime = performance.now();
+
+        const chapters = [
+            { time: 0, title: "CHAPTER 1: RAPID SOS CITIZEN BEACON", label: "Citizen Mobile SOS Trigger & GPS Fix", color: "#06B6D4" },
+            { time: 45, title: "CHAPTER 2: AI MULTI-DISASTER RISK SCORING", label: "Casualty Priority Calculation & Heuristics", color: "#8B5CF6" },
+            { time: 90, title: "CHAPTER 3: NDRF TACTICAL GIS COMMAND MAP", label: "Real-time Incident Mesh & Heat Clusters", color: "#EC4899" },
+            { time: 135, title: "CHAPTER 4: FLEET DISPATCH & RESOLUTION", label: "Safe Routing & Operational Status Progression", color: "#10B981" }
+        ];
+
+        function getCurrentChapter(t) {
+            for (let i = chapters.length - 1; i >= 0; i--) {
+                if (t >= chapters[i].time) return { ...chapters[i], index: i };
+            }
+            return { ...chapters[0], index: 0 };
+        }
+
+        function formatTime(secs) {
+            const m = Math.floor(secs / 60).toString().padStart(2, '0');
+            const s = Math.floor(secs % 60).toString().padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        function togglePlayback() {
+            isPlaying = !isPlaying;
+            playIcon.setAttribute('data-lucide', isPlaying ? 'pause' : 'play');
+            lucide.createIcons();
+        }
+
+        function jumpToChapter(idx) {
+            if (chapters[idx]) {
+                currentTime = chapters[idx].time;
+                isPlaying = true;
+                playIcon.setAttribute('data-lucide', 'pause');
+                lucide.createIcons();
+            }
+        }
+
+        function seekVideo(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            currentTime = Math.max(0, Math.min(totalDuration, pos * totalDuration));
+        }
+
+        // Animated Presentation Canvas Renderer
+        function renderShowcase(timestamp) {
+            const delta = (timestamp - lastFrameTime) / 1000;
+            lastFrameTime = timestamp;
+
+            if (isPlaying) {
+                currentTime += delta;
+                if (currentTime >= totalDuration) {
+                    currentTime = 0;
+                }
+            }
+
+            const chapter = getCurrentChapter(currentTime);
+            const progress = (currentTime / totalDuration) * 100;
+            progressEl.style.width = `${progress}%`;
+            timeEl.innerText = `${formatTime(currentTime)} / ${formatTime(totalDuration)}`;
+            chapterTitleEl.innerText = chapter.title;
+            chapterLabelEl.innerText = chapter.label;
+
+            // DRAW VIVID PRESENTATION FRAME
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Background Tactical Grid
+            const grad = ctx.createLinearGradient(0, 0, w, h);
+            grad.addColorStop(0, '#0B0F19');
+            grad.addColorStop(1, '#020617');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+
+            // Subtle Grid lines
+            ctx.strokeStyle = 'rgba(30, 41, 59, 0.4)';
+            ctx.lineWidth = 1;
+            const gridSize = 40;
+            for (let x = 0; x < w; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, h);
+                ctx.stroke();
+            }
+            for (let y = 0; y < h; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            // Radar Scan Sweep
+            const radarAngle = (timestamp * 0.001) % (Math.PI * 2);
+            const centerX = w * 0.5;
+            const centerY = h * 0.52;
+            const radius = Math.min(w, h) * 0.38;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.2)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Concentric rings
+            [0.3, 0.6, 0.9].forEach(factor => {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius * factor, 0, Math.PI * 2);
+                ctx.strokeStyle = 'rgba(6, 182, 212, 0.12)';
+                ctx.stroke();
+            });
+
+            // Sweep cone
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, radarAngle, radarAngle + 0.4);
+            ctx.closePath();
+            const sweepGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
+            sweepGrad.addColorStop(0, 'rgba(6, 182, 212, 0.25)');
+            sweepGrad.addColorStop(1, 'rgba(6, 182, 212, 0.0)');
+            ctx.fillStyle = sweepGrad;
+            ctx.fill();
+            ctx.restore();
+
+            // RENDER SPECIFIC SCENE CONTENT
+            if (chapter.index === 0) {
+                // Scene 1: Citizen SOS Phone Mockup & Beacon Emission
+                drawMobileFrame(w * 0.32, h * 0.5, timestamp);
+                drawTelemetryFeed(w * 0.72, h * 0.5, "CITIZEN SOS INTAKE", [
+                    "✓ GPS Fix Acquired: 26.8467° N, 80.9462° E (Lucknow)",
+                    "✓ Audio SOS Triggers: 'HELP' / 'BACHAO' Recognized",
+                    "✓ Incident Stored: SOS-2026-914832 [CRITICAL]",
+                    "✓ Socket.IO Broadcast to NDRF Command Mesh in 18ms"
+                ], '#06B6D4');
+            } else if (chapter.index === 1) {
+                // Scene 2: AI Multi-Disaster Triage Engine
+                drawRiskGauge(w * 0.35, h * 0.5, 92, timestamp);
+                drawTelemetryFeed(w * 0.72, h * 0.5, "AI DETERMINISTIC TRIAGE ENGINE", [
+                    "• Water Inundation Level: Extreme (+2.4m Flash Flood)",
+                    "• Trapped Victims: 6 Reported (Elderly/Children Flagged)",
+                    "• Structural Stability: High Risk / Unstable Foundation",
+                    "► COMPUTED RISK INDEX: 92/100 (TIER-1 PRIORITY DISPATCH)"
+                ], '#8B5CF6');
+            } else if (chapter.index === 2) {
+                // Scene 3: Tactical Authority Dashboard Map
+                drawTacticalMapSim(w * 0.5, h * 0.5, timestamp);
+            } else {
+                // Scene 4: Fleet Dispatch & Dijkstra Safe Route
+                drawDispatchSequence(w * 0.5, h * 0.5, timestamp);
+            }
+
+            requestAnimationFrame(renderShowcase);
+        }
+
+        function drawMobileFrame(cx, cy, ts) {
+            const mw = 220;
+            const mh = 420;
+            const x = cx - mw / 2;
+            const y = cy - mh / 2;
+
+            ctx.fillStyle = '#0F172A';
+            ctx.strokeStyle = '#38BDF8';
+            ctx.lineWidth = 3;
+            roundRect(x, y, mw, mh, 24);
+            ctx.fill();
+            ctx.stroke();
+
+            // Screen Header
+            ctx.fillStyle = '#1E293B';
+            roundRect(x + 10, y + 10, mw - 20, 40, 10);
+            ctx.fill();
+            ctx.fillStyle = '#38BDF8';
+            ctx.font = 'bold 12px "JetBrains Mono"';
+            ctx.fillText("AISTER CITIZEN APP", x + 25, y + 34);
+
+            // SOS Panic Button in Center
+            const pulse = Math.sin(ts * 0.005) * 6;
+            ctx.beginPath();
+            ctx.arc(cx, cy - 20, 55 + pulse, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy - 20, 48, 0, Math.PI * 2);
+            ctx.fillStyle = '#EF4444';
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 18px "Plus Jakarta Sans"';
+            ctx.textAlign = 'center';
+            ctx.fillText("SOS", cx, cy - 14);
+            ctx.font = 'bold 9px "Plus Jakarta Sans"';
+            ctx.fillText("HOLD 3 SECONDS", cx, cy + 2);
+            ctx.textAlign = 'left';
+
+            // Active Telemetry Badge
+            ctx.fillStyle = '#064E3B';
+            roundRect(x + 20, cy + 65, mw - 40, 50, 10);
+            ctx.fill();
+            ctx.fillStyle = '#34D399';
+            ctx.font = 'bold 10px "JetBrains Mono"';
+            ctx.fillText("● RESCUE SQUAD EN ROUTE", x + 30, cy + 85);
+            ctx.font = '10px "Plus Jakarta Sans"';
+            ctx.fillText("ETA: 07 Mins • Boat Unit 04", x + 30, cy + 102);
+        }
+
+        function drawRiskGauge(cx, cy, score, ts) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(cx, cy, 90, 0.8 * Math.PI, 2.2 * Math.PI);
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 16;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.arc(cx, cy, 90, 0.8 * Math.PI, 0.8 * Math.PI + (score / 100) * 1.4 * Math.PI);
+            ctx.strokeStyle = '#8B5CF6';
+            ctx.lineWidth = 16;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 44px "Plus Jakarta Sans"';
+            ctx.textAlign = 'center';
+            ctx.fillText(score.toString(), cx, cy + 10);
+            ctx.font = 'bold 12px "JetBrains Mono"';
+            ctx.fillStyle = '#A78BFA';
+            ctx.fillText("CRITICAL RISK", cx, cy + 35);
+            ctx.textAlign = 'left';
+            ctx.restore();
+        }
+
+        function drawTacticalMapSim(cx, cy, ts) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.strokeStyle = '#06B6D4';
+            ctx.lineWidth = 2;
+            roundRect(cx - 360, cy - 170, 720, 340, 16);
+            ctx.fill();
+            ctx.stroke();
+
+            // Dashboard Header Bar
+            ctx.fillStyle = '#0B0F19';
+            roundRect(cx - 360, cy - 170, 720, 45, 16);
+            ctx.fill();
+            ctx.fillStyle = '#06B6D4';
+            ctx.font = 'bold 14px "JetBrains Mono"';
+            ctx.fillText("NDRF COMMAND CENTER • LIVE TACTICAL SITUATIONAL AWARENESS", cx - 340, cy - 142);
+
+            // Mock Map Points
+            const points = [
+                { x: cx - 220, y: cy + 20, label: "SOS #914 - FLOOD (6 trapped)", color: "#EF4444" },
+                { x: cx - 50, y: cy - 40, label: "RELIEF SHELTER (480 Beds)", color: "#10B981" },
+                { x: cx + 180, y: cy + 40, label: "NDRF SQUAD 02 (Approaching)", color: "#3B82F6" }
+            ];
+
+            points.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 8, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#F8FAFC';
+                ctx.font = 'bold 11px "Plus Jakarta Sans"';
+                ctx.fillText(p.label, p.x + 14, p.y + 4);
+            });
+
+            // Route vector line
+            ctx.beginPath();
+            ctx.setLineDash([6, 6]);
+            ctx.moveTo(points[2].x, points[2].y);
+            ctx.lineTo(points[0].x, points[0].y);
+            ctx.strokeStyle = '#38BDF8';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.restore();
+        }
+
+        function drawDispatchSequence(cx, cy, ts) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.strokeStyle = '#10B981';
+            ctx.lineWidth = 2;
+            roundRect(cx - 360, cy - 170, 720, 340, 16);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#10B981';
+            ctx.font = 'bold 16px "JetBrains Mono"';
+            ctx.fillText("SAFE ROUTE ENGINE: FLOOD OBSTRUCTION AVOIDANCE", cx - 330, cy - 130);
+
+            const steps = [
+                "1. Heuristic Dijkstra Vector Computed: 4.8 km distance",
+                "2. Water Inundated Arterial Highway 24 Bypassed",
+                "3. Rescue Boat 04 Dispatched with 4 Paramedics & Life Rafts",
+                "4. Citizen Live Checklist Progressed: TEAM_DISPATCHED -> ON_SCENE"
+            ];
+
+            steps.forEach((s, idx) => {
+                ctx.fillStyle = idx === 3 ? '#34D399' : '#CBD5E1';
+                ctx.font = '13px "JetBrains Mono"';
+                ctx.fillText(s, cx - 330, cy - 80 + idx * 45);
+            });
+
+            ctx.restore();
+        }
+
+        function drawTelemetryFeed(cx, cy, title, lines, color) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            roundRect(cx - 180, cy - 150, 360, 300, 16);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = color;
+            ctx.font = 'bold 12px "JetBrains Mono"';
+            ctx.fillText(title, cx - 160, cy - 120);
+
+            lines.forEach((l, idx) => {
+                ctx.fillStyle = '#E2E8F0';
+                ctx.font = '11px "Plus Jakarta Sans"';
+                wrapText(ctx, l, cx - 160, cy - 80 + idx * 48, 320, 18);
+            });
+            ctx.restore();
+        }
+
+        function roundRect(x, y, w, h, r) {
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.arcTo(x + w, y, x + w, y + h, r);
+            ctx.arcTo(x + w, y + h, x, y + h, r);
+            ctx.arcTo(x, y + h, x, y, r);
+            ctx.arcTo(x, y, x + w, y, r);
+            ctx.closePath();
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const metrics = context.measureText(testLine);
+                const testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    context.fillText(line, x, y);
+                    line = words[n] + ' ';
+                    y += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            context.fillText(line, x, y);
+        }
+
+        requestAnimationFrame(renderShowcase);
+    </script>
+</body>
+</html>

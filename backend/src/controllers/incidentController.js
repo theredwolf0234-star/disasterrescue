@@ -1272,10 +1272,38 @@ async function supplementIncident(req, res, next) {
         let evidenceUrl = req.body.evidenceUrl || null;
         let audioUrl = req.body.audioUrl || null;
 
+        let aiVisionData = null;
         if (req.file) {
             evidenceUrl = `/uploads/${req.file.filename}`;
             const isAudio = req.file.mimetype.startsWith('audio/') || ['.wav', '.mp3', '.webm', '.ogg'].some(ext => req.file.filename.endsWith(ext));
             if (isAudio) audioUrl = evidenceUrl;
+
+            try {
+                aiVisionData = await analyzeDisasterMedia({
+                    filePath: req.file.path,
+                    fileMime: req.file.mimetype,
+                    fileName: req.file.originalname,
+                    category: category || incident.category,
+                    details: details || incident.details
+                });
+
+                const mediaId = generateUUID('MED');
+                await db.run(
+                    `INSERT INTO media (id, incident_id, file_url, file_type, file_name, file_size, ai_analysis_json, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+                    [
+                        mediaId,
+                        id,
+                        evidenceUrl,
+                        isAudio ? 'audio' : req.file.mimetype.startsWith('video/') ? 'video' : 'image',
+                        req.file.originalname,
+                        req.file.size,
+                        JSON.stringify(aiVisionData)
+                    ]
+                );
+            } catch (mediaErr) {
+                console.warn('[Incident] Supplement AI vision error:', mediaErr.message);
+            }
         }
 
         // Re-evaluate risk with new details
@@ -1297,6 +1325,7 @@ async function supplementIncident(req, res, next) {
                  readable_address = COALESCE(?, readable_address),
                  evidence_url = COALESCE(?, evidence_url),
                  audio_url = COALESCE(?, audio_url),
+                 ai_vision_analysis = COALESCE(?, ai_vision_analysis),
                  emergency_level = ?,
                  risk_score = ?,
                  recommended_action = ?,
@@ -1309,6 +1338,7 @@ async function supplementIncident(req, res, next) {
                 address ? address.trim() : null,
                 evidenceUrl,
                 audioUrl,
+                aiVisionData ? JSON.stringify(aiVisionData) : null,
                 priorityAssessment.level,
                 priorityAssessment.score || 70,
                 priorityAssessment.recommendedAction || incident.recommended_action,

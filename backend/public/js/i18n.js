@@ -62,7 +62,13 @@ const I18N_TRANSLATIONS = {
         safeRouteTitle: "Recommended Safe Route",
         routeAvoids: "Avoids hazards",
         eta: "ETA",
-        distance: "Distance"
+        distance: "Distance",
+        oneTapSos: "ONE-TAP SOS",
+        weather5Day: "5-Day Weather Forecast",
+        trustedContacts: "Trusted Emergency Contacts",
+        shareDistress: "Share Distress Message",
+        autoDispatch: "Auto-Dispatch",
+        escalate: "Escalate Incident"
     },
     hi: {
         appName: "रेस्क्यू एआई (RESCUE AI)",
@@ -73,7 +79,7 @@ const I18N_TRANSLATIONS = {
         navSos: "आपातकालीन एसओएस",
         navReport: "आपदा रिपोर्ट करें",
         navLiveRisk: "लाइव जोखिम",
-        navWeather: "मौसम",
+        navWeather: "5-दिवसीय मौसम",
         navMap: "रणनीतिक मानचित्र",
         navShelters: "राहत शिविर",
         navHospitals: "अस्पताल",
@@ -112,7 +118,7 @@ const I18N_TRANSLATIONS = {
         step7: "घटना का समाधान पूर्ण",
         sheltersTitle: "आपातकालीन राहत शिविर",
         hospitalsTitle: "आपातकालीन अस्पताल एवं ट्रॉमा सेंटर",
-        weatherTitle: "लाइव मौसम विज्ञान टेलीमेट्री",
+        weatherTitle: "5-दिवसीय मौसम पूर्वानुमान",
         riskTitle: "मल्टी-आपदा जोखिम इंजन",
         overallRisk: "कुल जोखिम स्कोर",
         critical: "अति गंभीर (CRITICAL)",
@@ -122,7 +128,13 @@ const I18N_TRANSLATIONS = {
         safeRouteTitle: "अनुशंसित सुरक्षित मार्ग",
         routeAvoids: "खतरों से सुरक्षित",
         eta: "अनुमानित समय",
-        distance: "दूरी"
+        distance: "दूरी",
+        oneTapSos: "वन-टैप एसओएस",
+        weather5Day: "5-दिवसीय मौसम पूर्वानुमान",
+        trustedContacts: "विश्वसनीय आपातकालीन संपर्क",
+        shareDistress: "आपातकालीन संदेश साझा करें",
+        autoDispatch: "स्वचालित प्रेषण",
+        escalate: "एस्केलेट करें"
     }
 };
 

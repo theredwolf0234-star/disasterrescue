@@ -703,9 +703,9 @@ function renderActiveSosCockpit(inc, coords, gpsTelemetry) {
     const ndrfDetailsEl = document.getElementById('cockpit-ndrf-details');
     if (ndrfDetailsEl) {
         if (inc.ndrf_cad_id) {
-            ndrfDetailsEl.innerText = `${inc.ndrf_battalion || '11th Battalion NDRF'} • Ref: ${inc.ndrf_cad_id} • Status: ${inc.ndrf_status || 'ACKNOWLEDGED'}`;
+            ndrfDetailsEl.innerText = `${inc.ndrf_battalion || '11th Battalion NDRF'} • CAD Ref: ${inc.ndrf_cad_id} • Status: ${inc.ndrf_status || 'TRANSMITTED'} [Sandbox Protocol]`;
         } else {
-            ndrfDetailsEl.innerText = 'National Control Room Connected (1078 EOC) • High-Priority Alert Relayed';
+            ndrfDetailsEl.innerText = 'Prototype CAD Gateway Active • In immediate life danger, dial 112 / 1078 directly';
         }
     }
 
@@ -1220,6 +1220,11 @@ async function handleFullReportSubmit(e) {
             return;
         }
 
+        const idempotencyKey = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const gpsTelemetry = (typeof window.getGpsTelemetry === 'function')
+            ? window.getGpsTelemetry()
+            : { isVerifiedGps: true, accuracy: null, timestamp: new Date().toISOString() };
+
         let res;
         const hasEvidence = evidenceInput && evidenceInput.files && evidenceInput.files.length > 0;
         const hasAudio = voiceEngine && voiceEngine.recordedAudioBlob;
@@ -1231,16 +1236,31 @@ async function handleFullReportSubmit(e) {
             formData.append('details', details);
             formData.append('latitude', coords[0].toString());
             formData.append('longitude', coords[1].toString());
+            formData.append('idempotency_key', idempotencyKey);
+            formData.append('is_verified_gps', gpsTelemetry.isVerifiedGps ? '1' : '0');
+            if (gpsTelemetry.accuracy !== null && gpsTelemetry.accuracy !== undefined) {
+                formData.append('gps_accuracy', gpsTelemetry.accuracy.toString());
+            }
+            formData.append('gps_timestamp', gpsTelemetry.timestamp || new Date().toISOString());
             if (address) formData.append('address', address);
 
             if (hasEvidence) formData.append('evidence', evidenceInput.files[0]);
             else if (hasAudio) formData.append('evidence', voiceEngine.recordedAudioBlob, 'voice-sos.webm');
 
-            res = await api.postMultipart('/api/incidents', formData);
+            res = await api.postMultipart('/api/incidents', formData, { 'Idempotency-Key': idempotencyKey });
         } else {
             res = await api.post('/api/incidents', {
-                category, count, details, latitude: coords[0], longitude: coords[1], address: address || undefined
-            });
+                category,
+                count,
+                details,
+                latitude: coords[0],
+                longitude: coords[1],
+                address: address || undefined,
+                idempotency_key: idempotencyKey,
+                is_verified_gps: gpsTelemetry.isVerifiedGps ? 1 : 0,
+                gps_accuracy: gpsTelemetry.accuracy,
+                gps_timestamp: gpsTelemetry.timestamp || new Date().toISOString()
+            }, { 'Idempotency-Key': idempotencyKey });
         }
 
         if (!res.success) throw new Error(res.message || 'Report submission failed');
@@ -1260,7 +1280,22 @@ async function handleFullReportSubmit(e) {
         showDispatchSuccessModal(incident);
 
     } catch (err) {
-        showToast(err.message || 'Failed to submit disaster report. Please retry.', 'error');
+        if (err.errorCode === 'BACKEND_UNAVAILABLE' || !navigator.onLine) {
+            saveOfflineReport({
+                category,
+                count,
+                details,
+                address,
+                latitude: coords[0],
+                longitude: coords[1],
+                timestamp: new Date().toISOString()
+            });
+            document.getElementById('full-disaster-form').reset();
+            const previewCard = document.getElementById('evidence-preview-card');
+            if (previewCard) previewCard.classList.add('hidden');
+        } else {
+            showToast(err.message || 'Failed to submit disaster report. Please retry.', 'error');
+        }
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;

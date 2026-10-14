@@ -20,7 +20,6 @@ let shelterMapMarkers = [];
 let hospitalMapMarkers = [];
 let rescueTeamMapMarkers = [];
 let hazardMapMarkers = [];
-let govAlertMapMarkers = [];
 
 let liveUserCoordinates = [80.9462, 26.8467]; // [Lng, Lat] for Mapbox (Lucknow default)
 let gpsAccuracyMeters = null;
@@ -74,7 +73,6 @@ function initCitizenMap() {
 async function loadAllMapLayers() {
     await Promise.all([
         loadIncidentsOnMapbox(),
-        loadGovernmentAlertsOnMapbox(),
         loadSheltersOnMapbox(),
         loadHospitalsOnMapbox(),
         loadRescueTeamsOnMapbox(),
@@ -495,6 +493,7 @@ function renderRouteOnMap(waypoints, routeInfo) {
     if (routeBox && distText) {
         distText.innerHTML = `
             <span>${routeInfo.summary || `${routeInfo.distanceKm} km • ETA: ${routeInfo.etaMinutes} mins`}</span>
+            ${routeInfo.source ? `<span class="block text-[10px] text-purple-300 font-mono mt-0.5">🛣️ ${routeInfo.source}</span>` : ''}
             ${routeInfo.avoidedHazards && routeInfo.avoidedHazards.length > 0 ? `<span class="block text-[10px] text-emerald-400 mt-0.5">🛡️ Bypassing: ${routeInfo.avoidedHazards.join(', ')}</span>` : ''}
         `;
         routeBox.classList.remove('hidden');
@@ -534,107 +533,9 @@ function toggleLayer(layerName) {
         rescueTeamMapMarkers.forEach(m => m.getElement().style.display = isVisible ? '' : 'none');
     } else if (layerName === 'hazards') {
         hazardMapMarkers.forEach(m => m.getElement().style.display = isVisible ? '' : 'none');
-        govAlertMapMarkers.forEach(m => m.getElement().style.display = isVisible ? '' : 'none');
     }
 
     showToast(`Layer '${layerName}' ${isVisible ? 'shown' : 'hidden'}`, 'info');
-}
-
-async function loadGovernmentAlertsOnMapbox() {
-    if (!mapboxMap) return;
-
-    try {
-        const res = await api.get('/api/alerts');
-        const alertList = (res && res.data && res.data.alerts) ? res.data.alerts : (res && res.alerts ? res.alerts : []);
-        if (!Array.isArray(alertList)) return;
-
-        govAlertMapMarkers.forEach(m => m.remove());
-        govAlertMapMarkers = [];
-
-        alertList.filter(a => a.is_active).forEach(a => {
-            const isSevere = a.severity === 'SEVERE' || a.severity === 'EXTREME';
-            const badgeColor = isSevere ? '#ef4444' : (a.severity === 'MODERATE' ? '#f59e0b' : '#0ea5e9');
-
-            const el = document.createElement('div');
-            el.innerHTML = `
-                <div style="background-color:#0b0f19; border:2px solid ${badgeColor}; border-radius:50%; width:28px; height:28px; display:flex; align-items:center; justify-content:center; box-shadow:0 0 15px ${badgeColor}99; cursor:pointer;" title="NDMA SACHET Official Warning">
-                    <span style="font-size:14px;">🚨</span>
-                </div>
-            `;
-
-            const popupContent = `
-                <div style="color:#0f172a; font-family:sans-serif; padding:6px; max-width:280px; line-height:1.4;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                        <span style="font-size:9px; background:${badgeColor}22; color:${badgeColor}; padding:2px 6px; border-radius:6px; font-weight:800; text-transform:uppercase;">OFFICIAL ${a.severity}</span>
-                        <span style="font-size:9px; color:#64748b; font-family:monospace;">${a.alert_identifier}</span>
-                    </div>
-                    <strong style="color:#0f172a; font-size:13px; display:block; margin-bottom:2px;">${a.hazard_type}</strong>
-                    <div style="font-size:10px; color:#64748b; margin-bottom:4px;">
-                        <span>🏛️ Source: <strong>${a.source_agency}</strong></span>
-                    </div>
-                    <div style="font-size:11px; color:#334155; margin-bottom:6px; background:#f8fafc; padding:6px; border-radius:6px; border-left:3px solid ${badgeColor};">
-                        ${a.official_instructions}
-                    </div>
-                    <div style="font-size:10px; color:#64748b; border-top:1px solid #e2e8f0; padding-top:4px;">
-                        <div>📍 Zone: <strong>${a.affected_area}</strong> (Radius: ${a.radius_km}km)</div>
-                        <div>⏱️ Valid Until: <strong>${new Date(a.expires_at).toLocaleString('en-IN')}</strong></div>
-                    </div>
-                </div>
-            `;
-
-            const marker = new mapboxgl.Marker(el)
-                .setLngLat([a.centroid_lng, a.centroid_lat])
-                .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(popupContent))
-                .addTo(mapboxMap);
-
-            govAlertMapMarkers.push(marker);
-        });
-
-        // Update HUD alert count pill
-        const hudAlertCount = document.getElementById('hud-official-alert-text');
-        const activeCount = alertList.filter(a => a.is_active).length;
-        if (hudAlertCount) {
-            hudAlertCount.innerText = `NDMA SACHET: ${activeCount} Alerts`;
-        }
-    } catch (e) {
-        console.warn('[Mapbox] Failed to load government alerts on map:', e.message);
-    }
-}
-
-async function searchLiveLocationHome() {
-    const input = document.getElementById('home-map-search-input');
-    const query = input ? input.value.trim() : '';
-    if (!query) return;
-
-    try {
-        const res = await api.get(`/api/geocode/search?q=${encodeURIComponent(query)}`);
-        if (res.success && res.features && res.features.length > 0) {
-            const place = res.features[0];
-            const [lng, lat] = place.center;
-
-            liveUserCoordinates = [lng, lat];
-            if (mapboxMap) {
-                mapboxMap.flyTo({ center: liveUserCoordinates, zoom: 14, duration: 1200 });
-                renderUserGpsMarker();
-            }
-
-            const hudLoc = document.getElementById('hud-location-name');
-            const hdrBadge = document.getElementById('header-location-badge');
-            if (hudLoc) hudLoc.innerText = place.text || place.place_name;
-            if (hdrBadge) hdrBadge.innerText = place.text || place.place_name;
-
-            showToast(`Location focused: ${place.place_name}`, 'info');
-
-            if (typeof fetchRealtimeWeatherData === 'function') {
-                fetchRealtimeWeatherData(lat, lng);
-            }
-        } else {
-            showToast('Location not found. Please try another query.', 'warning');
-        }
-    } catch (err) {
-        console.error('Geocoding search error:', err);
-        showToast('Geocoding search failed. Check network.', 'error');
-    }
 }
 
 async function searchLiveLocation() {
@@ -743,8 +644,6 @@ window.toggleLayer = toggleLayer;
 window.searchLiveLocation = searchLiveLocation;
 window.recenterMap = recenterMap;
 window.toggleRiskZones = toggleRiskZones;
-window.loadGovernmentAlertsOnMapbox = loadGovernmentAlertsOnMapbox;
-window.searchLiveLocationHome = searchLiveLocationHome;
 window.getUserCoordinates = () => [liveUserCoordinates[1], liveUserCoordinates[0]]; // returns [Lat, Lng]
 window.getGpsTelemetry = () => ({
     isVerifiedGps: Boolean(isRealGpsActive),

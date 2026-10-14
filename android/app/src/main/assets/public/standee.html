@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AISTER / RESCUE AI — Official Convocation Standee (2ft x 4ft)</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons & Tailwind CSS -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @page {
+            size: 24in 48in;
+            margin: 0;
+        }
+
+        :root {
+            --standee-w: 1200px;
+            --standee-h: 2400px;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #0F172A;
+            margin: 0;
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .standee-canvas {
+            width: var(--standee-w);
+            min-width: var(--standee-w);
+            height: var(--standee-h);
+            min-height: var(--standee-h);
+            background: linear-gradient(180deg, #F0F9FF 0%, #FFFFFF 15%, #FFFFFF 85%, #F0F9FF 100%);
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 40px 60px;
+            box-sizing: border-box;
+        }
+
+        .ribbon-shape {
+            clip-path: polygon(0% 50%, 45px 0%, calc(100% - 45px) 0%, 100% 50%, calc(100% - 45px) 100%, 45px 100%);
+        }
+
+        @media print {
+            body {
+                background: none;
+                padding: 0;
+            }
+            .standee-canvas {
+                width: 24in !important;
+                height: 48in !important;
+                box-shadow: none;
+                page-break-after: avoid;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PRINT / EXPORT TOOLBAR -->
+    <div class="no-print fixed top-4 right-4 z-50 flex items-center gap-3 bg-slate-900/95 border border-slate-700 px-4 py-2.5 rounded-2xl shadow-2xl backdrop-blur-md">
+        <div class="text-xs text-slate-300">
+            <span class="font-bold text-cyan-400">Print-Ready 2ft × 4ft (4:8)</span> &bull; Updated Standee
+        </div>
+        <button onclick="window.print()" class="px-4 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-lg hover:scale-105 active:scale-95">
+            <i data-lucide="printer" class="w-3.5 h-3.5"></i> Print / Save PDF
+        </button>
+        <a href="assets/AISTER_Convocation_Standee_Updated.png" download="AISTER_Convocation_Standee_Updated.png" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs flex items-center gap-1.5 border border-slate-600 transition-colors">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Download Updated PNG
+        </a>
+    </div>
+
+    <!-- MAIN 2FT X 4FT STANDEE CANVAS -->
+    <div class="standee-canvas">
+
+        <!-- 1. TOP HEADER: UNIVERSITY & CONVOCATION -->
+        <div class="w-full space-y-3">
+            <div class="flex items-center justify-between px-6">
+                <!-- Maharishi Medallion -->
+                <div class="w-32 h-32 rounded-full overflow-hidden flex items-center justify-center p-1 bg-white shadow-md border-2 border-amber-100">
+                    <img src="assets/maharishi_medallion.png" alt="Maharishi Mahesh Yogi" class="w-full h-full object-cover rounded-full">
+                </div>
+
+                <!-- University Title & Separator -->
+                <div class="flex items-center gap-5">
+                    <div class="w-1 h-24 bg-[#8B1D2C] rounded-full"></div>
+                    <div class="text-center">
+                        <div class="text-4xl font-extrabold tracking-wider text-[#8B1D2C]">MAHARISHI</div>
+                        <div class="text-4xl font-extrabold tracking-wider text-[#8B1D2C]">UNIVERSITY</div>
+                    </div>
+                </div>
+
+                <!-- MUIT Round Seal -->
+                <div class="w-32 h-32 rounded-full overflow-hidden flex items-center justify-center p-1 bg-white shadow-md border-2 border-amber-100">
+                    <img src="assets/muit_seal.png" alt="MUIT Seal" class="w-full h-full object-cover rounded-full">
+                </div>
+            </div>
+
+            <!-- Convocation Title Bar -->
+            <div class="text-center space-y-2 pt-1">
+                <div class="inline-flex items-center justify-center gap-3">
+                    <i data-lucide="graduation-cap" class="w-10 h-10 text-[#0A3C9E]"></i>
+                    <h1 class="text-5xl font-black text-[#0A3C9E] tracking-tight">7<sup>TH</sup> CONVOCATION 2026</h1>
+                </div>
+                <div class="flex items-center justify-center gap-4 text-lg font-bold text-[#034575]">
+                    <span class="flex items-center gap-1.5"><i data-lucide="calendar" class="w-5 h-5 text-[#0284C7]"></i> 22<sup>ND</sup> OCTOBER 2026</span>
+                    <span class="text-slate-300">|</span>
+                    <span class="flex items-center gap-1.5"><i data-lucide="map-pin" class="w-5 h-5 text-[#0284C7]"></i> Venue: Maharishi University Lucknow Campus</span>
+                </div>
+            </div>
+
+            <!-- Presented By Ribbon -->
+            <div class="w-full pt-1">
+                <div class="relative w-full bg-gradient-to-r from-[#0284C7] via-[#0EA5E9] to-[#0284C7] ribbon-shape py-3.5 px-16 text-center shadow-lg">
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-[#0369A1] text-white text-xs font-black tracking-widest px-6 py-0.5 rounded-full border border-sky-400">
+                        PRESENTED BY
+                    </div>
+                    <div class="text-xl font-extrabold text-white tracking-wide pt-1">
+                        MAHARISHI SCHOOL OF ENGINEERING AND TECHNOLOGY (MSOET)
+                    </div>
+                    <div class="text-base font-semibold text-sky-100">
+                        Maharishi University of Information Technology
+                    </div>
+                    <div class="text-sm font-medium text-sky-200">
+                        Noida campus
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. PROJECT TITLE & BRAND BAR -->
+        <div class="w-full text-center space-y-2 pt-2">
+            <div class="inline-flex items-center justify-center gap-6">
+                <img src="assets/icon.png" alt="AISTER Logo" class="w-24 h-24 rounded-2xl shadow-xl border-2 border-sky-400/50">
+                <div class="w-1.5 h-20 bg-sky-500 rounded-full"></div>
+                <div class="text-left">
+                    <div class="text-6xl font-black tracking-tight text-[#0A3C9E] flex items-baseline gap-3">
+                        <span>AISTER</span>
+                        <span class="text-4xl text-[#0284C7] font-extrabold">/ RESCUE AI</span>
+                    </div>
+                </div>
+            </div>
+            <div class="text-xl font-bold text-[#034575] tracking-wide">
+                AI Disaster Rescue Coordinator &bull; Emergency Triage &bull; Citizen Safety
+            </div>
+        </div>
+
+        <!-- 3. THREE OVERVIEW CARDS -->
+        <div class="grid grid-cols-3 gap-5 w-full">
+            <!-- Card 1: THE CHALLENGE -->
+            <div class="bg-red-50/70 border-2 border-red-200 rounded-3xl p-5 space-y-3 shadow-md flex flex-col justify-between">
+                <div class="bg-red-600 rounded-2xl p-2.5 px-4 flex items-center gap-3 text-white shadow-sm">
+                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-red-600 font-bold">
+                        <i data-lucide="triangle-alert" class="w-5 h-5"></i>
+                    </div>
+                    <span class="font-extrabold text-base tracking-wide">THE CHALLENGE</span>
+                </div>
+                <div class="text-sm text-slate-800 leading-relaxed space-y-2 flex-1 pt-2">
+                    <p>Natural disasters strike suddenly, causing loss of life, property and communication breakdowns.</p>
+                    <p>Delayed information and poor coordination often lead to slower rescue operations.</p>
+                </div>
+                <div class="pt-2 flex justify-end opacity-40">
+                    <i data-lucide="flame" class="w-10 h-10 text-red-400"></i>
+                </div>
+            </div>
+
+            <!-- Card 2: OUR SOLUTION -->
+            <div class="bg-sky-50/70 border-2 border-sky-200 rounded-3xl p-5 space-y-3 shadow-md flex flex-col justify-between">
+                <div class="bg-[#0284C7] rounded-2xl p-2.5 px-4 flex items-center gap-3 text-white shadow-sm">
+                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#0284C7] font-bold">
+                        <i data-lucide="lightbulb" class="w-5 h-5"></i>
+                    </div>
+                    <span class="font-extrabold text-base tracking-wide">OUR SOLUTION</span>
+                </div>
+                <div class="text-sm text-slate-800 leading-relaxed space-y-1.5 flex-1 pt-2">
+                    <p class="font-semibold text-slate-900">AISTER uses AI, real-time data and location-based technology to provide early warnings, accurate risk analysis and faster rescue coordination for safer communities.</p>
+                </div>
+                <div class="pt-2 flex justify-end opacity-40">
+                    <i data-lucide="cpu" class="w-10 h-10 text-sky-400"></i>
+                </div>
+            </div>
+
+            <!-- Card 3: KEY FEATURES -->
+            <div class="bg-emerald-50/70 border-2 border-emerald-200 rounded-3xl p-5 space-y-3 shadow-md flex flex-col justify-between">
+                <div class="bg-emerald-600 rounded-2xl p-2.5 px-4 flex items-center gap-3 text-white shadow-sm">
+                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-emerald-600 font-bold">
+                        <i data-lucide="star" class="w-5 h-5"></i>
+                    </div>
+                    <span class="font-extrabold text-base tracking-wide">KEY FEATURES</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 pt-2 text-center flex-1">
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="w-11 h-11 rounded-full bg-[#0284C7] text-white flex items-center justify-center shadow">
+                            <i data-lucide="map-pin" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-[11px] font-bold text-slate-800 leading-tight">GPS Location<br>Detection</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="w-11 h-11 rounded-full bg-[#0284C7] text-white flex items-center justify-center shadow">
+                            <i data-lucide="cloud-sun" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-[11px] font-bold text-slate-800 leading-tight">5-Day Weather<br>Forecast</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="w-11 h-11 rounded-full bg-[#0284C7] text-white flex items-center justify-center shadow">
+                            <i data-lucide="languages" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-[11px] font-bold text-slate-800 leading-tight">Multi-Lang<br>Support</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="w-11 h-11 rounded-full bg-[#0284C7] text-white flex items-center justify-center shadow">
+                            <i data-lucide="bell" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-[11px] font-bold text-slate-800 leading-tight">SOS Report<br>Form</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="w-11 h-11 rounded-full bg-[#0284C7] text-white flex items-center justify-center shadow">
+                            <i data-lucide="trending-up" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-[11px] font-bold text-slate-800 leading-tight">AI Analysis &<br>Real-Time</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="w-11 h-11 rounded-full bg-[#0284C7] text-white flex items-center justify-center shadow">
+                            <i data-lucide="shield" class="w-5 h-5"></i>
+                        </div>
+                        <span class="text-[11px] font-bold text-slate-800 leading-tight">Authority<br>Dashboard</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. AUTHORITY COMMAND DASHBOARD (MIDDLE SCREENSHOT CONSOLE) -->
+        <div class="w-full bg-[#0B0F19] border-2 border-sky-500 rounded-3xl p-5 shadow-2xl space-y-4 text-slate-200">
+            <!-- Console Header -->
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-3">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span class="font-mono text-sm font-bold text-sky-400">AISTER Tactical Authority Dashboard &bull; NDRF Command Center &bull; Lucknow Metro</span>
+                </div>
+                <div class="px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-700 text-emerald-300 font-mono text-xs font-bold">
+                    LIVE INCIDENT MESH
+                </div>
+            </div>
+
+            <!-- Metric Summary Chips -->
+            <div class="grid grid-cols-4 gap-3 font-mono text-xs">
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
+                    <div class="text-slate-400">Active Alerts</div>
+                    <div class="text-lg font-bold text-red-500">5 High Risk Zones</div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
+                    <div class="text-slate-400">Total Reports</div>
+                    <div class="text-lg font-bold text-sky-400">12 Pending Review</div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
+                    <div class="text-slate-400">Rescue Teams</div>
+                    <div class="text-lg font-bold text-emerald-400">3 On Duty</div>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-xl p-2.5">
+                    <div class="text-slate-400">Affected Areas</div>
+                    <div class="text-lg font-bold text-amber-400">4 Regions</div>
+                </div>
+            </div>
+
+            <!-- Tactical Map -->
+            <div class="w-full h-56 bg-slate-950 border border-slate-800 rounded-2xl relative overflow-hidden flex items-center justify-center p-4">
+                <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#06b6d4_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                <div class="w-48 h-48 rounded-full border border-cyan-800/60 absolute"></div>
+                <div class="w-80 h-80 rounded-full border border-cyan-800/40 absolute"></div>
+                
+                <div class="absolute left-28 top-12 flex flex-col items-center">
+                    <div class="w-20 h-20 rounded-full bg-red-600/30 animate-ping absolute"></div>
+                    <div class="w-14 h-14 rounded-full bg-red-600/70 flex items-center justify-center text-white font-mono text-[9px] font-bold shadow-lg border border-red-400">
+                        SOS #914
+                    </div>
+                    <span class="text-[10px] font-bold text-red-400 mt-1">Flood Level: +2.4m</span>
+                </div>
+
+                <div class="absolute right-36 bottom-10 flex flex-col items-center">
+                    <div class="w-12 h-12 rounded-full bg-amber-500/50 flex items-center justify-center text-white font-mono text-[9px] font-bold border border-amber-300">
+                        SOS #918
+                    </div>
+                    <span class="text-[9px] font-bold text-amber-300 mt-0.5">Debris Block</span>
+                </div>
+
+                <div class="absolute left-48 bottom-8 flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full bg-sky-400"></div>
+                    <span class="font-mono text-xs text-sky-400 font-bold">NDRF Boat 04 &bull; ETA 7 min</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. BOTTOM SECTION: 3 MOBILE SCREENS + SQUARE BLANK QR BOX -->
+        <div class="grid grid-cols-12 gap-5 w-full">
+            <!-- Mobile 1: Citizen SOS -->
+            <div class="col-span-3 bg-[#0F172A] border-2 border-sky-500 rounded-3xl p-3 shadow-xl space-y-2 text-slate-200">
+                <div class="flex justify-between items-center text-[11px] font-bold text-sky-400 border-b border-slate-800 pb-1.5">
+                    <span>AISTER SOS</span>
+                    <span class="text-[9px] bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded font-mono">GPS ON</span>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-2 text-[10px] space-y-0.5 border border-slate-800">
+                    <div class="font-bold text-white">Heavy Rainfall Advisory</div>
+                    <div class="text-[9px] text-slate-400">Rain: 148 mm/h | Gomti Basin</div>
+                </div>
+                <div class="py-2 flex flex-col items-center">
+                    <div class="w-20 h-20 rounded-full bg-red-600 border-4 border-red-500/50 shadow-xl flex flex-col items-center justify-center text-white">
+                        <span class="text-xl font-black">SOS</span>
+                        <span class="text-[7px] font-bold text-red-200">HOLD 3 SEC</span>
+                    </div>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-2 text-[10px] space-y-0.5 border border-slate-800">
+                    <div class="font-bold text-slate-300">Active Emergency Status</div>
+                    <div class="text-red-400 text-[9px]">&bull; Flood Warning: Zone 04</div>
+                    <div class="text-emerald-400 text-[9px]">&bull; Relief Squad Approaching</div>
+                    <div class="text-sky-400 text-[9px]">&bull; ETA: 7 mins (Boat Unit)</div>
+                </div>
+            </div>
+
+            <!-- Mobile 2: Report Hazard -->
+            <div class="col-span-3 bg-[#0F172A] border-2 border-sky-500 rounded-3xl p-3 shadow-xl space-y-2 text-slate-200">
+                <div class="flex justify-between items-center text-[11px] font-bold text-sky-400 border-b border-slate-800 pb-1.5">
+                    <span>Report Hazard</span>
+                    <span class="text-[9px] bg-sky-950 text-sky-300 px-1.5 py-0.5 rounded font-mono">STEP 2/3</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-lg p-2 flex flex-col items-center text-center space-y-1">
+                    <i data-lucide="camera" class="w-6 h-6 text-sky-400"></i>
+                    <div class="text-[10px] font-bold text-white">Photo Evidence Attached</div>
+                    <div class="text-[9px] text-sky-300 font-mono">AI: Flood Inundation 88%</div>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-1.5 text-[10px] space-y-0.5 border border-slate-800">
+                    <div class="text-slate-300">GPS: <strong>26.8467° N, 80.9462° E</strong></div>
+                    <div class="text-emerald-400 text-[9px]">Accuracy: &plusmn;4m (Lucknow)</div>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-1.5 text-[10px] space-y-0.5 border border-slate-800">
+                    <div class="text-slate-300">Victims: <strong class="text-white">6 Trapped (Roof)</strong></div>
+                    <div class="text-red-400 text-[9px]">Elderly Assistance Flagged</div>
+                </div>
+                <div class="bg-[#0284C7] rounded-lg py-1.5 text-center text-[10px] font-bold text-white shadow">
+                    TRANSMIT BEACON &rarr;
+                </div>
+            </div>
+
+            <!-- Mobile 3: Live Tracking & Shelters -->
+            <div class="col-span-3 bg-[#0F172A] border-2 border-sky-500 rounded-3xl p-3 shadow-xl space-y-2 text-slate-200">
+                <div class="flex justify-between items-center text-[11px] font-bold text-sky-400 border-b border-slate-800 pb-1.5">
+                    <span>Live Tracking</span>
+                    <span class="text-[9px] bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded font-mono">LIVE</span>
+                </div>
+                <div class="bg-slate-900 border border-slate-800 rounded-lg p-2 flex flex-col items-center text-center space-y-1">
+                    <i data-lucide="navigation" class="w-6 h-6 text-emerald-400"></i>
+                    <div class="text-[10px] font-bold text-white">NDRF Squad 04 Approaching</div>
+                    <div class="text-[9px] text-emerald-300 font-mono">ETA: 07 Mins &bull; Safe Route</div>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-1.5 text-[10px] space-y-0.5 border border-slate-800">
+                    <div class="text-slate-300">Assigned Shelter:</div>
+                    <div class="text-emerald-400 font-bold text-[9px]">Gomti Relief Camp 03</div>
+                    <div class="text-slate-400 text-[8px]">Open Beds: 450 | Food & Meds</div>
+                </div>
+                <div class="bg-slate-900 rounded-lg p-1.5 text-[9px] space-y-0.5 border border-slate-800 font-mono">
+                    <div class="text-emerald-400">&check; Beacon Acknowledged</div>
+                    <div class="text-emerald-400">&check; AI Risk: Critical 92</div>
+                    <div class="text-sky-400">&bull; Squad En Route</div>
+                </div>
+            </div>
+
+            <!-- Square Blank QR Code Box Below Project Video -->
+            <div class="col-span-3 bg-sky-50/80 border-2 border-sky-500 rounded-3xl p-3 shadow-xl flex flex-col justify-between items-center text-center">
+                <!-- Video Header -->
+                <div class="w-full bg-[#0284C7] rounded-xl py-1.5 px-2 flex items-center justify-center gap-1.5 text-white shadow">
+                    <i data-lucide="video" class="w-4 h-4"></i>
+                    <span class="font-extrabold text-xs tracking-wide">PROJECT VIDEO</span>
+                </div>
+
+                <!-- PERFECT SQUARE BLANK FOR ADDING QR LATER -->
+                <div class="w-36 h-36 bg-white rounded-xl shadow-md border-2 border-dashed border-[#0284C7] flex flex-col items-center justify-center p-2 relative my-1">
+                    <i data-lucide="qr-code" class="w-10 h-10 text-sky-400/50 mb-1"></i>
+                    <span class="text-xs font-bold text-[#0284C7]">PASTE QR HERE</span>
+                    <span class="text-[9px] text-slate-400 font-medium">(Square Area)</span>
+                </div>
+
+                <!-- Button CTA -->
+                <div class="w-full bg-[#0A3C9E] rounded-xl py-1.5 px-2 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow">
+                    <i data-lucide="play-circle" class="w-4 h-4"></i> Scan to Watch Video
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. FOOTER: UPDATED TEAM ROSTER -->
+        <div class="w-full space-y-4 pt-3">
+            <!-- Team Divider -->
+            <div class="flex items-center justify-center gap-6">
+                <div class="flex-1 h-0.5 bg-sky-400"></div>
+                <div class="text-2xl font-black text-[#0A3C9E] tracking-wider uppercase">
+                    TEAM AISTER
+                </div>
+                <div class="flex-1 h-0.5 bg-sky-400"></div>
+            </div>
+
+            <!-- Exactly 2 Team Members with requested details (No Role lines) -->
+            <div class="grid grid-cols-2 gap-8 text-center px-12">
+                <!-- Member 1: Satyam Pathak -->
+                <div class="space-y-1 border-r border-sky-200 pr-8">
+                    <div class="w-16 h-16 rounded-full bg-[#0284C7] text-white flex items-center justify-center mx-auto shadow-md">
+                        <i data-lucide="user" class="w-8 h-8"></i>
+                    </div>
+                    <div class="text-2xl font-black text-[#0A3C9E]">Satyam Pathak</div>
+                    <div class="text-base text-slate-700 font-medium">B.Tech CSE - 2<sup>nd</sup> Year</div>
+                    <div class="text-lg font-bold text-[#0284C7]">Cyber Security</div>
+                </div>
+
+                <!-- Member 2: Nyasa Kashish Jha -->
+                <div class="space-y-1 pl-8">
+                    <div class="w-16 h-16 rounded-full bg-[#0284C7] text-white flex items-center justify-center mx-auto shadow-md">
+                        <i data-lucide="user" class="w-8 h-8"></i>
+                    </div>
+                    <div class="text-2xl font-black text-[#0A3C9E]">Nyasa Kashish Jha</div>
+                    <div class="text-base text-slate-700 font-medium">B.Tech CSE - 2<sup>nd</sup> Year</div>
+                    <div class="text-lg font-bold text-[#0284C7]">Data Science</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

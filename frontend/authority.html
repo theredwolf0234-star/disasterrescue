@@ -246,6 +246,21 @@
                 </div>
             </div>
 
+            <!-- LIVE WEATHER & ENVIRONMENTAL HAZARD TELEMETRY STRIP -->
+            <div id="auth-weather-strip" class="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs shadow-md">
+                <div class="flex items-center space-x-2.5">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span class="font-extrabold text-white text-xs uppercase tracking-wide">Live Environmental Telemetry (Open-Meteo)</span>
+                    <span id="auth-weather-status-badge" class="text-[9px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded font-bold">LIVE TELEMETRY</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 font-mono text-slate-300">
+                    <span class="flex items-center space-x-1"><i data-lucide="thermometer" class="w-3.5 h-3.5 text-amber-400"></i><span id="auth-weather-temp">--°C</span></span>
+                    <span class="flex items-center space-x-1"><i data-lucide="cloud-rain" class="w-3.5 h-3.5 text-blue-400"></i><span id="auth-weather-rain">-- mm/h</span></span>
+                    <span class="flex items-center space-x-1"><i data-lucide="wind" class="w-3.5 h-3.5 text-cyan-400"></i><span id="auth-weather-wind">-- km/h</span></span>
+                    <span class="flex items-center space-x-1"><i data-lucide="cloud" class="w-3.5 h-3.5 text-purple-400"></i><span id="auth-weather-cond">Loading telemetry...</span></span>
+                </div>
+            </div>
+
             <!-- MAIN LAYOUT: MAPBOX TACTICAL MAP (7 COLS) & LIVE QUEUE (5 COLS) -->
             <div class="grid lg:grid-cols-12 gap-6">
 
@@ -635,6 +650,20 @@
                 </div>
             </div>
 
+            <!-- OFFICIAL AUTHORIZATION & PROTOCOL NOTICE BANNER -->
+            <div class="bg-amber-950/40 border border-amber-600/70 rounded-2xl p-4 flex items-start space-x-3.5 text-amber-200 text-xs shadow-lg">
+                <i data-lucide="shield-alert" class="w-5 h-5 text-amber-400 shrink-0 mt-0.5"></i>
+                <div class="space-y-1">
+                    <div class="flex items-center space-x-2">
+                        <span class="font-black text-amber-300 uppercase tracking-wide">Prototype CAD Integration Notice</span>
+                        <span class="text-[9px] font-mono bg-amber-900/80 text-amber-200 px-2 py-0.2 rounded border border-amber-700">Official Clearance Required</span>
+                    </div>
+                    <p class="text-[11px] leading-relaxed text-amber-100/90">
+                        This module demonstrates an inter-agency Common Alerting Protocol (OASIS CAP v1.2) telemetry sandbox. Automated dispatch to state emergency services (National 112 / NDRF 1078) requires dedicated governmental credentials and telecom clearance. <strong>In an immediate disaster or medical emergency, responders and citizens must dial 112 or 1078 directly.</strong>
+                    </p>
+                </div>
+            </div>
+
             <!-- NDRF Gateway KPI Metric Cards -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex items-center space-x-3.5">
@@ -645,7 +674,7 @@
                         <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Gateway State</span>
                         <div class="flex items-center space-x-1.5 mt-0.5">
                             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                            <span id="ndrf-kpi-status" class="text-sm font-black text-emerald-400">ONLINE (1078 EOC)</span>
+                            <span id="ndrf-kpi-status" class="text-xs font-black text-emerald-400">SANDBOX (CAP v1.2)</span>
                         </div>
                     </div>
                 </div>

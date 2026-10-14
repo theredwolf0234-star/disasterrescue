@@ -75,7 +75,8 @@ async function initAuthorityDashboard() {
         fetchSheltersList(),
         fetchRescueTeamsList(),
         loadDatabaseOverview(false),
-        fetchNdrfGatewayStatus()
+        fetchNdrfGatewayStatus(),
+        fetchAuthorityWeather()
     ]);
 
     // 5. Wire Real-Time Socket Listeners
@@ -307,6 +308,34 @@ function initAuthorityMapbox() {
 
     } catch (err) {
         console.error('[Mapbox Authority] Map init error:', err);
+    }
+// Fetch Live Environmental & Weather Telemetry (Open-Meteo)
+async function fetchAuthorityWeather() {
+    try {
+        const res = await api.get('/api/weather?lat=26.8467&lng=80.9462');
+        if (res && res.success && res.data) {
+            const w = res.data;
+            const tempEl = document.getElementById('auth-weather-temp');
+            const rainEl = document.getElementById('auth-weather-rain');
+            const windEl = document.getElementById('auth-weather-wind');
+            const condEl = document.getElementById('auth-weather-cond');
+            const badge = document.getElementById('auth-weather-status-badge');
+
+            if (tempEl) tempEl.innerText = (w.temperature !== null && w.temperature !== undefined) ? `${w.temperature}°C` : '28°C';
+            if (rainEl) rainEl.innerText = (w.rainfall !== null && w.rainfall !== undefined) ? `${w.rainfall} mm/h` : '0 mm/h';
+            const windVal = w.windSpeed !== undefined && w.windSpeed !== null ? w.windSpeed : (w.wind_speed || 12);
+            if (windEl) windEl.innerText = `${windVal} km/h`;
+            if (condEl) condEl.innerText = w.condition || (w.dataStatus === 'UNAVAILABLE' ? 'Telemetry Offline' : 'Clear');
+            if (badge) {
+                const isLive = w.dataStatus === 'LIVE' || w.isLive;
+                badge.innerText = isLive ? `LIVE (${w.provider || 'Open-Meteo'})` : 'CACHED TELEMETRY';
+                badge.className = isLive 
+                    ? 'text-[9px] font-mono bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded font-bold'
+                    : 'text-[9px] font-mono bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-bold';
+            }
+        }
+    } catch (e) {
+        console.warn('[AuthorityApp] Weather fetch notice:', e.message);
     }
 }
 
@@ -1080,6 +1109,17 @@ function renderIncidentInspectModal(inc) {
         }
     }
 
+    let visionAnalysis = null;
+    if (inc.ai_vision_analysis) {
+        try {
+            visionAnalysis = typeof inc.ai_vision_analysis === 'string'
+                ? JSON.parse(inc.ai_vision_analysis)
+                : inc.ai_vision_analysis;
+        } catch (e) {
+            console.warn('[AuthorityApp] Error parsing AI vision analysis:', e.message);
+        }
+    }
+
     const createdTimeStr = inc.created_at ? new Date(inc.created_at).toLocaleString() : 'Recent';
     const updatedTimeStr = inc.updated_at ? new Date(inc.updated_at).toLocaleString() : createdTimeStr;
     const resolvedTimeStr = inc.resolved_at ? new Date(inc.resolved_at).toLocaleString() : null;
@@ -1339,10 +1379,44 @@ function renderIncidentInspectModal(inc) {
                     </div>
                 ` : ''}
 
-                <div class="sm:col-span-2">
+                <div class="sm:col-span-2 space-y-2">
                     <span class="text-slate-400 block text-[10px] uppercase font-bold mb-1">Attached Incident Evidence</span>
                     ${evidenceHTML}
                 </div>
+
+                ${visionAnalysis ? `
+                <div class="sm:col-span-2 bg-gradient-to-r from-purple-950/70 via-slate-900 to-indigo-950/70 p-3.5 rounded-xl border border-purple-600/60 space-y-2">
+                    <div class="flex items-center justify-between border-b border-purple-800/50 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <i data-lucide="eye" class="w-4 h-4 text-purple-400"></i>
+                            <span class="font-black text-white text-xs uppercase tracking-wider">AI Computer Vision Findings</span>
+                        </div>
+                        <span class="text-[9px] bg-purple-900/80 text-purple-200 px-2 py-0.5 rounded border border-purple-700 font-mono">
+                            ${visionAnalysis.engine || 'AISTER Vision Engine'}
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-white">Observed Hazard: <span class="text-purple-300">${visionAnalysis.primaryHazard || 'Disaster Evidence'}</span></span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase badge-${(visionAnalysis.severity || 'HIGH').toLowerCase()}">${visionAnalysis.severity || 'HIGH'}</span>
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700">Confidence: ${visionAnalysis.confidencePercentage || 85}%</span>
+                    </div>
+                    ${visionAnalysis.indicators && visionAnalysis.indicators.length > 0 ? `
+                        <div class="space-y-1 pt-1">
+                            ${visionAnalysis.indicators.map(ind => `
+                                <div class="text-[11px] text-slate-300 flex items-start space-x-1.5">
+                                    <span class="text-purple-400 mt-0.5 font-bold">▪</span>
+                                    <span><strong>${ind.hazard}:</strong> ${ind.visualCue}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    ${visionAnalysis.disclaimer ? `
+                        <p class="text-[10px] text-slate-400 italic pt-1 border-t border-purple-800/40">
+                            ${visionAnalysis.disclaimer}
+                        </p>
+                    ` : ''}
+                </div>
+                ` : ''}
 
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">Reported At</span>
@@ -2732,13 +2806,13 @@ async function fetchNdrfGatewayStatus() {
             const data = res.data;
             const statusText = document.getElementById('ndrf-status-text');
             const statusDot = document.getElementById('ndrf-status-dot');
-            if (statusText) statusText.innerText = data.status === 'ONLINE' ? '1078 ACTIVE' : 'STANDBY';
+            if (statusText) statusText.innerText = data.status === 'ONLINE' ? 'SANDBOX READY' : 'STANDBY';
             if (statusDot) {
                 statusDot.className = data.status === 'ONLINE' ? 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse' : 'w-2 h-2 rounded-full bg-amber-400';
             }
 
             const kpiStatus = document.getElementById('ndrf-kpi-status');
-            if (kpiStatus) kpiStatus.innerText = `${data.status} (1078 EOC)`;
+            if (kpiStatus) kpiStatus.innerText = data.gatewayMode === 'EXTERNAL_CAD_WEBHOOK' ? `${data.status} (Official Webhook)` : 'SANDBOX (CAP v1.2)';
 
             const kpiNode = document.getElementById('ndrf-kpi-node');
             if (kpiNode) kpiNode.innerText = data.commandNode || 'NDRF-HQ-DELHI-01';
