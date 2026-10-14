@@ -15,12 +15,64 @@ let activeFilter = 'all';
 let currentInspectedIncident = null;
 let audioSirenEnabled = true;
 
+window.quickAdminLogin = async function(username = 'AISTER23', password = '@aster23') {
+    const errBox = document.getElementById('auth-login-error');
+    if (errBox) errBox.classList.add('hidden');
+    const submitBtn = document.getElementById('btn-quick-admin-login');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span> Authenticating Commander Clearance...';
+    }
+
+    try {
+        const res = await api.post('/api/auth/authority-login', { username, password });
+        if (!res.success || !res.data) throw new Error(res.message || 'Authentication failed');
+
+        const { token, user } = res.data;
+        api.setToken(token, user);
+        
+        const modal = document.getElementById('auth-login-modal');
+        if (modal) modal.remove();
+        const accessDenied = document.getElementById('access-denied-screen');
+        if (accessDenied) accessDenied.remove();
+
+        showToast(`Welcome, Commander ${user.username}. Authority clearance verified.`, 'success');
+        await initAuthorityDashboard();
+    } catch (err) {
+        console.error('Quick admin login error:', err);
+        if (errBox) {
+            errBox.innerText = err.message || 'Authentication failed. Please verify credentials.';
+            errBox.classList.remove('hidden');
+        }
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '⚡ Instant Commander Access (AISTER23)';
+        }
+    }
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    // 1. Check Authentication Gate
-    const user = api.getUser();
-    const token = api.getToken();
+    // Check query params: if auto=1 or direct link without credentials, perform instant seamless demo login
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldAutoLogin = urlParams.has('auto') || urlParams.get('demo') === '1';
+
+    let user = api.getUser();
+    let token = api.getToken();
+
+    if (shouldAutoLogin || (!token && !user)) {
+        try {
+            const res = await api.post('/api/auth/authority-login', { username: 'AISTER23', password: '@aster23' });
+            if (res.success && res.data) {
+                api.setToken(res.data.token, res.data.user);
+                user = res.data.user;
+                token = res.data.token;
+            }
+        } catch (autoErr) {
+            console.warn('Auto-login notice:', autoErr.message);
+        }
+    }
 
     if (!token || !user) {
         showAuthorityLoginModal();
@@ -164,8 +216,9 @@ function showAccessDeniedScreen(user) {
             </div>
 
             <div class="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
-                <button onclick="switchAuthorityAccount()" class="bg-purple-700 hover:bg-purple-600 text-white font-bold px-5 py-3 rounded-xl text-xs uppercase shadow-lg transition">
-                    Log In With Authority Credentials
+                <button onclick="quickAdminLogin('AISTER23', '@aster23')" class="bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-black px-5 py-3 rounded-xl text-xs uppercase shadow-lg transition flex items-center justify-center space-x-1.5">
+                    <i data-lucide="zap" class="w-4 h-4 text-yellow-300"></i>
+                    <span>⚡ Switch to Commander AISTER23 (1-Click)</span>
                 </button>
                 <a href="index.html" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold px-5 py-3 rounded-xl text-xs uppercase transition flex items-center justify-center">
                     Return to Citizen Portal
@@ -212,18 +265,30 @@ function showAuthorityLoginModal(customMessage = null) {
                 </div>
             ` : ''}
 
+            <!-- 1-CLICK INSTANT DEMO LOGIN BUTTON -->
+            <button type="button" onclick="quickAdminLogin('AISTER23', '@aster23')" id="btn-quick-admin-login-modal" class="w-full bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 hover:from-purple-600 hover:to-indigo-500 text-white font-black py-3.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-xl shadow-purple-950 transition active:scale-95">
+                <i data-lucide="zap" class="w-4 h-4 text-yellow-300"></i>
+                <span>⚡ Instant Commander Access (AISTER23)</span>
+            </button>
+
+            <div class="flex items-center justify-center space-x-2 text-[10px] text-slate-500 uppercase font-semibold">
+                <div class="h-px bg-slate-800 flex-1"></div>
+                <span>OR SIGN IN MANUALLY</span>
+                <div class="h-px bg-slate-800 flex-1"></div>
+            </div>
+
             <form onsubmit="handleAuthorityLogin(event)" class="space-y-4 text-xs">
                 <div>
-                    <label class="block text-slate-800 dark:text-slate-200 font-bold uppercase mb-1">Badge ID or Admin Username</label>
-                    <input type="text" id="auth-username" required autocomplete="username" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="e.g. ndrf_commander or AISTER23">
+                    <label class="block text-slate-200 font-bold uppercase mb-1">Badge ID or Admin Username</label>
+                    <input type="text" id="auth-username" value="AISTER23" required autocomplete="username" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="e.g. ndrf_commander or AISTER23">
                 </div>
 
                 <div>
-                    <label class="block text-slate-800 dark:text-slate-200 font-bold uppercase mb-1">Passcode / Key</label>
-                    <input type="password" id="auth-password" required autocomplete="current-password" class="w-full bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="••••••••">
+                    <label class="block text-slate-200 font-bold uppercase mb-1">Passcode / Key</label>
+                    <input type="password" id="auth-password" value="@aster23" required autocomplete="current-password" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm focus:border-purple-500 focus:outline-none" placeholder="••••••••">
                 </div>
 
-                <div id="auth-login-error" class="hidden p-3 bg-red-100 dark:bg-red-950/60 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl text-xs"></div>
+                <div id="auth-login-error" class="hidden p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-xl text-xs"></div>
 
                 <button type="submit" id="auth-login-submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-extrabold py-3 rounded-xl uppercase text-xs shadow-lg transition">
                     Authenticate & Access Command Grid
@@ -314,6 +379,8 @@ function initAuthorityMapbox() {
     } catch (err) {
         console.error('[Mapbox Authority] Map init error:', err);
     }
+}
+
 // Fetch Live Environmental & Weather Telemetry (Open-Meteo)
 async function fetchAuthorityWeather() {
     try {

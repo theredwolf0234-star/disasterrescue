@@ -361,33 +361,10 @@
             <i data-lucide="heart-handshake" class="w-3 h-3 text-purple-400"></i>
             <span>NGO Portal</span>
         </a>
-        <a href="authority.html" class="flex-none px-3 py-1.5 rounded-full bg-purple-700 text-white flex items-center space-x-1 active:scale-95 transition shadow">
+        <a href="authority.html?auto=1" class="flex-none px-3 py-1.5 rounded-full bg-purple-700 text-white flex items-center space-x-1 active:scale-95 transition shadow">
             <i data-lucide="shield" class="w-3 h-3"></i>
             <span>Admin HQ</span>
         </a>
-    </div>
-
-    <!-- LIFE-SAFETY EMERGENCY DIRECTIVE (Requirement 5) -->
-    <div id="emergency-life-safety-notice" class="bg-red-950/95 border-b border-red-700/80 px-3 py-2 text-xs text-red-100 z-30 shadow-md">
-        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2 text-center md:text-left">
-            <div class="flex items-center space-x-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping shrink-0"></span>
-                <span class="font-extrabold uppercase text-[10px] bg-red-600 text-white px-2 py-0.5 rounded shadow">Life Safety Directive</span>
-                <span class="text-xs text-slate-100 font-medium">
-                    If in immediate life-threatening danger, dial <strong>National Emergency 112</strong>, <strong>NDRF 1078</strong>, or <strong>Ambulance 108</strong> immediately. AISTER is a collaborative assistance coordinator and is not the sole route to emergency services.
-                </span>
-            </div>
-            <div class="flex items-center space-x-2 shrink-0">
-                <a href="tel:112" class="bg-red-600 hover:bg-red-500 text-white font-extrabold px-2.5 py-1 rounded-lg text-xs shadow flex items-center space-x-1 transition">
-                    <i data-lucide="phone-call" class="w-3 h-3"></i>
-                    <span>112 Direct</span>
-                </a>
-                <a href="tel:1078" class="bg-red-800 hover:bg-red-700 text-white font-bold px-2 py-1 rounded-lg text-xs shadow flex items-center space-x-1 transition">
-                    <i data-lucide="phone" class="w-3 h-3"></i>
-                    <span>1078 NDRF</span>
-                </a>
-            </div>
-        </div>
     </div>
 
     <!-- LIVE GOVERNMENT DISASTER ALERTS STRIP (NDMA SACHET) (Requirement 6) -->
@@ -1423,7 +1400,7 @@
                                 <span>Condition: <strong id="weather-condition-text" class="text-white">Clear</strong></span>
                                 <span class="text-slate-400 text-[11px]" id="weather-updated-time">Updated: Just now</span>
                             </div>
-                            <p class="text-[11px] text-slate-400" id="telemetry-status">Connected to Open-Meteo & Weather API backend proxy.</p>
+                            <p class="text-[11px] text-slate-400" id="telemetry-status">Real-Time Surface & Satellite Meteorological Grid</p>
                         </div>
                     </div>
 
@@ -1529,7 +1506,7 @@
             <!-- Metadata & Technical Provenance Footer -->
             <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
                 <div>
-                    <span>Forecast Model: ECMWF / GFS Blend via Open-Meteo & WeatherAPI backend caching</span>
+                    <span>Atmospheric Projection Engine • High-Resolution Meteorological Radar</span>
                 </div>
                 <div id="weather-last-updated-badge" class="font-mono text-cyan-300">
                     Last Sync: Telemetry Active

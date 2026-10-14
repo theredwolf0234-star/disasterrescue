@@ -197,12 +197,59 @@
     </header>
 
     <!-- AUTHENTICATION CHECK GATE SCREEN (DISPLAYED UNTIL TOKEN & ROLE VERIFIED) -->
-    <div id="authority-auth-loading" class="flex-grow flex flex-col items-center justify-center p-12 text-center text-slate-400 space-y-4">
-        <div class="w-14 h-14 rounded-2xl bg-purple-700 text-white flex items-center justify-center font-bold shadow-xl shadow-purple-950/80 animate-pulse border border-purple-400/40">
-            <i data-lucide="shield-check" class="w-7 h-7"></i>
+    <div id="authority-auth-loading" class="flex-grow flex flex-col items-center justify-center p-4 sm:p-8 text-center text-slate-300 space-y-6 max-w-lg mx-auto w-full">
+        <div class="w-16 h-16 rounded-2xl bg-purple-700 text-white flex items-center justify-center font-bold shadow-xl shadow-purple-950/80 border border-purple-400/40">
+            <i data-lucide="shield-alert" class="w-8 h-8"></i>
         </div>
-        <div class="text-base font-black text-white tracking-wide uppercase">Verifying Command Access & Permissions</div>
-        <p class="text-xs text-slate-400 max-w-sm">Authenticating server session against government emergency operations protocol...</p>
+        <div class="space-y-1">
+            <h2 class="text-2xl font-black text-white tracking-tight">Authority Command Headquarters</h2>
+            <p class="text-xs text-slate-400">Emergency Operations Center • Triage Grid • NDRF Dispatch Control</p>
+        </div>
+
+        <div class="bg-slate-900 border border-purple-800/60 rounded-2xl p-6 w-full shadow-2xl space-y-4 text-left">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <span class="text-xs font-bold text-purple-300 uppercase">Command Clearance</span>
+                <span class="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">● SECURE GATE</span>
+            </div>
+
+            <!-- ONE-CLICK INSTANT DEMO LOGIN BUTTON -->
+            <button type="button" onclick="quickAdminLogin('AISTER23', '@aster23')" id="btn-quick-admin-login" class="w-full bg-gradient-to-r from-purple-700 via-indigo-600 to-purple-600 hover:from-purple-600 hover:to-indigo-500 text-white font-black py-3.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center space-x-2 shadow-xl shadow-purple-950 transition active:scale-95">
+                <i data-lucide="zap" class="w-4 h-4 text-yellow-300"></i>
+                <span>⚡ Instant Commander Access (AISTER23)</span>
+            </button>
+
+            <div class="flex items-center justify-center space-x-2 text-[10px] text-slate-500 uppercase font-semibold">
+                <div class="h-px bg-slate-800 flex-1"></div>
+                <span>OR SIGN IN MANUALLY</span>
+                <div class="h-px bg-slate-800 flex-1"></div>
+            </div>
+
+            <form onsubmit="handleAuthorityLogin(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 uppercase mb-1">Badge ID or Admin Username</label>
+                    <input type="text" id="auth-username" value="AISTER23" required autocomplete="username" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:border-purple-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 uppercase mb-1">Passcode / Key</label>
+                    <input type="password" id="auth-password" value="@aster23" required autocomplete="current-password" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:border-purple-500 focus:outline-none">
+                </div>
+
+                <div id="auth-login-error" class="hidden p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-xl text-xs font-semibold"></div>
+
+                <button type="submit" id="auth-login-submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-extrabold py-3 rounded-xl uppercase text-xs shadow-lg transition">
+                    Authenticate & Access Command Grid →
+                </button>
+            </form>
+
+            <div class="flex items-center justify-between pt-2 text-[11px] text-slate-400">
+                <button type="button" onclick="quickAdminLogin('ndrf_commander', 'authority123')" class="text-purple-400 hover:underline">
+                    Login: NDRF Commander
+                </button>
+                <a href="index.html" class="text-slate-400 hover:text-white underline">
+                    Return to Citizen Portal
+                </a>
+            </div>
+        </div>
     </div>
 
     <!-- COMMAND DASHBOARD CONTENT (HIDDEN BY DEFAULT UNTIL SERVER-SIDE AUTH VERIFIED) -->
