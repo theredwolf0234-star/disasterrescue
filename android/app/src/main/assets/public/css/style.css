@@ -277,6 +277,36 @@ body:not(.theme-dark) .leaflet-popup-tip {
     background: #FFFFFF !important;
 }
 
+/* Authority Command Tables & Panels in Bright Mode */
+body:not(.theme-dark) table {
+    color: #0F172A !important;
+}
+body:not(.theme-dark) thead tr {
+    background-color: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+}
+body:not(.theme-dark) thead th {
+    color: #334155 !important;
+}
+body:not(.theme-dark) tbody tr {
+    border-color: #E2E8F0 !important;
+}
+body:not(.theme-dark) tbody tr:hover {
+    background-color: #F8FAFC !important;
+}
+body:not(.theme-dark) #socket-status-badge {
+    background-color: #F1F5F9 !important;
+    border-color: #CBD5E1 !important;
+    color: #334155 !important;
+}
+body:not(.theme-dark) #socket-status-badge span.text-slate-400 {
+    color: #475569 !important;
+}
+body:not(.theme-dark) .bg-slate-900\/90 {
+    background-color: #F8FAFC !important;
+    border-color: #CBD5E1 !important;
+}
+
 /* ============================================================= */
 /* HIGH-CONTRAST DARK THEME STYLING (WHEN ACTIVE)                */
 /* Ensures words in dark mode are pure white #FFFFFF & legible  */

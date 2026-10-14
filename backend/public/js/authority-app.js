@@ -51,7 +51,60 @@ window.quickAdminLogin = async function(username = 'AISTER23', password = '@aste
     }
 };
 
+window.initAuthorityTheme = function() {
+    const saved = localStorage.getItem('rescue_authority_theme') || localStorage.getItem('rescue_theme') || 'dark';
+    window.applyAuthorityTheme(saved);
+};
+
+window.toggleAuthorityTheme = function() {
+    const isDark = document.body.classList.contains('theme-dark') || document.documentElement.classList.contains('theme-dark');
+    const newTheme = isDark ? 'bright' : 'dark';
+    window.applyAuthorityTheme(newTheme);
+};
+
+window.applyAuthorityTheme = function(theme) {
+    const isDark = (theme === 'dark');
+    if (isDark) {
+        document.body.classList.add('theme-dark');
+        document.documentElement.classList.add('theme-dark');
+        document.body.classList.remove('theme-bright');
+        document.documentElement.classList.remove('theme-bright');
+        localStorage.setItem('rescue_authority_theme', 'dark');
+        localStorage.setItem('rescue_theme', 'dark');
+    } else {
+        document.body.classList.remove('theme-dark');
+        document.documentElement.classList.remove('theme-dark');
+        document.body.classList.add('theme-bright');
+        document.documentElement.classList.add('theme-bright');
+        localStorage.setItem('rescue_authority_theme', 'bright');
+        localStorage.setItem('rescue_theme', 'light');
+    }
+
+    const icon = document.getElementById('authority-theme-icon');
+    const text = document.getElementById('authority-theme-text');
+    if (icon) icon.innerText = isDark ? '🌙' : '☀️';
+    if (text) text.innerText = isDark ? 'Dark' : 'Bright';
+
+    const mobIcon = document.getElementById('mob-auth-theme-icon');
+    const mobText = document.getElementById('mob-auth-theme-text');
+    if (mobIcon) mobIcon.innerText = isDark ? '🌙' : '☀️';
+    if (mobText) mobText.innerText = isDark ? 'Dark' : 'Bright';
+
+    const btnDark = document.getElementById('theme-btn-dark');
+    const btnBright = document.getElementById('theme-btn-bright');
+    if (btnDark && btnBright) {
+        if (isDark) {
+            btnDark.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-700 text-white shadow';
+            btnBright.className = 'px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-200';
+        } else {
+            btnDark.className = 'px-2.5 py-1 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900';
+            btnBright.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-500 text-white shadow';
+        }
+    }
+};
+
 document.addEventListener('DOMContentLoaded', async () => {
+    window.initAuthorityTheme();
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
     // Check query params: if auto=1 or direct link without credentials, perform instant seamless demo login

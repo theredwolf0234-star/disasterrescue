@@ -3,6 +3,7 @@ services:
     name: disaster-rescuecoordinator
     env: node
     plan: free
+    branch: main
     buildCommand: npm install --prefix backend
     startCommand: node backend/src/server.js
     healthCheckPath: /health

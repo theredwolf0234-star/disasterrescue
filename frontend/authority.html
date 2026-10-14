@@ -29,8 +29,20 @@
 
     <!-- Custom Production Styles -->
     <link rel="stylesheet" href="css/style.css">
+
+    <!-- Anti-flicker Theme Initialization -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('rescue_authority_theme') || localStorage.getItem('rescue_theme') || 'dark';
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('theme-dark');
+            } else {
+                document.documentElement.classList.remove('theme-dark');
+            }
+        })();
+    </script>
 </head>
-<body class="min-h-screen flex flex-col antialiased selection:bg-purple-600 selection:text-white bg-[#0B0F19] text-slate-200 w-full max-w-full overflow-x-hidden">
+<body class="min-h-screen flex flex-col antialiased selection:bg-purple-600 selection:text-white bg-[#0B0F19] text-slate-200 w-full max-w-full overflow-x-hidden theme-dark">
 
     <!-- MANDATORY EMERGENCY DISCLAIMER (SECTION 3 & 38) -->
     <aside aria-label="Official Coordination Notice" class="w-full max-w-full bg-purple-950/80 border-b border-purple-800/40 text-purple-200 px-4 py-1.5 text-[10px] text-center font-medium overflow-hidden">
@@ -139,6 +151,12 @@
                     <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-purple-600"></i>
                     <span>Citizen App</span>
                 </a>
+
+                <!-- COMMAND THEME SETTING (DARK / BRIGHT MODE) -->
+                <button id="authority-theme-toggle-btn" type="button" onclick="toggleAuthorityTheme()" title="Switch Between Tactical Dark & High-Contrast Bright Theme" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition shadow active:scale-95">
+                    <span id="authority-theme-icon">🌙</span>
+                    <span id="authority-theme-text" class="hidden sm:inline">Dark</span>
+                </button>
                 
                 <div class="hidden sm:flex items-center space-x-2 bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800/60 px-3 py-1.5 rounded-lg text-xs">
                     <i data-lucide="user-check" class="w-4 h-4 text-purple-600"></i>
@@ -153,6 +171,10 @@
 
         <!-- Mobile / Tablet Authority Switcher Strip -->
         <div id="authority-mobile-nav" class="lg:hidden flex items-center overflow-x-auto py-2 border-t border-slate-200 dark:border-slate-800 px-3 text-xs gap-1.5 no-scrollbar bg-white dark:bg-slate-900 shadow-sm">
+            <button onclick="toggleAuthorityTheme()" id="mob-auth-theme" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1 shadow-sm">
+                <span id="mob-auth-theme-icon">🌙</span>
+                <span id="mob-auth-theme-text">Dark / Bright</span>
+            </button>
             <button onclick="switchAuthorityView('tactical')" id="mob-auth-tactical" class="auth-mob-btn px-3 py-1.5 rounded-full bg-purple-700 text-white font-bold whitespace-nowrap shadow flex items-center space-x-1">
                 <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
                 <span>Tactical Grid</span>
@@ -322,17 +344,31 @@
 
                 <!-- LEFT: MAPBOX TACTICAL EMERGENCY MAP -->
                 <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl">
-                    <div class="flex items-center justify-between mb-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                         <div class="flex items-center space-x-2">
                             <i data-lucide="map-pin" class="w-4 h-4 text-purple-400"></i>
                             <h2 class="font-black text-white text-base">Tactical Operations GIS Grid</h2>
                         </div>
-                        <div class="flex items-center space-x-2 text-[10px]">
-                            <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span><span>Critical</span></span>
-                            <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block"></span><span>High</span></span>
-                            <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span><span>Hospital</span></span>
-                            <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span><span>Shelter</span></span>
-                            <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span><span>Resolved</span></span>
+                        <div class="flex items-center space-x-3">
+                            <!-- Theme Setting Selector (Dark / Bright) -->
+                            <div class="flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800">
+                                <button type="button" onclick="applyAuthorityTheme('dark')" id="theme-btn-dark" class="px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-700 text-white shadow transition flex items-center space-x-1">
+                                    <span>🌙</span>
+                                    <span>Dark</span>
+                                </button>
+                                <button type="button" onclick="applyAuthorityTheme('bright')" id="theme-btn-bright" class="px-2.5 py-1 rounded-lg text-xs font-bold text-slate-400 hover:text-slate-200 transition flex items-center space-x-1">
+                                    <span>☀️</span>
+                                    <span>Bright</span>
+                                </button>
+                            </div>
+
+                            <div class="hidden sm:flex items-center space-x-2 text-[10px]">
+                                <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span><span>Critical</span></span>
+                                <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block"></span><span>High</span></span>
+                                <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block"></span><span>Hospital</span></span>
+                                <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-purple-500 inline-block"></span><span>Shelter</span></span>
+                                <span class="flex items-center space-x-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span><span>Resolved</span></span>
+                            </div>
                         </div>
                     </div>
                     <div class="relative flex-grow rounded-xl overflow-hidden border border-slate-800" style="min-height: 480px;">
