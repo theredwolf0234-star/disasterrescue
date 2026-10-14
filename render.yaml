@@ -1,17 +1,14 @@
 services:
   - type: web
-    name: disasterrescue-api
-    runtime: node
+    name: disaster-rescuecoordinator
+    env: node
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: npm install --prefix backend
+    startCommand: node backend/src/server.js
     healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
-      - key: JWT_SECRET
-        generateValue: true
-      - key: FRONTEND_URL
-        value: "*"

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'aister-offline-cache-v6';
+const CACHE_NAME = 'aister-offline-cache-v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
