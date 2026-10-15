@@ -72,16 +72,16 @@
     <!-- MAIN NAVBAR -->
     <header class="w-full max-w-full bg-slate-950 border-b border-slate-800 sticky top-0 z-40 shadow-lg overflow-hidden">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-2.5 sm:space-x-3 shrink-0">
-                <div class="flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-purple-700 text-white font-bold shadow-lg shadow-purple-950/80 border border-purple-500/40 shrink-0">
+            <div class="flex items-center space-x-3">
+                <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-purple-700 text-white font-bold shadow-lg shadow-purple-950/80 border border-purple-500/40">
                     <i data-lucide="shield-alert" class="w-5 h-5"></i>
                 </div>
                 <div>
-                    <div class="flex items-center space-x-1.5 sm:space-x-2">
-                        <span class="font-black text-lg sm:text-xl tracking-tight text-white">RESCUE<span class="text-purple-400">AI</span></span>
-                        <span class="text-[9px] sm:text-[10px] font-extrabold uppercase bg-purple-950 text-purple-300 px-1.5 sm:px-2 py-0.5 rounded border border-purple-800/60">COMMAND HQ</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-black text-xl tracking-tight text-white">RESCUE<span class="text-purple-400">AI</span></span>
+                        <span class="text-[10px] font-extrabold uppercase bg-purple-950 text-purple-300 px-2 py-0.5 rounded border border-purple-800/60">COMMAND HQ</span>
                     </div>
-                    <p class="text-[10px] text-slate-400 font-semibold hidden md:block">First Responder & Emergency Operations Center</p>
+                    <p class="text-[10px] text-slate-400 font-semibold hidden sm:block">First Responder & Emergency Operations Center</p>
                 </div>
             </div>
 
@@ -104,6 +104,14 @@
                             <button type="button" data-view="tactical" onclick="switchAuthorityView('tactical')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between bg-purple-700 text-white shadow">
                                 <span class="flex items-center space-x-2"><i data-lucide="layout-dashboard" class="w-3.5 h-3.5 text-purple-300"></i><span>Tactical Grid</span></span>
                                 <span class="text-[9px] font-mono text-purple-200 uppercase">Live Map</span>
+                            </button>
+                            <button type="button" data-view="database-incidents" onclick="switchAuthorityView('database-incidents')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-red-400"></i><span>Incident Reports DB</span></span>
+                                <span class="text-[9px] font-mono text-red-400 uppercase">Reports</span>
+                            </button>
+                            <button type="button" data-view="database-users" onclick="switchAuthorityView('database', 'users')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="users" class="w-3.5 h-3.5 text-purple-400"></i><span>User Registrations</span></span>
+                                <span class="text-[9px] font-mono text-purple-300 uppercase">Citizens</span>
                             </button>
                             <button type="button" data-view="teams" onclick="switchAuthorityView('teams')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
                                 <span class="flex items-center space-x-2"><i data-lucide="truck" class="w-3.5 h-3.5 text-emerald-400"></i><span>Rescue Fleets</span></span>
@@ -559,6 +567,51 @@
                         <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Active Relational Tables</span>
                         <span id="db-tables-count-badge" class="font-extrabold text-emerald-400 text-sm">Querying schema...</span>
                     </div>
+                </div>
+            </div>
+
+            <!-- PRIMARY DATABASE DIRECTORIES: CITIZEN REGISTRATIONS & EMERGENCY REPORTS -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- User Registrations Card -->
+                <div class="bg-gradient-to-br from-slate-900 via-purple-950/40 to-slate-900 border border-purple-800/80 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3.5">
+                        <div class="w-12 h-12 rounded-xl bg-purple-700 text-white flex items-center justify-center font-bold shadow-lg shadow-purple-950 flex-shrink-0">
+                            <i data-lucide="users" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 class="font-extrabold text-white text-base">User Registrations</h3>
+                                <span id="quick-user-count" class="text-[10px] font-mono bg-purple-950 text-purple-300 border border-purple-800 px-2 py-0.5 rounded-full font-bold">Querying users...</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">Citizen registrations, full names, emails, phones, emergency relatives & blood groups</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="selectDatabaseTable('users')" class="bg-purple-700 hover:bg-purple-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-lg shadow-purple-950 flex items-center justify-center space-x-1.5 shrink-0">
+                        <i data-lucide="users" class="w-3.5 h-3.5"></i>
+                        <span>View Registrations</span>
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+
+                <!-- Emergency Incident Reports Card -->
+                <div class="bg-gradient-to-br from-slate-900 via-red-950/30 to-slate-900 border border-red-800/60 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center space-x-3.5">
+                        <div class="w-12 h-12 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold shadow-lg shadow-red-950 flex-shrink-0">
+                            <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 class="font-extrabold text-white text-base">SOS Reports Stored in DB</h3>
+                                <span id="quick-incident-count" class="text-[10px] font-mono bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded-full font-bold">Querying reports...</span>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-0.5">All emergency SOS reports with verified citizen registration details, GPS & live triage</p>
+                        </div>
+                    </div>
+                    <button type="button" onclick="selectDatabaseTable('incidents')" class="bg-red-600 hover:bg-red-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-lg shadow-red-950 flex items-center justify-center space-x-1.5 shrink-0">
+                        <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i>
+                        <span>View Reports DB</span>
+                        <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                    </button>
                 </div>
             </div>
 

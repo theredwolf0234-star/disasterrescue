@@ -1625,9 +1625,8 @@ function renderIncidentInspectModal(inc) {
                     attributionControl: false
                 }).setView([inc.latitude, inc.longitude], 15);
 
-                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                    subdomains: 'abcd',
+                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
                     maxZoom: 19
                 }).addTo(miniMap);
 
@@ -2126,7 +2125,15 @@ document.addEventListener('click', (e) => {
     }
 });
 
-function switchAuthorityView(viewName) {
+function switchAuthorityView(viewName, subTable = null) {
+    if (viewName === 'database-incidents') {
+        viewName = 'database';
+        subTable = 'incidents';
+    } else if (viewName === 'database-users') {
+        viewName = 'database';
+        subTable = 'users';
+    }
+
     currentAuthorityView = viewName;
 
     // Auto-close right-top dropdown
@@ -2153,6 +2160,12 @@ function switchAuthorityView(viewName) {
         alerts: '⚠️ Govt Alerts',
         ndrf: '📡 NDRF Grid'
     };
+    if (viewName === 'database' && subTable === 'users') {
+        viewLabels.database = '👤 User Registrations';
+    } else if (viewName === 'database' && subTable === 'incidents') {
+        viewLabels.database = '🚨 Incident Reports DB';
+    }
+
     const activeLabel = document.getElementById('admin-active-view-label');
     if (activeLabel && viewLabels[viewName]) {
         activeLabel.innerText = viewLabels[viewName];
@@ -2163,7 +2176,8 @@ function switchAuthorityView(viewName) {
         el.classList.remove('bg-purple-700', 'text-white', 'font-bold');
         el.classList.add('text-slate-300', 'hover:bg-slate-800');
     });
-    document.querySelectorAll(`.admin-nav-item[data-view="${viewName}"]`).forEach(el => {
+    const highlightKey = (viewName === 'database' && subTable) ? `database-${subTable}` : viewName;
+    document.querySelectorAll(`.admin-nav-item[data-view="${highlightKey}"]`).forEach(el => {
         el.classList.remove('text-slate-300', 'hover:bg-slate-800');
         el.classList.add('bg-purple-700', 'text-white', 'font-bold');
     });
@@ -2182,10 +2196,13 @@ function switchAuthorityView(viewName) {
     }
 
     if (viewName === 'database') {
+        if (subTable) {
+            currentDbTable = subTable;
+        }
         if (!dbOverviewData) {
             loadDatabaseOverview(true);
         } else {
-            loadTableData();
+            selectDatabaseTable(currentDbTable || 'incidents');
         }
     } else if (viewName === 'teams') {
         renderRescueTeamsFleet();
@@ -2629,6 +2646,18 @@ async function loadDatabaseOverview(autoLoadFirstTable = true) {
         const navBadge = document.getElementById('nav-db-badge');
         if (navBadge) navBadge.innerText = `${dbOverviewData.totalRecords.toLocaleString()} rows`;
 
+        // Update primary directory cards
+        const usersTbl = dbOverviewData.tables?.find(t => t.name === 'users');
+        const incidentsTbl = dbOverviewData.tables?.find(t => t.name === 'incidents');
+        const quickUserBadge = document.getElementById('quick-user-count');
+        if (quickUserBadge && usersTbl) {
+            quickUserBadge.innerText = `${usersTbl.rowCount} Registered Citizens`;
+        }
+        const quickIncBadge = document.getElementById('quick-incident-count');
+        if (quickIncBadge && incidentsTbl) {
+            quickIncBadge.innerText = `${incidentsTbl.rowCount} Stored Reports`;
+        }
+
         // Render table selector pills
         renderDatabaseTablePills();
 
@@ -2798,6 +2827,26 @@ function formatDbCellValue(colName, val, row) {
         if (str === 'ADMIN') return `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-purple-900 text-purple-200 border border-purple-700">ADMIN</span>`;
         if (str === 'AUTHORITY') return `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-blue-950 text-blue-300 border border-blue-800">AUTHORITY</span>`;
         return `<span class="px-2 py-0.5 rounded font-bold text-[10px] bg-slate-800 text-slate-300">CITIZEN</span>`;
+    }
+
+    // Citizen Name & Contact Details
+    if (colName === 'citizen_name') {
+        return `<span class="font-bold text-white flex items-center space-x-1"><i data-lucide="user" class="w-3 h-3 text-purple-400"></i><span>${escapeHtml(String(val))}</span></span>`;
+    }
+    if (colName === 'citizen_phone' || colName === 'phone') {
+        return `<span class="text-emerald-400 font-mono">${escapeHtml(String(val))}</span>`;
+    }
+    if (colName === 'emergency_phone') {
+        return `<span class="text-amber-400 font-mono font-semibold">${escapeHtml(String(val))}</span>`;
+    }
+    if (colName === 'citizen_email' || colName === 'email') {
+        return `<span class="text-purple-300 font-sans">${escapeHtml(String(val))}</span>`;
+    }
+    if (colName === 'blood_group') {
+        return `<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-950 text-rose-300 border border-rose-800">${escapeHtml(String(val))}</span>`;
+    }
+    if (colName === 'total_reports') {
+        return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-950 text-purple-300 border border-purple-800">${val} report(s)</span>`;
     }
 
     // Coordinates (Lat/Lng)

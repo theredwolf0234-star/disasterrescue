@@ -7,17 +7,19 @@ const ALLOWED_TABLES = {
         label: 'SOS Incidents & Reports',
         icon: 'alert-triangle',
         description: 'Citizen emergency beacons, categories, GPS coordinates, priority scores, and live status',
-        columns: ['id', 'user_id', 'category', 'emergency_level', 'count', 'details', 'latitude', 'longitude', 'readable_address', 'status', 'assigned_authority', 'assigned_rescue_team', 'evidence_url', 'created_at', 'resolved_at'],
-        selectSql: `SELECT id, user_id, category, emergency_level, count, details, latitude, longitude, readable_address, status, assigned_authority, assigned_rescue_team, evidence_url, created_at, resolved_at FROM incidents`,
-        searchColumns: ['id', 'category', 'emergency_level', 'details', 'readable_address', 'status', 'assigned_authority']
+        columns: ['id', 'user_id', 'citizen_name', 'citizen_phone', 'citizen_email', 'category', 'emergency_level', 'count', 'details', 'latitude', 'longitude', 'readable_address', 'status', 'assigned_authority', 'assigned_rescue_team', 'evidence_url', 'created_at', 'resolved_at'],
+        selectSql: `SELECT i.id, i.user_id, COALESCE(u.full_name, 'Unregistered Citizen') as citizen_name, COALESCE(u.phone, 'N/A') as citizen_phone, COALESCE(u.email, 'N/A') as citizen_email, i.category, i.emergency_level, i.count, i.details, i.latitude, i.longitude, i.readable_address, i.status, i.assigned_authority, i.assigned_rescue_team, i.evidence_url, i.created_at, i.resolved_at FROM incidents i LEFT JOIN users u ON i.user_id = u.id`,
+        fromSql: `incidents i LEFT JOIN users u ON i.user_id = u.id`,
+        searchColumns: ['i.id', 'i.category', 'i.emergency_level', 'i.details', 'i.readable_address', 'i.status', 'u.full_name', 'u.phone', 'u.email']
     },
     users: {
-        label: 'Registered Citizens',
+        label: 'Registered Citizens & Users',
         icon: 'users',
-        description: 'Verified citizen profiles, emergency contact phone lines, and blood groups',
-        columns: ['id', 'full_name', 'email', 'phone', 'emergency_phone', 'blood_group', 'role', 'created_at', 'updated_at'],
-        selectSql: `SELECT id, full_name, email, phone, emergency_phone, blood_group, role, created_at, updated_at FROM users`,
-        searchColumns: ['id', 'full_name', 'email', 'phone', 'emergency_phone', 'blood_group']
+        description: 'Verified citizen registrations, full name, contact numbers, emergency contacts, and blood groups',
+        columns: ['id', 'full_name', 'email', 'phone', 'emergency_phone', 'blood_group', 'role', 'total_reports', 'created_at', 'updated_at'],
+        selectSql: `SELECT u.id, u.full_name, u.email, u.phone, u.emergency_phone, u.blood_group, u.role, (SELECT COUNT(*) FROM incidents WHERE user_id = u.id) as total_reports, u.created_at, u.updated_at FROM users u`,
+        fromSql: `users u`,
+        searchColumns: ['u.id', 'u.full_name', 'u.email', 'u.phone', 'u.emergency_phone', 'u.blood_group']
     },
     authority_users: {
         label: 'Command Staff & Admins',
@@ -224,7 +226,8 @@ async function getTableData(req, res, next) {
         }
 
         // Count total
-        const countQuery = `SELECT COUNT(*) as cnt FROM ${tableName}${whereClause}`;
+        const fromClause = conf.fromSql || tableName;
+        const countQuery = `SELECT COUNT(*) as cnt FROM ${fromClause}${whereClause}`;
         const countResult = await db.get(countQuery, params);
         const total = countResult ? Number(countResult.cnt) : 0;
 
@@ -233,10 +236,18 @@ async function getTableData(req, res, next) {
         if (!conf.columns.includes(sortCol)) {
             sortCol = conf.columns.includes('created_at') ? 'created_at' : (conf.columns.includes('fetched_at') ? 'fetched_at' : conf.columns[0]);
         }
+        let safeSortCol = sortCol;
+        if (conf.fromSql && !sortCol.includes('.')) {
+            if (tableName === 'incidents' && ['id', 'created_at', 'updated_at', 'category', 'status', 'latitude', 'longitude'].includes(sortCol)) {
+                safeSortCol = `i.${sortCol}`;
+            } else if (tableName === 'users' && ['id', 'created_at', 'updated_at', 'full_name', 'email', 'role'].includes(sortCol)) {
+                safeSortCol = `u.${sortCol}`;
+            }
+        }
         const order = (req.query.order || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
         // Select rows
-        const dataQuery = `${conf.selectSql}${whereClause} ORDER BY ${sortCol} ${order} LIMIT ? OFFSET ?`;
+        const dataQuery = `${conf.selectSql}${whereClause} ORDER BY ${safeSortCol} ${order} LIMIT ? OFFSET ?`;
         const queryParams = [...params, limit, offset];
         const rows = await db.query(dataQuery, queryParams);
 
