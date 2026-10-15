@@ -2098,34 +2098,86 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;');
 }
 
+// -------------------------------------------------------------
+// RIGHT-TOP ADMIN NAVIGATION MENU
+// -------------------------------------------------------------
+function toggleAdminMenu(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('admin-nav-dropdown');
+    if (!dropdown) return;
+    dropdown.classList.toggle('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeAdminMenu() {
+    const dropdown = document.getElementById('admin-nav-dropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+}
+
+window.toggleAdminMenu = toggleAdminMenu;
+window.closeAdminMenu = closeAdminMenu;
+
+document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('admin-nav-dropdown');
+    const btn = document.getElementById('admin-menu-btn');
+    if (dropdown && !dropdown.contains(e.target) && (!btn || !btn.contains(e.target))) {
+        dropdown.classList.add('hidden');
+    }
+});
+
 function switchAuthorityView(viewName) {
     currentAuthorityView = viewName;
+
+    // Auto-close right-top dropdown
+    closeAdminMenu();
 
     // Hide all subviews
     document.querySelectorAll('.authority-subview').forEach(el => el.classList.add('hidden'));
     const target = document.getElementById(`view-${viewName}`);
-    if (target) target.classList.remove('hidden');
+    if (target) {
+        target.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
 
-    // Reset all nav button classes (desktop & mobile)
+    // Update active label in right-top admin button
+    const viewLabels = {
+        tactical: '⚡ Tactical Grid',
+        teams: '🚑 Rescue Fleets',
+        resources: '📦 Logistics',
+        clusters: '🌐 Clusters',
+        analytics: '📊 Analytics',
+        database: '🗄️ Database Grid',
+        audit: '🛡️ Audit Logs',
+        ngos: '🤝 NGO Partners',
+        alerts: '⚠️ Govt Alerts',
+        ndrf: '📡 NDRF Grid'
+    };
+    const activeLabel = document.getElementById('admin-active-view-label');
+    if (activeLabel && viewLabels[viewName]) {
+        activeLabel.innerText = viewLabels[viewName];
+    }
+
+    // Reset and highlight right-top dropdown menu items & quick view buttons
+    document.querySelectorAll('.admin-nav-item').forEach(el => {
+        el.classList.remove('bg-purple-700', 'text-white', 'font-bold');
+        el.classList.add('text-slate-300', 'hover:bg-slate-800');
+    });
+    document.querySelectorAll(`.admin-nav-item[data-view="${viewName}"]`).forEach(el => {
+        el.classList.remove('text-slate-300', 'hover:bg-slate-800');
+        el.classList.add('bg-purple-700', 'text-white', 'font-bold');
+    });
+
     const viewNames = ['tactical', 'teams', 'resources', 'clusters', 'analytics', 'database', 'audit', 'ndrf', 'ngos', 'alerts'];
     viewNames.forEach(v => {
         const btn = document.getElementById(`nav-btn-${v}`);
         if (btn) {
-            btn.className = "px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200";
-        }
-        const mobBtn = document.getElementById(`mob-auth-${v}`);
-        if (mobBtn) {
-            mobBtn.className = "auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1";
+            btn.className = "px-2.5 py-1.5 rounded-lg font-bold flex items-center space-x-1 transition text-slate-400 hover:text-slate-200 text-xs";
         }
     });
 
     const activeBtn = document.getElementById(`nav-btn-${viewName}`);
     if (activeBtn) {
-        activeBtn.className = "px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition bg-purple-700 text-white shadow-md";
-    }
-    const activeMobBtn = document.getElementById(`mob-auth-${viewName}`);
-    if (activeMobBtn) {
-        activeMobBtn.className = "auth-mob-btn px-3 py-1.5 rounded-full bg-purple-700 text-white font-bold whitespace-nowrap shadow flex items-center space-x-1";
+        activeBtn.className = "px-2.5 py-1.5 rounded-lg font-bold flex items-center space-x-1 transition bg-purple-700 text-white shadow text-xs";
     }
 
     if (viewName === 'database') {

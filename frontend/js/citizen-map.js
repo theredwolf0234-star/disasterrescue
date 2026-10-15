@@ -14,7 +14,9 @@
 const MAPBOX_TOKEN = window.MAPBOX_ACCESS_TOKEN || 'pk.eyJ1Ijoic2F0eWFtMjM0IiwiYSI6ImNtdWpqaWF5cTBkcGQyeHNmaG5hM3VoNzgifQ.oxZ2qpAYw6XwTFy39JuWnQ';
 
 let mapboxMap = null;
+let leafletMap = null;
 let userMarker = null;
+let leafletUserMarker = null;
 let incidentMapMarkers = [];
 let shelterMapMarkers = [];
 let hospitalMapMarkers = [];
@@ -24,6 +26,7 @@ let hazardMapMarkers = [];
 let liveUserCoordinates = [80.9462, 26.8467]; // [Lng, Lat] for Mapbox (Lucknow default)
 let gpsAccuracyMeters = null;
 let isRealGpsActive = false;
+let isManualLocationSet = false;
 let riskZonesActive = false;
 
 // Layer visibility state
@@ -587,6 +590,7 @@ async function searchLiveLocation() {
             if (statusText) statusText.innerText = `Geocoded Zone: ${place.place_name}`;
             if (heroText) heroText.innerText = place.text;
 
+            isManualLocationSet = true;
             showToast(`Location found: ${place.place_name}`, 'info');
 
             if (typeof fetchRealtimeWeatherData === 'function') {
@@ -604,6 +608,8 @@ async function searchLiveLocation() {
 function recenterMap() {
     if (mapboxMap && liveUserCoordinates) {
         mapboxMap.flyTo({ center: liveUserCoordinates, zoom: 14, duration: 1000 });
+    } else if (leafletMap && liveUserCoordinates) {
+        leafletMap.setView([liveUserCoordinates[1], liveUserCoordinates[0]], 14);
     }
 }
 
@@ -650,18 +656,26 @@ function initLeafletMapFallback() {
     const container = document.getElementById('main-map');
     if (!container || typeof L === 'undefined') return;
 
-    container.innerHTML = '';
-    const map = L.map('main-map').setView([liveUserCoordinates[1], liveUserCoordinates[0]], 13);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
-    }).addTo(map);
+    try {
+        container.innerHTML = '';
+        leafletMap = L.map('main-map').setView([liveUserCoordinates[1], liveUserCoordinates[0]], 13);
+        window.leafletMap = leafletMap;
 
-    L.marker([liveUserCoordinates[1], liveUserCoordinates[0]])
-        .bindPopup(`<strong>📍 Your Position</strong>`)
-        .addTo(map);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(leafletMap);
+
+        leafletUserMarker = L.marker([liveUserCoordinates[1], liveUserCoordinates[0]])
+            .bindPopup(`<strong>📍 Your Position</strong><br><span style="font-size:11px;">${liveUserCoordinates[1].toFixed(4)}°, ${liveUserCoordinates[0].toFixed(4)}°</span>`)
+            .addTo(leafletMap);
+    } catch(err) {
+        console.warn('[Leaflet Fallback] Map init notice:', err.message);
+    }
 }
 
+window.mapboxMap = mapboxMap;
+window.leafletMap = leafletMap;
 window.initCitizenMap = initCitizenMap;
 window.startCitizenLocationTracking = startCitizenLocationTracking;
 window.calculateSafeRouteTo = calculateSafeRouteTo;
@@ -678,6 +692,7 @@ window.getGpsTelemetry = () => ({
 });
 window.setLiveUserCoordinates = (lng, lat, accuracy) => {
     liveUserCoordinates = [lng, lat];
+    isManualLocationSet = true;
     if (accuracy) gpsAccuracyMeters = accuracy;
     isRealGpsActive = true;
 };

@@ -85,154 +85,107 @@
                 </div>
             </div>
 
-            <!-- VIEW NAVIGATION SWITCHER (ALL 6 AUTHORITY SECTIONS) -->
-            <div class="hidden lg:flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 text-xs">
-                <button id="nav-btn-tactical" onclick="switchAuthorityView('tactical')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition bg-purple-700 text-white shadow-md">
-                    <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
-                    <span>Tactical Grid</span>
-                </button>
-                <button id="nav-btn-teams" onclick="switchAuthorityView('teams')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
-                    <i data-lucide="truck" class="w-3.5 h-3.5 text-emerald-400"></i>
-                    <span>Rescue Fleets</span>
-                </button>
-                <button id="nav-btn-resources" onclick="switchAuthorityView('resources')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
-                    <i data-lucide="package-check" class="w-3.5 h-3.5 text-blue-400"></i>
-                    <span>Logistics</span>
-                </button>
-                <button id="nav-btn-clusters" onclick="switchAuthorityView('clusters')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
-                    <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i>
-                    <span>Clusters</span>
-                </button>
-                <button id="nav-btn-analytics" onclick="switchAuthorityView('analytics')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
-                    <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span>Analytics</span>
-                </button>
-                <button id="nav-btn-database" onclick="switchAuthorityView('database')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
-                    <i data-lucide="database" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span>Database</span>
-                    <span id="nav-db-badge" class="text-[9px] bg-purple-950 text-purple-300 px-1 py-0.2 rounded border border-purple-800 font-mono">14+ Tables</span>
-                </button>
-                <button id="nav-btn-audit" onclick="switchAuthorityView('audit')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
-                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
-                    <span>Audit Logs</span>
-                </button>
-                <button id="nav-btn-ngos" onclick="switchAuthorityView('ngos')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
-                    <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-400"></i>
-                    <span>NGO Partners</span>
-                    <span id="nav-ngo-badge" class="text-[9px] bg-pink-950 text-pink-300 px-1.5 py-0.2 rounded border border-pink-800 font-mono">New</span>
-                </button>
-                <button id="nav-btn-alerts" onclick="switchAuthorityView('alerts')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
-                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i>
-                    <span>Govt Alerts</span>
-                </button>
-                <button id="nav-btn-ndrf" onclick="switchAuthorityView('ndrf')" class="px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1.5 transition text-slate-400 hover:text-slate-200">
-                    <i data-lucide="radio" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span>NDRF Grid</span>
-                    <span id="ndrf-nav-badge" class="text-[9px] bg-purple-950 text-purple-300 px-1 py-0.2 rounded border border-purple-800 font-mono">Sandbox</span>
-                </button>
-            </div>
+            <!-- RIGHT TOP: ALL ADMIN NAVIGATION & COMMAND CONTROLS (User Requirement: make all menu in right top for admin) -->
+            <div class="flex items-center space-x-1.5 sm:space-x-2">
+                <!-- Top-Right Admin Command Navigation Menu Dropdown -->
+                <div class="relative inline-block text-left" id="admin-menu-container">
+                    <button id="admin-menu-btn" type="button" onclick="toggleAdminMenu(event)" class="h-8 sm:h-9 bg-purple-700 hover:bg-purple-600 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1.5 shadow-md shadow-purple-950/60 border border-purple-500/40 transition active:scale-95">
+                        <i data-lucide="layout-grid" class="w-4 h-4 text-purple-200"></i>
+                        <span id="admin-active-view-label">⚡ Tactical Grid</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-purple-200"></i>
+                    </button>
+                    <!-- Admin Navigation Dropdown (All 10 Sections in Right Top) -->
+                    <div id="admin-nav-dropdown" class="hidden absolute right-0 mt-2 w-72 bg-slate-900 border border-purple-700/60 rounded-2xl shadow-2xl z-50 p-2 space-y-1 text-xs">
+                        <div class="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-purple-300 font-bold border-b border-slate-800 flex items-center justify-between">
+                            <span>Admin Command Views</span>
+                            <span class="text-[9px] bg-purple-950 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800">10 Modules</span>
+                        </div>
+                        <div class="space-y-0.5 py-1">
+                            <button type="button" data-view="tactical" onclick="switchAuthorityView('tactical')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between bg-purple-700 text-white shadow">
+                                <span class="flex items-center space-x-2"><i data-lucide="layout-dashboard" class="w-3.5 h-3.5 text-purple-300"></i><span>Tactical Grid</span></span>
+                                <span class="text-[9px] font-mono text-purple-200 uppercase">Live Map</span>
+                            </button>
+                            <button type="button" data-view="teams" onclick="switchAuthorityView('teams')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="truck" class="w-3.5 h-3.5 text-emerald-400"></i><span>Rescue Fleets</span></span>
+                                <span class="text-[9px] font-mono text-emerald-400">Dispatch</span>
+                            </button>
+                            <button type="button" data-view="resources" onclick="switchAuthorityView('resources')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="package-check" class="w-3.5 h-3.5 text-blue-400"></i><span>Logistics</span></span>
+                                <span class="text-[9px] font-mono text-blue-400">Supplies</span>
+                            </button>
+                            <button type="button" data-view="clusters" onclick="switchAuthorityView('clusters')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i><span>Clusters</span></span>
+                                <span class="text-[9px] font-mono text-amber-400">Zones</span>
+                            </button>
+                            <button type="button" data-view="analytics" onclick="switchAuthorityView('analytics')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-purple-400"></i><span>Analytics</span></span>
+                                <span class="text-[9px] font-mono text-purple-300">Telemetry</span>
+                            </button>
+                            <button type="button" data-view="database" onclick="switchAuthorityView('database')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="database" class="w-3.5 h-3.5 text-cyan-400"></i><span>Database Grid</span></span>
+                                <span class="text-[9px] font-mono text-cyan-300">14+ Tables</span>
+                            </button>
+                            <button type="button" data-view="audit" onclick="switchAuthorityView('audit')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i><span>Audit Logs</span></span>
+                                <span class="text-[9px] font-mono text-emerald-400">Security</span>
+                            </button>
+                            <button type="button" data-view="ngos" onclick="switchAuthorityView('ngos')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-400"></i><span>NGO Partners</span></span>
+                                <span class="text-[9px] font-mono text-pink-300">Partner HQ</span>
+                            </button>
+                            <button type="button" data-view="alerts" onclick="switchAuthorityView('alerts')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i><span>Govt Alerts</span></span>
+                                <span class="text-[9px] font-mono text-amber-400">SACHET</span>
+                            </button>
+                            <button type="button" data-view="ndrf" onclick="switchAuthorityView('ndrf')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                <span class="flex items-center space-x-2"><i data-lucide="radio" class="w-3.5 h-3.5 text-purple-400"></i><span>NDRF Command Grid</span></span>
+                                <span class="text-[9px] font-mono text-purple-300">1078 Gateway</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-            <div class="flex items-center space-x-2">
                 <!-- NDRF Live Gateway Status Pill (Sandbox Mode) -->
-                <button id="ndrf-status-pill" onclick="switchAuthorityView('ndrf')" title="National Disaster Response Force Gateway (Integration-Ready Sandbox Mode)" class="px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 bg-purple-950/70 border border-purple-700/60 text-purple-200 hover:bg-purple-900/60 transition shadow-sm">
+                <button id="ndrf-status-pill" onclick="switchAuthorityView('ndrf')" title="National Disaster Response Force Gateway" class="hidden sm:flex h-8 sm:h-9 px-2.5 py-1.5 rounded-xl text-xs font-bold items-center space-x-1.5 bg-purple-950/70 border border-purple-700/60 text-purple-200 hover:bg-purple-900/60 transition shadow-sm">
                     <span id="ndrf-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="hidden xl:inline font-mono text-[11px] text-purple-300">NDRF GATEWAY:</span>
-                    <span id="ndrf-status-text" class="text-emerald-400 font-bold">SANDBOX READY</span>
+                    <span class="hidden xl:inline font-mono text-[11px] text-purple-300">NDRF:</span>
+                    <span id="ndrf-status-text" class="text-emerald-400 font-bold">READY</span>
                 </button>
 
                 <!-- Dedicated NGO Operations Portal Link -->
-                <a href="ngo.html" class="bg-purple-950 hover:bg-purple-900 border border-purple-800 text-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition shadow">
+                <a href="ngo.html" class="hidden md:flex h-8 sm:h-9 bg-purple-950 hover:bg-purple-900 border border-purple-800 text-purple-200 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold items-center space-x-1.5 transition shadow">
                     <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-400"></i>
                     <span>NGO Portal</span>
                 </a>
 
                 <!-- Return to Citizen App -->
-                <a href="index.html" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition shadow">
-                    <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-purple-600"></i>
-                    <span>Citizen App</span>
+                <a href="index.html" class="h-8 sm:h-9 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow" title="Switch to Citizen Portal">
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-purple-400"></i>
+                    <span class="hidden sm:inline">Citizen App</span>
                 </a>
 
                 <!-- COMMAND THEME SETTING (DARK / BRIGHT MODE) -->
-                <button id="authority-theme-toggle-btn" type="button" onclick="toggleAuthorityTheme()" title="Switch Between Tactical Dark & High-Contrast Bright Theme" class="bg-slate-100 hover:bg-slate-200 dark:bg-slate-900 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center space-x-1.5 transition shadow active:scale-95">
+                <button id="authority-theme-toggle-btn" type="button" onclick="toggleAuthorityTheme()" title="Switch Between Tactical Dark & High-Contrast Bright Theme" class="h-8 sm:h-9 w-8 sm:w-9 flex items-center justify-center rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 text-xs font-bold transition shadow active:scale-95">
                     <span id="authority-theme-icon">🌙</span>
-                    <span id="authority-theme-text" class="hidden sm:inline">Dark</span>
                 </button>
                 
-                <div class="hidden sm:flex items-center space-x-2 bg-purple-100 dark:bg-purple-950/80 border border-purple-300 dark:border-purple-800/60 px-3 py-1.5 rounded-lg text-xs">
-                    <i data-lucide="user-check" class="w-4 h-4 text-purple-600"></i>
-                    <span id="duty-officer-badge" class="font-bold text-purple-900 dark:text-purple-200">Duty Officer: Authority Command</span>
+                <div class="hidden md:flex items-center space-x-1.5 bg-purple-950/80 border border-purple-800/60 px-2.5 py-1.5 rounded-xl text-xs">
+                    <i data-lucide="user-check" class="w-3.5 h-3.5 text-purple-400"></i>
+                    <span id="duty-officer-badge" class="font-bold text-purple-200 text-[11px]">Command</span>
                 </div>
 
                 <!-- Prominent Desktop Log Out Button -->
-                <button id="btn-authority-logout" onclick="authorityLogout()" type="button" title="Sign Out of Authority Command" class="bg-red-600 hover:bg-red-500 text-white font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 shadow transition active:scale-95">
+                <button id="btn-authority-logout" onclick="authorityLogout()" type="button" title="Sign Out of Authority Command" class="h-8 sm:h-9 bg-red-600 hover:bg-red-500 text-white font-extrabold px-2.5 sm:px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1.5 shadow transition active:scale-95">
                     <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
-                    <span>Log Out</span>
+                    <span class="hidden sm:inline">Log Out</span>
                 </button>
 
                 <!-- Prominent Desktop Login Button (Shown when logged out) -->
-                <button id="btn-authority-login" onclick="showAuthorityLoginModal()" type="button" title="Sign In to Admin Command Portal" class="hidden bg-purple-700 hover:bg-purple-600 text-white font-extrabold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1.5 shadow transition active:scale-95">
+                <button id="btn-authority-login" onclick="showAuthorityLoginModal()" type="button" title="Sign In to Admin Command Portal" class="hidden h-8 sm:h-9 bg-purple-700 hover:bg-purple-600 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center space-x-1.5 shadow transition active:scale-95">
                     <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
                     <span>Admin Login</span>
                 </button>
             </div>
-        </div>
-
-        <!-- Mobile / Tablet Authority Switcher Strip -->
-        <div id="authority-mobile-nav" class="lg:hidden flex items-center overflow-x-auto py-2 border-t border-slate-200 dark:border-slate-800 px-3 text-xs gap-1.5 no-scrollbar bg-white dark:bg-slate-900 shadow-sm">
-            <!-- Mobile Log Out Button -->
-            <button onclick="authorityLogout()" id="mob-auth-logout" class="auth-mob-btn px-3 py-1.5 rounded-full bg-red-600 text-white font-extrabold whitespace-nowrap flex items-center space-x-1 shadow">
-                <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
-                <span>Log Out</span>
-            </button>
-            <!-- Mobile Login Button (Shown when logged out) -->
-            <button onclick="showAuthorityLoginModal()" id="mob-auth-login" class="auth-mob-btn hidden px-3 py-1.5 rounded-full bg-purple-700 text-white font-extrabold whitespace-nowrap flex items-center space-x-1 shadow">
-                <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
-                <span>Admin Login</span>
-            </button>
-            <button onclick="toggleAuthorityTheme()" id="mob-auth-theme" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1 shadow-sm">
-                <span id="mob-auth-theme-icon">🌙</span>
-                <span id="mob-auth-theme-text">Dark / Bright</span>
-            </button>
-            <button onclick="switchAuthorityView('tactical')" id="mob-auth-tactical" class="auth-mob-btn px-3 py-1.5 rounded-full bg-purple-700 text-white font-bold whitespace-nowrap shadow flex items-center space-x-1">
-                <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
-                <span>Tactical Grid</span>
-            </button>
-            <button onclick="switchAuthorityView('teams')" id="mob-auth-teams" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
-                <i data-lucide="truck" class="w-3.5 h-3.5 text-emerald-600"></i>
-                <span>Rescue Fleets</span>
-            </button>
-            <button onclick="switchAuthorityView('resources')" id="mob-auth-resources" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
-                <i data-lucide="package-check" class="w-3.5 h-3.5 text-blue-600"></i>
-                <span>Logistics</span>
-            </button>
-            <button onclick="switchAuthorityView('clusters')" id="mob-auth-clusters" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
-                <i data-lucide="layers" class="w-3.5 h-3.5 text-amber-600"></i>
-                <span>Clusters</span>
-            </button>
-            <button onclick="switchAuthorityView('ngos')" id="mob-auth-ngos" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
-                <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-600"></i>
-                <span>NGO Partners</span>
-            </button>
-            <button onclick="switchAuthorityView('alerts')" id="mob-auth-alerts" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
-                <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-600"></i>
-                <span>Govt Alerts</span>
-            </button>
-            <button onclick="switchAuthorityView('analytics')" id="mob-auth-analytics" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
-                <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-purple-600"></i>
-                <span>Analytics</span>
-            </button>
-            <button onclick="switchAuthorityView('database')" id="mob-auth-database" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
-                <i data-lucide="database" class="w-3.5 h-3.5 text-purple-600"></i>
-                <span>Database</span>
-            </button>
-            <button onclick="switchAuthorityView('audit')" id="mob-auth-audit" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
-                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-600"></i>
-                <span>Audit</span>
-            </button>
-            <button onclick="switchAuthorityView('ndrf')" id="mob-auth-ndrf" class="auth-mob-btn px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 font-semibold whitespace-nowrap flex items-center space-x-1">
-                <i data-lucide="radio" class="w-3.5 h-3.5 text-purple-600"></i>
-                <span>NDRF Grid</span>
-            </button>
         </div>
     </header>
 

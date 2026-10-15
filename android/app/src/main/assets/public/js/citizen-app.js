@@ -371,17 +371,10 @@ function handleSmartphoneBack() {
         return true;
     }
 
-    // 2. If mobile more menu drawer is open, close it!
-    const mobileMore = document.getElementById('mobile-more-menu');
-    if (mobileMore && !mobileMore.classList.contains('hidden')) {
-        toggleMobileMoreMenu();
-        return true;
-    }
-
-    // 3. If mobile more backdrop is visible, close it!
-    const backdrop = document.getElementById('mobile-more-backdrop');
-    if (backdrop && !backdrop.classList.contains('hidden')) {
-        backdrop.classList.add('hidden');
+    // 2. If citizen mobile left drawer is open, close it!
+    const drawer = document.getElementById('citizen-mobile-drawer');
+    if (drawer && !drawer.classList.contains('-translate-x-full')) {
+        closeCitizenLeftDrawer();
         return true;
     }
 
@@ -428,37 +421,57 @@ window.addEventListener('popstate', () => {
 // -------------------------------------------------------------
 // MORE DROPDOWN MENU
 // -------------------------------------------------------------
+// CITIZEN LEFT-SIDE DRAWER & SIDEBAR NAVIGATION
+// -------------------------------------------------------------
+function toggleCitizenDrawer() {
+    const drawer = document.getElementById('citizen-mobile-drawer');
+    if (!drawer) return;
+    const isClosed = drawer.classList.contains('-translate-x-full');
+    if (isClosed) {
+        openCitizenLeftDrawer();
+    } else {
+        closeCitizenLeftDrawer();
+    }
+}
+
+function openCitizenLeftDrawer() {
+    const drawer = document.getElementById('citizen-mobile-drawer');
+    const backdrop = document.getElementById('citizen-drawer-backdrop');
+    if (drawer) drawer.classList.remove('-translate-x-full');
+    if (backdrop) backdrop.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeCitizenLeftDrawer() {
+    const drawer = document.getElementById('citizen-mobile-drawer');
+    const backdrop = document.getElementById('citizen-drawer-backdrop');
+    if (drawer) drawer.classList.add('-translate-x-full');
+    if (backdrop) backdrop.classList.add('hidden');
+}
+
+window.toggleCitizenDrawer = toggleCitizenDrawer;
+window.openCitizenLeftDrawer = openCitizenLeftDrawer;
+window.closeCitizenLeftDrawer = closeCitizenLeftDrawer;
+
 function toggleMoreMenu(event) {
     if (event) event.stopPropagation();
-    const menu = document.getElementById('nav-more-menu');
-    if (!menu) return;
-    menu.classList.toggle('hidden');
+    toggleCitizenDrawer();
 }
 
 function toggleMobileMoreMenu(event) {
     if (event) event.stopPropagation();
-    const menu = document.getElementById('mobile-more-menu');
-    const backdrop = document.getElementById('mobile-more-backdrop');
-    if (!menu) return;
-    const isOpening = menu.classList.contains('hidden');
-    menu.classList.toggle('hidden');
-    if (backdrop) backdrop.classList.toggle('hidden', !isOpening);
-    if (isOpening && typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
+    toggleCitizenDrawer();
 }
 
-// Close more dropdowns on outside click
+// Close more dropdowns & drawer on outside click
 document.addEventListener('click', (e) => {
-    const desktopMenu = document.getElementById('nav-more-menu');
-    const mobileMenu = document.getElementById('mobile-more-menu');
-    const backdrop = document.getElementById('mobile-more-backdrop');
-    if (desktopMenu && !desktopMenu.contains(e.target) && !e.target.closest('#nav-more-btn')) {
-        desktopMenu.classList.add('hidden');
-    }
-    if (mobileMenu && !mobileMenu.contains(e.target) && !e.target.closest('#mob-tab-more')) {
-        mobileMenu.classList.add('hidden');
-        if (backdrop) backdrop.classList.add('hidden');
+    const drawer = document.getElementById('citizen-mobile-drawer');
+    const toggleBtn = document.getElementById('sidebar-toggle-btn');
+    const backdrop = document.getElementById('citizen-drawer-backdrop');
+    if (drawer && !drawer.classList.contains('-translate-x-full')) {
+        if (!drawer.contains(e.target) && (!toggleBtn || !toggleBtn.contains(e.target))) {
+            closeCitizenLeftDrawer();
+        }
     }
 });
 
@@ -468,25 +481,23 @@ document.addEventListener('click', (e) => {
 function switchTab(tabId) {
     document.querySelectorAll('.page-content').forEach(el => el.classList.add('hidden'));
     const target = document.getElementById(`page-${tabId}`);
-    if (target) target.classList.remove('hidden');
-
-    // Desktop nav highlighting
-    document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
-        btn.classList.add('text-slate-400');
-    });
-
-    const activeBtn = document.getElementById(`nav-${tabId}`);
-    if (activeBtn) {
-        activeBtn.classList.remove('text-slate-400');
-        activeBtn.classList.add('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
-    } else {
-        const moreBtn = document.getElementById('nav-more-btn');
-        if (moreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about', 'app', 'risk', 'reports'].includes(tabId)) {
-            moreBtn.classList.remove('text-slate-400');
-            moreBtn.classList.add('text-white', 'bg-slate-800', 'border-slate-700', 'nav-btn-active');
-        }
+    if (target) {
+        target.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+
+    // Auto-close mobile left drawer on tab selection
+    closeCitizenLeftDrawer();
+
+    // Highlight active link in Left Sidebar & Left Drawer
+    document.querySelectorAll('.sidebar-nav-btn').forEach(btn => {
+        btn.classList.remove('bg-purple-700', 'text-white', 'shadow-md', 'font-bold');
+        btn.classList.add('text-slate-400', 'hover:bg-slate-800', 'hover:text-slate-200');
+    });
+    document.querySelectorAll(`.sidebar-nav-btn[data-tab="${tabId}"]`).forEach(btn => {
+        btn.classList.remove('text-slate-400', 'hover:bg-slate-800', 'hover:text-slate-200');
+        btn.classList.add('bg-purple-700', 'text-white', 'shadow-md', 'font-bold');
+    });
 
     // Mobile bottom nav highlighting
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
@@ -498,30 +509,17 @@ function switchTab(tabId) {
     if (mobActiveBtn) {
         mobActiveBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
         mobActiveBtn.classList.add('text-purple-600', 'dark:text-purple-400', 'font-bold');
-    } else {
-        const mobMoreBtn = document.getElementById('mob-tab-more');
-        if (mobMoreBtn && ['shelters', 'hospitals', 'contacts', 'help', 'about', 'app', 'risk', 'reports'].includes(tabId)) {
-            mobMoreBtn.classList.remove('text-slate-500', 'dark:text-slate-400');
-            mobMoreBtn.classList.add('text-purple-600', 'dark:text-purple-400', 'font-bold');
-        }
     }
-
-    // Mobile Quick Chips bar highlighting
-    document.querySelectorAll('#quick-features-bar button').forEach(b => {
-        b.classList.remove('ring-2', 'ring-purple-600');
-    });
-    const chipBtn = document.querySelector(`#quick-features-bar button[onclick*="'${tabId}'"]`);
-    if (chipBtn) chipBtn.classList.add('ring-2', 'ring-purple-600');
-
-    // Auto-close dropdowns
-    document.getElementById('nav-more-menu')?.classList.add('hidden');
-    document.getElementById('mobile-more-menu')?.classList.add('hidden');
-    document.getElementById('mobile-more-backdrop')?.classList.add('hidden');
 
     if (tabId === 'map') {
         setTimeout(() => {
-            if (typeof initCitizenMap === 'function' && !mapboxMap) initCitizenMap();
-            else if (mapboxMap) mapboxMap.resize();
+            if (typeof initCitizenMap === 'function' && !window.mapboxMap && !window.leafletMap) {
+                initCitizenMap();
+            } else if (window.mapboxMap && typeof window.mapboxMap.resize === 'function') {
+                window.mapboxMap.resize();
+            } else if (window.leafletMap && typeof window.leafletMap.invalidateSize === 'function') {
+                window.leafletMap.invalidateSize();
+            }
         }, 150);
     } else if (tabId === 'reports') {
         fetchCitizenReports();

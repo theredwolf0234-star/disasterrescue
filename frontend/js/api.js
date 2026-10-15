@@ -14,21 +14,22 @@ function resolveApiBaseUrl() {
     }
     const isNativeCapacitor = Boolean(
         (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) ||
-        (typeof window !== 'undefined' && window.location && (window.location.protocol === 'file:' || window.location.protocol === 'capacitor:'))
+        (typeof window !== 'undefined' && window.location && window.location.protocol === 'capacitor:')
     );
     if (isNativeCapacitor && window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) {
         return window.RESCUE_CONFIG.SERVER_URL.replace(/\/$/, '');
     }
     if (typeof window !== 'undefined' && window.location) {
-        if (window.location.protocol === 'file:' || window.location.protocol === 'capacitor:') {
-            return (window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) || 'https://disaster-rescuecoordinator.onrender.com';
+        if (window.location.protocol === 'file:') {
+            // When opened directly as a file, check if local server running on 5000, else fallback to live Render
+            return 'http://localhost:5000';
         }
         if (window.location.port === '5000') {
             return '';
         }
         if (['localhost', '127.0.0.1'].includes(window.location.hostname)) {
-            // In Android WebView, origin is localhost: route to live Render backend
-            return (window.RESCUE_CONFIG && window.RESCUE_CONFIG.SERVER_URL) || 'https://disaster-rescuecoordinator.onrender.com';
+            // Local dev server or preview port: connect to backend on port 5000
+            return `http://${window.location.hostname}:5000`;
         }
         return window.location.origin;
     }
@@ -132,8 +133,11 @@ const api = {
 
         while (attempts < maxAttempts) {
             attempts++;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
             try {
-                const response = await fetch(url, config);
+                const response = await fetch(url, { ...config, signal: controller.signal });
+                clearTimeout(timeoutId);
                 let data;
                 const contentType = response.headers.get('content-type') || '';
                 if (contentType.includes('application/json')) {
