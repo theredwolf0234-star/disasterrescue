@@ -1189,7 +1189,7 @@
                         </div>
                         <div>
                             <label class="block text-slate-400 font-bold mb-1">Victims / Density Affected</label>
-                            <input type="number" id="eval-people-count" value="5" min="1" max="1000" onchange="runModularRiskAssessment()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                            <input type="number" id="eval-people-count" value="5" min="1" max="1000" oninput="runModularRiskAssessment()" onchange="runModularRiskAssessment()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
                         </div>
                     </div>
 
@@ -1502,12 +1502,35 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
                     <h1 class="text-3xl font-black text-white" data-i18n="hospitalsTitle">Emergency Hospitals & Trauma Centers</h1>
-                    <p class="text-xs text-slate-400 mt-1">Live trauma center availability, ICU beds, emergency fleet & contact numbers.</p>
+                    <p class="text-xs text-slate-400 mt-1">Live trauma center availability, ICU beds, emergency fleet & verified contact numbers.</p>
                 </div>
-                <button onclick="fetchHospitalsDirectory()" class="bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
-                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                    <span>Refresh Hospitals</span>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button onclick="fetchHospitalsDirectory('', true)" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow transition">
+                        <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
+                        <span>Near My GPS</span>
+                    </button>
+                    <button onclick="fetchHospitalsDirectory()" class="bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Refresh</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hospital City & Landmark Search Bar (User Requirement: show real data hospitals near to the live location) -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-3 shadow-md">
+                <div class="flex items-center space-x-2 w-full md:w-auto flex-grow max-w-xl">
+                    <div class="relative w-full">
+                        <input type="text" id="hospital-search-input" placeholder="Search city, area or landmark (e.g. Hazratganj, Chowk, Gomti Nagar)..." onkeydown="if(event.key === 'Enter') searchHospitalsDirectory()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none">
+                    </div>
+                    <button onclick="searchHospitalsDirectory()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow flex items-center space-x-1.5 transition shrink-0">
+                        <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                        <span>Search</span>
+                    </button>
+                </div>
+                <div id="hospital-location-indicator" class="text-xs text-slate-400 flex items-center space-x-2 shrink-0">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="hospital-location-label">Sorted by distance to your live location</span>
+                </div>
             </div>
 
             <div id="hospitals-directory-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>

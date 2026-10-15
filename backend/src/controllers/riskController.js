@@ -4,7 +4,15 @@ const { evaluateDisasterRisk } = require('../services/riskEngine');
 // POST /api/risk/evaluate
 async function evaluateRisk(req, res, next) {
     try {
-        const { category, count, details, weather, location } = req.body;
+        const category = req.body.category || req.body.disasterType || 'Flood';
+        const count = parseInt(req.body.count ?? req.body.peopleAffected ?? 5, 10) || 5;
+        const details = req.body.details || req.body.description || `${category} situation with ${count} affected victims requiring immediate triage`;
+        const weather = req.body.weather || {};
+        const location = req.body.location || {
+            latitude: req.body.latitude || 26.8467,
+            longitude: req.body.longitude || 80.9462
+        };
+
         const evaluation = evaluateDisasterRisk({
             category,
             count,
