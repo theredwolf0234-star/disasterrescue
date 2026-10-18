@@ -2283,9 +2283,9 @@ function switchAuthorityView(viewName, subTable = null) {
         ndrf: '📡 NDRF Grid'
     };
     if (viewName === 'database' && subTable === 'users') {
-        viewLabels.database = '👤 User Registrations';
+        viewLabels.database = '🗄️ Database: Users';
     } else if (viewName === 'database' && subTable === 'incidents') {
-        viewLabels.database = '🚨 Incident Reports DB';
+        viewLabels.database = '🗄️ Database: Incidents';
     }
 
     const activeLabel = document.getElementById('admin-active-view-label');
@@ -2295,13 +2295,13 @@ function switchAuthorityView(viewName, subTable = null) {
 
     // Reset and highlight right-top dropdown menu items & quick view buttons
     document.querySelectorAll('.admin-nav-item').forEach(el => {
-        el.classList.remove('bg-purple-700', 'text-white', 'font-bold');
+        el.classList.remove('bg-purple-700', 'text-white', 'font-bold', 'shadow');
         el.classList.add('text-slate-300', 'hover:bg-slate-800');
     });
-    const highlightKey = (viewName === 'database' && subTable) ? `database-${subTable}` : viewName;
+    const highlightKey = viewName === 'database' ? 'database' : viewName;
     document.querySelectorAll(`.admin-nav-item[data-view="${highlightKey}"]`).forEach(el => {
         el.classList.remove('text-slate-300', 'hover:bg-slate-800');
-        el.classList.add('bg-purple-700', 'text-white', 'font-bold');
+        el.classList.add('bg-purple-700', 'text-white', 'font-bold', 'shadow');
     });
 
     const viewNames = ['tactical', 'teams', 'resources', 'clusters', 'analytics', 'database', 'audit', 'ndrf', 'ngos', 'alerts'];

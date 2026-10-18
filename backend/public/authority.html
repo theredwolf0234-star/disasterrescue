@@ -94,82 +94,104 @@
                         <span id="admin-active-view-label">⚡ Tactical Grid</span>
                         <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-purple-200"></i>
                     </button>
-                    <!-- Admin Navigation Dropdown (All 10 Sections in Right Top) -->
-                    <div id="admin-nav-dropdown" class="hidden absolute right-0 mt-2 w-72 bg-slate-900 border border-purple-700/60 rounded-2xl shadow-2xl z-50 p-2 space-y-1 text-xs">
-                        <div class="px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-purple-300 font-bold border-b border-slate-800 flex items-center justify-between">
-                            <span>Admin Command Views</span>
-                            <span class="text-[9px] bg-purple-950 text-purple-300 px-1.5 py-0.5 rounded border border-purple-800">10 Modules</span>
+                    <!-- Admin Navigation Dropdown (Clean, Categorized & Non-Redundant) -->
+                    <div id="admin-nav-dropdown" class="hidden absolute right-0 mt-2 w-80 max-w-[95vw] bg-slate-900/98 backdrop-blur-2xl border border-purple-700/60 rounded-2xl shadow-2xl z-50 p-2.5 space-y-2 text-xs">
+                        <!-- Dropdown Header -->
+                        <div class="px-3 py-2 bg-slate-950/80 rounded-xl border border-slate-800/80 flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="command" class="w-3.5 h-3.5 text-purple-400"></i>
+                                <span class="font-extrabold text-white text-xs tracking-wide">Command Center</span>
+                            </div>
+                            <span class="text-[9px] font-mono font-bold uppercase bg-purple-950 text-purple-300 px-2 py-0.5 rounded-full border border-purple-800">10 Modules</span>
                         </div>
-                        <div class="space-y-0.5 py-1">
-                            <button type="button" data-view="tactical" onclick="switchAuthorityView('tactical')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between bg-purple-700 text-white shadow">
-                                <span class="flex items-center space-x-2"><i data-lucide="layout-dashboard" class="w-3.5 h-3.5 text-purple-300"></i><span>Tactical Grid</span></span>
-                                <span class="text-[9px] font-mono text-purple-200 uppercase">Live Map</span>
-                            </button>
-                            <button type="button" data-view="database-incidents" onclick="switchAuthorityView('database-incidents')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-red-400"></i><span>Incident Reports DB</span></span>
-                                <span class="text-[9px] font-mono text-red-400 uppercase">Reports</span>
-                            </button>
-                            <button type="button" data-view="database-users" onclick="switchAuthorityView('database', 'users')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="users" class="w-3.5 h-3.5 text-purple-400"></i><span>User Registrations</span></span>
-                                <span class="text-[9px] font-mono text-purple-300 uppercase">Citizens</span>
-                            </button>
-                            <button type="button" data-view="teams" onclick="switchAuthorityView('teams')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="truck" class="w-3.5 h-3.5 text-emerald-400"></i><span>Rescue Fleets</span></span>
-                                <span class="text-[9px] font-mono text-emerald-400">Dispatch</span>
-                            </button>
-                            <button type="button" data-view="resources" onclick="switchAuthorityView('resources')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="package-check" class="w-3.5 h-3.5 text-blue-400"></i><span>Logistics</span></span>
-                                <span class="text-[9px] font-mono text-blue-400">Supplies</span>
-                            </button>
-                            <button type="button" data-view="clusters" onclick="switchAuthorityView('clusters')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i><span>Clusters</span></span>
-                                <span class="text-[9px] font-mono text-amber-400">Zones</span>
-                            </button>
-                            <button type="button" data-view="analytics" onclick="switchAuthorityView('analytics')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-purple-400"></i><span>Analytics</span></span>
-                                <span class="text-[9px] font-mono text-purple-300">Telemetry</span>
-                            </button>
-                            <button type="button" data-view="database" onclick="switchAuthorityView('database')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="database" class="w-3.5 h-3.5 text-cyan-400"></i><span>Database Grid</span></span>
-                                <span class="text-[9px] font-mono text-cyan-300">14+ Tables</span>
-                            </button>
-                            <button type="button" data-view="audit" onclick="switchAuthorityView('audit')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i><span>Audit Logs</span></span>
-                                <span class="text-[9px] font-mono text-emerald-400">Security</span>
-                            </button>
-                            <button type="button" data-view="ngos" onclick="switchAuthorityView('ngos')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-400"></i><span>NGO Partners</span></span>
-                                <span class="text-[9px] font-mono text-pink-300">Partner HQ</span>
-                            </button>
-                            <button type="button" data-view="alerts" onclick="switchAuthorityView('alerts')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i><span>Govt Alerts</span></span>
-                                <span class="text-[9px] font-mono text-amber-400">SACHET</span>
-                            </button>
-                            <button type="button" data-view="ndrf" onclick="switchAuthorityView('ndrf')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
-                                <span class="flex items-center space-x-2"><i data-lucide="radio" class="w-3.5 h-3.5 text-purple-400"></i><span>NDRF Command Grid</span></span>
-                                <span class="text-[9px] font-mono text-purple-300">1078 Gateway</span>
-                            </button>
+
+                        <div class="space-y-2 max-h-[75vh] overflow-y-auto pr-1">
+                            <!-- Category 1: Tactical & Field Operations -->
+                            <div class="space-y-1">
+                                <p class="text-[10px] font-extrabold uppercase tracking-wider text-purple-400/90 px-2.5 py-0.5 flex items-center space-x-1.5">
+                                    <i data-lucide="shield-alert" class="w-3 h-3 text-purple-400"></i>
+                                    <span>Tactical Operations</span>
+                                </p>
+                                <button type="button" data-view="tactical" onclick="switchAuthorityView('tactical')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between bg-purple-700 text-white shadow">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="layout-dashboard" class="w-3.5 h-3.5 text-purple-300"></i><span>Tactical Grid</span></span>
+                                    <span class="text-[9px] font-mono text-purple-200 uppercase">Live Map</span>
+                                </button>
+                                <button type="button" data-view="teams" onclick="switchAuthorityView('teams')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="truck" class="w-3.5 h-3.5 text-emerald-400"></i><span>Rescue Fleets</span></span>
+                                    <span class="text-[9px] font-mono text-emerald-400">Dispatch</span>
+                                </button>
+                                <button type="button" data-view="resources" onclick="switchAuthorityView('resources')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="package-check" class="w-3.5 h-3.5 text-blue-400"></i><span>Logistics</span></span>
+                                    <span class="text-[9px] font-mono text-blue-400">Supplies</span>
+                                </button>
+                            </div>
+
+                            <!-- Category 2: Intelligence & Relay -->
+                            <div class="space-y-1 pt-1 border-t border-slate-800/80">
+                                <p class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-400/90 px-2.5 py-0.5 flex items-center space-x-1.5">
+                                    <i data-lucide="radio" class="w-3 h-3 text-cyan-400"></i>
+                                    <span>Intelligence & Relay</span>
+                                </p>
+                                <button type="button" data-view="clusters" onclick="switchAuthorityView('clusters')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="layers" class="w-3.5 h-3.5 text-amber-400"></i><span>AI Hazard Clusters</span></span>
+                                    <span class="text-[9px] font-mono text-amber-400">Risk Zones</span>
+                                </button>
+                                <button type="button" data-view="ndrf" onclick="switchAuthorityView('ndrf')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="radio" class="w-3.5 h-3.5 text-purple-400"></i><span>NDRF 1078 Gateway</span></span>
+                                    <span class="flex items-center space-x-1 text-[9px] font-mono text-emerald-400">
+                                        <span id="ndrf-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                                        <span id="ndrf-status-text">READY</span>
+                                    </span>
+                                </button>
+                                <button type="button" data-view="alerts" onclick="switchAuthorityView('alerts')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-amber-400"></i><span>Govt Alerts</span></span>
+                                    <span class="text-[9px] font-mono text-amber-400">SACHET</span>
+                                </button>
+                            </div>
+
+                            <!-- Category 3: Data Warehouse & Governance -->
+                            <div class="space-y-1 pt-1 border-t border-slate-800/80">
+                                <p class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400/90 px-2.5 py-0.5 flex items-center space-x-1.5">
+                                    <i data-lucide="database" class="w-3 h-3 text-emerald-400"></i>
+                                    <span>Data & Administration</span>
+                                </p>
+                                <button type="button" data-view="database" onclick="switchAuthorityView('database')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="database" class="w-3.5 h-3.5 text-cyan-400"></i><span>Database Grid</span></span>
+                                    <span class="text-[9px] font-mono text-cyan-300">14+ Tables</span>
+                                </button>
+                                <button type="button" data-view="analytics" onclick="switchAuthorityView('analytics')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-purple-400"></i><span>Analytics</span></span>
+                                    <span class="text-[9px] font-mono text-purple-300">Telemetry</span>
+                                </button>
+                                <button type="button" data-view="audit" onclick="switchAuthorityView('audit')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i><span>Audit Logs</span></span>
+                                    <span class="text-[9px] font-mono text-emerald-400">Security</span>
+                                </button>
+                                <button type="button" data-view="ngos" onclick="switchAuthorityView('ngos')" class="admin-nav-item w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition flex items-center justify-between">
+                                    <span class="flex items-center space-x-2.5"><i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-400"></i><span>NGO Partners</span></span>
+                                    <span class="text-[9px] font-mono text-pink-300">Partner HQ</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Dropdown Footer / Quick Portals -->
+                        <div class="pt-2 border-t border-slate-800/90 grid grid-cols-2 gap-1.5 text-xs">
+                            <a href="ngo.html" class="flex items-center justify-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950/90 hover:bg-slate-800 text-purple-300 font-bold border border-purple-900/50 transition shadow-sm">
+                                <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-400"></i>
+                                <span>NGO Portal</span>
+                            </a>
+                            <a href="index.html" class="flex items-center justify-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950/90 hover:bg-slate-800 text-slate-300 font-bold border border-slate-800 transition shadow-sm">
+                                <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-purple-400"></i>
+                                <span>Citizen App</span>
+                            </a>
                         </div>
                     </div>
                 </div>
 
-                <!-- NDRF Live Gateway Status Pill (Sandbox Mode) -->
-                <button id="ndrf-status-pill" onclick="switchAuthorityView('ndrf')" title="National Disaster Response Force Gateway" class="hidden sm:flex h-8 sm:h-9 px-2.5 py-1.5 rounded-xl text-xs font-bold items-center space-x-1.5 bg-purple-950/70 border border-purple-700/60 text-purple-200 hover:bg-purple-900/60 transition shadow-sm">
-                    <span id="ndrf-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span class="hidden xl:inline font-mono text-[11px] text-purple-300">NDRF:</span>
-                    <span id="ndrf-status-text" class="text-emerald-400 font-bold">READY</span>
-                </button>
-
-                <!-- Dedicated NGO Operations Portal Link -->
-                <a href="ngo.html" class="hidden md:flex h-8 sm:h-9 bg-purple-950 hover:bg-purple-900 border border-purple-800 text-purple-200 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold items-center space-x-1.5 transition shadow">
-                    <i data-lucide="heart-handshake" class="w-3.5 h-3.5 text-pink-400"></i>
-                    <span>NGO Portal</span>
-                </a>
-
-                <!-- Return to Citizen App -->
-                <a href="index.html" class="h-8 sm:h-9 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow" title="Switch to Citizen Portal">
+                <!-- Return to Citizen App Quick Button -->
+                <a href="index.html" class="hidden sm:flex h-8 sm:h-9 bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold items-center space-x-1.5 transition shadow" title="Switch to Citizen Portal">
                     <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span class="hidden sm:inline">Citizen App</span>
+                    <span>Citizen Portal</span>
                 </a>
 
                 <!-- COMMAND THEME SETTING (DARK / BRIGHT MODE) -->
@@ -177,8 +199,9 @@
                     <span id="authority-theme-icon">🌙</span>
                 </button>
                 
+                <!-- Duty Officer Indicator -->
                 <div class="hidden md:flex items-center space-x-1.5 bg-purple-950/80 border border-purple-800/60 px-2.5 py-1.5 rounded-xl text-xs">
-                    <i data-lucide="user-check" class="w-3.5 h-3.5 text-purple-400"></i>
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
                     <span id="duty-officer-badge" class="font-bold text-purple-200 text-[11px]">Command</span>
                 </div>
 
