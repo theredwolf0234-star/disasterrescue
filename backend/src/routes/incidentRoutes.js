@@ -34,12 +34,13 @@ router.post('/:id/supplement', optionalToken, uploadEvidence.single('evidence'),
 router.patch('/:id/supplement', optionalToken, uploadEvidence.single('evidence'), incidentController.supplementIncident);
 
 // Automated dispatch & Escalation endpoints
+router.post('/check-escalations', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.triggerEscalationsCheck);
 router.post('/:id/auto-dispatch', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.triggerAutoDispatch);
 router.post('/:id/escalate', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.triggerEscalate);
 
-// Update incident status (Restricted to AUTHORITY and ADMIN)
-router.patch('/:id', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.updateIncident);
-router.patch('/:id/status', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.updateIncident);
+// Update incident status (Restricted to AUTHORITY, ADMIN, and assigned RESPONDER)
+router.patch('/:id', verifyToken, requireRoles(['AUTHORITY', 'ADMIN', 'RESPONDER']), incidentController.updateIncident);
+router.patch('/:id/status', verifyToken, requireRoles(['AUTHORITY', 'ADMIN', 'RESPONDER']), incidentController.updateIncident);
 
 // Update incident real-time GPS location telemetry (Citizen for own incident, Authority/Admin for any)
 router.patch('/:id/location', verifyToken, incidentController.updateIncidentLocation);

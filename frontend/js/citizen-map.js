@@ -65,6 +65,35 @@ function initCitizenMap() {
             loadAllMapLayers();
         });
 
+        mapboxMap.on('click', (e) => {
+            const lng = e.lngLat.lng;
+            const lat = e.lngLat.lat;
+            setLiveUserCoordinates(lng, lat, 8);
+            renderUserGpsMarker();
+
+            const statusText = document.getElementById('gps-status-text');
+            const heroText = document.getElementById('live-hero-location');
+            const heroStatus = document.getElementById('live-hero-telemetry-status');
+            if (statusText) statusText.innerHTML = `<span class="text-amber-400 font-bold">📍 Manual Map Pin Set:</span> ${lat.toFixed(4)}°, ${lng.toFixed(4)}° (±8m)`;
+            if (heroStatus) {
+                heroStatus.className = 'text-amber-400 font-semibold';
+                heroStatus.innerText = 'Manual Pin Set';
+            }
+
+            if (typeof api !== 'undefined' && api.get) {
+                api.get(`/api/geocode/reverse?lat=${lat}&lng=${lng}`)
+                    .then(geo => {
+                        if (geo && geo.success && geo.text && heroText) {
+                            heroText.innerText = `${geo.text} (${lat.toFixed(2)}°, ${lng.toFixed(2)}°)`;
+                        }
+                    })
+                    .catch(() => {});
+            }
+            if (typeof showToast === 'function') {
+                showToast(`Pinned location: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`, 'info');
+            }
+        });
+
         startCitizenLocationTracking();
 
     } catch (err) {
@@ -669,6 +698,26 @@ function initLeafletMapFallback() {
         leafletUserMarker = L.marker([liveUserCoordinates[1], liveUserCoordinates[0]])
             .bindPopup(`<strong>📍 Your Position</strong><br><span style="font-size:11px;">${liveUserCoordinates[1].toFixed(4)}°, ${liveUserCoordinates[0].toFixed(4)}°</span>`)
             .addTo(leafletMap);
+
+        leafletMap.on('click', (e) => {
+            const lat = e.latlng.lat;
+            const lng = e.latlng.lng;
+            setLiveUserCoordinates(lng, lat, 8);
+            if (leafletUserMarker) {
+                leafletUserMarker.setLatLng([lat, lng]);
+            }
+            const statusText = document.getElementById('gps-status-text');
+            const heroText = document.getElementById('live-hero-location');
+            const heroStatus = document.getElementById('live-hero-telemetry-status');
+            if (statusText) statusText.innerHTML = `<span class="text-amber-400 font-bold">📍 Manual Map Pin Set:</span> ${lat.toFixed(4)}°, ${lng.toFixed(4)}° (±8m)`;
+            if (heroStatus) {
+                heroStatus.className = 'text-amber-400 font-semibold';
+                heroStatus.innerText = 'Manual Pin Set';
+            }
+            if (typeof showToast === 'function') {
+                showToast(`Pinned location: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E`, 'info');
+            }
+        });
     } catch(err) {
         console.warn('[Leaflet Fallback] Map init notice:', err.message);
     }

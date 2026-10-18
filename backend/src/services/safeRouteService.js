@@ -228,11 +228,23 @@ async function calculateSafeRoute({ originLat, originLng, destLat, destLng, team
     }
 
     const routeRisk = avoidedHazards.length > 1 ? 'MODERATE' : (avoidedHazards.length === 1 ? 'LOW-MODERATE' : 'LOW');
+    const isRealRoad = routingEngine.startsWith('OSRM');
+    const safetyVerificationStatus = (isRealRoad && avoidedHazards.length === 0) 
+        ? 'VERIFIED_ROAD_NETWORK' 
+        : 'UNVERIFIED_HAZARDS_CAUTION';
+    const safetyWarning = avoidedHazards.length > 0
+        ? `Caution: Route navigates near known hazard corridors (${avoidedHazards.join(', ')}). Visual ground scout required before entering waterlogged or debris-strewn streets.`
+        : (isRealRoad 
+            ? 'Advisory: Road passability during active disaster conditions is subject to sudden inundation or debris. Use caution.'
+            : 'Caution: Live road verification unavailable. Route is an emergency tactical corridor. Ground safety cannot be guaranteed.');
 
     return {
         success: true,
         source: routingEngine,
-        isRealRoadRoute: routingEngine.startsWith('OSRM'),
+        isRealRoadRoute: isRealRoad,
+        dataFreshnessTimestamp: new Date().toISOString(),
+        safetyVerificationStatus,
+        safetyWarning,
         team: { id: teamId, name: teamName },
         target: { id: incidentId, name: targetName },
         origin: { latitude: startLat, longitude: startLng },

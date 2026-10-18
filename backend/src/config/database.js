@@ -656,6 +656,25 @@ async function seedDefaultAdminAndAuthority() {
             console.log('[DB] NDRF Authority account verified and active.');
         }
 
+        // 2b. Ensure verified field responder exists (Role: RESPONDER)
+        const responderUser = await get(`SELECT id FROM authority_users WHERE LOWER(username) = LOWER('responder_alpha')`);
+        if (!responderUser) {
+            const responderHash = await bcrypt.hash('responder123', 10);
+            await run(
+                `INSERT OR REPLACE INTO authority_users (id, username, email, password_hash, badge_number, organization, role, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, 'RESPONDER', datetime('now'), datetime('now'))`,
+                [
+                    'AUTH_dev_responder_01',
+                    'responder_alpha',
+                    'alpha.leader@ndrf.gov.in',
+                    responderHash,
+                    'RESP-NDRF-11-A',
+                    'NDRF Battalion 11 Unit Alpha'
+                ]
+            );
+            console.log('[DB] NDRF Field Responder account verified and active (role: RESPONDER).');
+        }
+
         // 3. Ensure default shelters exist if table is empty
         const shelterCount = await get(`SELECT COUNT(*) as cnt FROM shelters`);
         if (!shelterCount || Number(shelterCount.cnt) === 0) {
@@ -912,6 +931,7 @@ async function seedDefaultAdminAndAuthority() {
 module.exports = {
     initDatabase,
     query,
+    all: query,
     get,
     run,
     isPostgres: () => isPostgres

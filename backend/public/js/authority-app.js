@@ -51,6 +51,32 @@ window.quickAdminLogin = async function(username = 'AISTER23', password = '@aste
     }
 };
 
+window.quickResponderLogin = async function(username = 'responder_alpha', password = 'responder123') {
+    const errBox = document.getElementById('auth-login-error');
+    if (errBox) errBox.classList.add('hidden');
+    try {
+        const res = await api.post('/api/auth/authority-login', { username, password });
+        if (!res.success || !res.data) throw new Error(res.message || 'Authentication failed');
+
+        const { token, user } = res.data;
+        api.setToken(token, user);
+
+        const modal = document.getElementById('auth-login-modal');
+        if (modal) modal.remove();
+        const accessDenied = document.getElementById('access-denied-screen');
+        if (accessDenied) accessDenied.remove();
+
+        showToast(`Welcome, Responder ${user.username}. Field clearance verified.`, 'success');
+        await initAuthorityDashboard();
+    } catch (err) {
+        console.error('Quick responder login error:', err);
+        if (errBox) {
+            errBox.innerText = err.message || 'Authentication failed. Please verify credentials.';
+            errBox.classList.remove('hidden');
+        }
+    }
+};
+
 window.initAuthorityTheme = function() {
     const saved = localStorage.getItem('rescue_authority_theme') || localStorage.getItem('rescue_theme') || 'dark';
     window.applyAuthorityTheme(saved);
@@ -133,7 +159,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Role check: If citizen attempts to open authority dashboard, show Access Denied screen
-    if (user.role !== 'AUTHORITY' && user.role !== 'ADMIN') {
+    if (user.role !== 'AUTHORITY' && user.role !== 'ADMIN' && user.role !== 'RESPONDER') {
         showAccessDeniedScreen(user);
         return;
     }
@@ -236,8 +262,9 @@ function updateOfficerBadge() {
     const badgeEl = document.getElementById('duty-officer-badge');
     if (badgeEl && user) {
         const org = user.organization ? ` • ${user.organization}` : '';
-        const badgeNum = user.badgeNumber || user.badge_number || 'HQ-CMD';
-        badgeEl.innerText = `Duty Officer: ${user.username || user.fullName || 'NDRF Officer'} (${badgeNum})${org}`;
+        const badgeNum = user.badgeNumber || user.badge_number || (user.role === 'RESPONDER' ? 'RESP-NDRF-11-A' : 'HQ-CMD');
+        const roleLabel = user.role === 'RESPONDER' ? 'First Responder' : (user.role === 'ADMIN' ? 'Commander / Admin' : 'Duty Officer');
+        badgeEl.innerText = `${roleLabel}: ${user.username || user.fullName || 'Officer'} (${badgeNum})${org}`;
     }
 }
 
@@ -359,8 +386,8 @@ async function handleAuthorityLogin(e) {
 
         const { token, user } = res.data;
 
-        if (user.role !== 'AUTHORITY' && user.role !== 'ADMIN') {
-            throw new Error('Access denied: User account lacks Authority / Admin permissions.');
+        if (user.role !== 'AUTHORITY' && user.role !== 'ADMIN' && user.role !== 'RESPONDER') {
+            throw new Error('Access denied: User account lacks Authority / Responder permissions.');
         }
 
         api.setToken(token, user);
@@ -676,6 +703,23 @@ function renderIncidentQueue() {
     if (!container) return;
 
     container.innerHTML = '';
+
+    const unacknowledged = allIncidents.filter(i => (i.status === 'ASSIGNED' || i.status === 'TEAM_ASSIGNED') && !i.acknowledged_at);
+    const awaitingSquad = allIncidents.filter(i => !i.assigned_rescue_team && i.status !== 'RESOLVED' && i.status !== 'CANCELLED');
+
+    if (awaitingSquad.length > 0 || unacknowledged.length > 0) {
+        const alertEl = document.createElement('div');
+        alertEl.className = 'p-3 bg-amber-950/80 border border-amber-600 rounded-xl text-amber-200 text-xs space-y-1 shadow-md mb-2';
+        alertEl.innerHTML = `
+            <div class="flex items-center justify-between font-bold">
+                <span class="flex items-center space-x-1.5"><i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i><span>DISPATCH ATTENTION REQUIRED</span></span>
+                <span class="text-[10px] bg-amber-900 px-2 py-0.5 rounded text-amber-100">${awaitingSquad.length + unacknowledged.length} Action Items</span>
+            </div>
+            ${awaitingSquad.length > 0 ? `<div class="text-[11px] text-amber-300">⚠️ <strong>${awaitingSquad.length} incident(s)</strong> awaiting squad assignment (manual intervention needed).</div>` : ''}
+            ${unacknowledged.length > 0 ? `<div class="text-[11px] text-amber-300">⏳ <strong>${unacknowledged.length} squad assignment(s)</strong> unacknowledged (auto-escalation active).</div>` : ''}
+        `;
+        container.appendChild(alertEl);
+    }
 
     const searchInput = document.getElementById('queue-search-input');
     const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
@@ -1318,6 +1362,40 @@ function renderIncidentInspectModal(inc) {
 
             <!-- Incident Overview Details -->
             <div class="grid sm:grid-cols-2 gap-4 text-xs bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <!-- Field Responder Mission Action Bar -->
+                <div class="sm:col-span-2 bg-gradient-to-r from-emerald-950/70 via-slate-900 to-purple-950/70 p-3.5 rounded-xl border border-emerald-600/70 space-y-2.5 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-white text-xs uppercase flex items-center space-x-1.5">
+                            <i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i>
+                            <span>First Responder Mission Actions</span>
+                        </span>
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold">
+                            Current: ${inc.status}
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-1">
+                        <button onclick="responderAdvanceStatus('${inc.id}', 'ACCEPTED')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${(inc.status === 'ASSIGNED' || inc.status === 'TEAM_ASSIGNED') ? 'bg-amber-600 hover:bg-amber-500 text-white animate-pulse' : 'bg-slate-800 text-slate-300 hover:text-white'}">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                            <span>1. Accept (Ack)</span>
+                        </button>
+                        <button onclick="responderAdvanceStatus('${inc.id}', 'EN_ROUTE')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${(inc.status === 'ACCEPTED' || inc.status === 'ACKNOWLEDGED') ? 'bg-purple-600 hover:bg-purple-500 text-white' : 'bg-slate-800 text-slate-300 hover:text-white'}">
+                            <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
+                            <span>2. En Route</span>
+                        </button>
+                        <button onclick="responderAdvanceStatus('${inc.id}', 'ARRIVED')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${(inc.status === 'EN_ROUTE' || inc.status === 'TEAM_EN_ROUTE') ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-300 hover:text-white'}">
+                            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                            <span>3. Arrived On Scene</span>
+                        </button>
+                        <button onclick="responderAdvanceStatus('${inc.id}', 'COMPLETED')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${(inc.status === 'ARRIVED' || inc.status === 'ON_SCENE') ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-800 text-slate-300 hover:text-white'}">
+                            <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
+                            <span>4. Complete Rescue</span>
+                        </button>
+                        <button onclick="transmitResponderTelemetry('${inc.id}')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-700/60 transition flex items-center space-x-1">
+                            <i data-lucide="radio" class="w-3.5 h-3.5"></i>
+                            <span>Transmit GPS Telemetry</span>
+                        </button>
+                    </div>
+                </div>
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">Category</span>
                     <strong class="text-white text-sm">${inc.category}</strong>
@@ -1564,13 +1642,11 @@ function renderIncidentInspectModal(inc) {
                         <label class="block text-slate-300 font-bold mb-1">Incident Lifecycle Status</label>
                         <select id="modal-status-select" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:border-purple-500 focus:outline-none">
                             <option value="NEW" ${inc.status === 'NEW' ? 'selected' : ''}>NEW (Beacon Received)</option>
-                            <option value="ACKNOWLEDGED" ${inc.status === 'ACKNOWLEDGED' ? 'selected' : ''}>ACKNOWLEDGED</option>
-                            <option value="ANALYZING" ${inc.status === 'ANALYZING' ? 'selected' : ''}>ANALYZING (Risk Triage)</option>
-                            <option value="ASSIGNED" ${inc.status === 'ASSIGNED' ? 'selected' : ''}>ASSIGNED</option>
-                            <option value="TEAM_DISPATCHED" ${inc.status === 'TEAM_DISPATCHED' ? 'selected' : ''}>TEAM_DISPATCHED</option>
-                            <option value="TEAM_APPROACHING" ${inc.status === 'TEAM_APPROACHING' ? 'selected' : ''}>TEAM_APPROACHING</option>
-                            <option value="ON_SCENE" ${inc.status === 'ON_SCENE' ? 'selected' : ''}>ON_SCENE</option>
-                            <option value="RESOLVED" ${inc.status === 'RESOLVED' ? 'selected' : ''}>RESOLVED</option>
+                            <option value="ASSIGNED" ${inc.status === 'ASSIGNED' || inc.status === 'TEAM_ASSIGNED' ? 'selected' : ''}>ASSIGNED (Squad Dispatched)</option>
+                            <option value="ACCEPTED" ${inc.status === 'ACCEPTED' || inc.status === 'ACKNOWLEDGED' ? 'selected' : ''}>ACCEPTED (Squad Acknowledged)</option>
+                            <option value="EN_ROUTE" ${inc.status === 'EN_ROUTE' || inc.status === 'TEAM_EN_ROUTE' ? 'selected' : ''}>EN_ROUTE (Transit to Scene)</option>
+                            <option value="ARRIVED" ${inc.status === 'ARRIVED' || inc.status === 'ON_SCENE' ? 'selected' : ''}>ARRIVED (On Scene)</option>
+                            <option value="COMPLETED" ${inc.status === 'COMPLETED' || inc.status === 'RESOLVED' ? 'selected' : ''}>COMPLETED (Resolved)</option>
                             <option value="CANCELLED" ${inc.status === 'CANCELLED' ? 'selected' : ''}>CANCELLED</option>
                         </select>
                     </div>
@@ -1661,6 +1737,52 @@ function renderIncidentInspectModal(inc) {
 // -------------------------------------------------------------
 // ACTION BUTTON HANDLERS (SECTION 13)
 // -------------------------------------------------------------
+window.responderAdvanceStatus = async function(id, targetStatus) {
+    try {
+        const res = await api.patch(`/api/incidents/${id}/status`, {
+            status: targetStatus,
+            note: `Status updated to ${targetStatus} by field responder.`
+        });
+        if (!res.success) throw new Error(res.message || 'Status update failed');
+        showToast(`Incident #${id} advanced to ${targetStatus}!`, 'success');
+        await inspectIncident(id);
+        await fetchOverviewStats();
+        await fetchIncidentsList();
+    } catch (e) {
+        showToast(e.message || 'Failed to update status', 'error');
+    }
+};
+
+window.transmitResponderTelemetry = async function(id) {
+    if (!navigator.geolocation) {
+        showToast('Geolocation unavailable on this device.', 'warning');
+        return;
+    }
+    showToast('Acquiring high-precision GPS telemetry...', 'info');
+    navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+            try {
+                const { latitude, longitude, accuracy } = pos.coords;
+                const res = await api.patch(`/api/incidents/${id}/location`, {
+                    latitude,
+                    longitude,
+                    accuracy
+                });
+                if (res.success) {
+                    showToast(`Telemetry transmitted: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}° (±${Math.round(accuracy)}m)`, 'success');
+                    await inspectIncident(id);
+                }
+            } catch (err) {
+                showToast(err.message || 'Telemetry transmission failed', 'error');
+            }
+        },
+        (err) => {
+            showToast('GPS position unavailable: ' + err.message, 'error');
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+    );
+};
+
 async function acknowledgeIncident(id) {
     try {
         const res = await api.patch(`/api/incidents/${id}`, {

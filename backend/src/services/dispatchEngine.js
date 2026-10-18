@@ -580,6 +580,37 @@ async function escalateIncident({ incidentId, reason = 'Acknowledgment deadline 
     }
 }
 
+/**
+ * Scans for unacknowledged incident assignments that have exceeded their ack deadline
+ * Automatically escalates to secondary team or sets to REQUESTED for manual intervention
+ */
+async function checkAndEscalateUnacknowledgedIncidents() {
+    try {
+        const unacked = await db.query(
+            `SELECT id, category, details, latitude, longitude, count, assigned_rescue_team, dispatch_team_id, ack_deadline, escalation_level
+             FROM incidents
+             WHERE status IN ('ASSIGNED', 'TEAM_ASSIGNED')
+               AND acknowledged_at IS NULL
+               AND ack_deadline IS NOT NULL
+               AND datetime(ack_deadline) < datetime('now')`
+        );
+
+        const results = [];
+        for (const inc of unacked) {
+            console.log(`[DispatchEngine] Incident ${inc.id} unacknowledged past deadline (${inc.ack_deadline}). Escalating...`);
+            const res = await escalateIncident({
+                incidentId: inc.id,
+                reason: `Acknowledgment deadline exceeded by ${inc.assigned_rescue_team || 'assigned team'}. Automatic escalation triggered.`
+            });
+            results.push({ incidentId: inc.id, ...res });
+        }
+        return results;
+    } catch (err) {
+        console.error('[DispatchEngine] Escalation check error:', err.message);
+        return [];
+    }
+}
+
 module.exports = {
     haversineDistanceKm,
     calculateEtaMinutes,
@@ -587,5 +618,6 @@ module.exports = {
     findEligibleRescueTeams,
     autoDispatchIncident,
     acknowledgeTeamDispatch,
-    escalateIncident
+    escalateIncident,
+    checkAndEscalateUnacknowledgedIncidents
 };

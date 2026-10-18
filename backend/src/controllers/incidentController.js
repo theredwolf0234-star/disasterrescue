@@ -10,6 +10,7 @@ const VALID_STATUSES = [
     'RECEIVED',
     'REQUESTED',
     'ACKNOWLEDGED',
+    'ACCEPTED',
     'ANALYZING',
     'ASSESSING',
     'TRIAGED',
@@ -20,9 +21,12 @@ const VALID_STATUSES = [
     'DISPATCHED',
     'TEAM_APPROACHING',
     'TEAM_EN_ROUTE',
+    'EN_ROUTE',
     'IN_PROGRESS',
     'ON_SCENE',
+    'ARRIVED',
     'RESOLVED',
+    'COMPLETED',
     'CANCELLED'
 ];
 
@@ -413,13 +417,14 @@ async function getIncidents(req, res, next) {
         }
 
         const isAuthorityOrAdmin = req.user.role === 'AUTHORITY' || req.user.role === 'ADMIN';
+        const isResponder = req.user.role === 'RESPONDER';
         const { status, level, search, limit = 100, offset = 0, mine } = req.query;
 
         let queryStr = `SELECT * FROM incidents WHERE 1=1`;
         const params = [];
 
         // For CITIZEN or when mine=true: must return ONLY reports belonging to that citizen
-        const filterMine = !isAuthorityOrAdmin || mine === 'true' || req.query.userOnly === 'true';
+        const filterMine = (!isAuthorityOrAdmin && !isResponder) || mine === 'true' || req.query.userOnly === 'true';
         if (filterMine) {
             queryStr += ` AND user_id = ?`;
             params.push(req.user.id);
@@ -503,8 +508,9 @@ async function getIncidentById(req, res, next) {
         }
 
         const isAuthorityOrAdmin = req.user.role === 'AUTHORITY' || req.user.role === 'ADMIN';
+        const isResponder = req.user.role === 'RESPONDER';
         const isAssignedNgo = req.user.role === 'NGO' && incident.assigned_ngo_id === req.user.ngoId;
-        if (!isAuthorityOrAdmin && !isAssignedNgo && incident.user_id !== req.user.id) {
+        if (!isAuthorityOrAdmin && !isResponder && !isAssignedNgo && incident.user_id !== req.user.id) {
             return res.status(403).json({
                 success: false,
                 message: 'Access denied. You can only view your own incident reports.',
@@ -548,7 +554,7 @@ async function getIncidentById(req, res, next) {
 }
 
 // PATCH /api/incidents/:id
-// Restricted to AUTHORITY and ADMIN
+// Restricted to AUTHORITY, ADMIN, and assigned RESPONDER
 async function updateIncident(req, res, next) {
     try {
         const { id } = req.params;
@@ -563,6 +569,17 @@ async function updateIncident(req, res, next) {
             });
         }
 
+        const isAuthorityOrAdmin = req.user && (req.user.role === 'AUTHORITY' || req.user.role === 'ADMIN');
+        const isResponder = req.user && req.user.role === 'RESPONDER';
+
+        if (!isAuthorityOrAdmin && !isResponder) {
+            return res.status(403).json({
+                success: false,
+                message: 'Forbidden: Access restricted. Role lacks permission to update incident status.',
+                errorCode: 'FORBIDDEN'
+            });
+        }
+
         // Validate status transition if provided
         if (status && !VALID_STATUSES.includes(status)) {
             return res.status(400).json({
@@ -573,14 +590,19 @@ async function updateIncident(req, res, next) {
         }
 
         const newStatus = status || incident.status;
-        const isResolving = newStatus === 'RESOLVED';
+        const isResolving = newStatus === 'RESOLVED' || newStatus === 'COMPLETED';
         const resolvedAt = isResolving 
             ? (incident.resolved_at || new Date().toISOString()) 
-            : (newStatus !== incident.status && incident.status === 'RESOLVED' ? null : incident.resolved_at);
+            : (newStatus !== incident.status && (incident.status === 'RESOLVED' || incident.status === 'COMPLETED') ? null : incident.resolved_at);
+
+        const isAcknowledging = newStatus === 'ACCEPTED' || newStatus === 'ACKNOWLEDGED' || newStatus === 'EN_ROUTE' || newStatus === 'TEAM_EN_ROUTE';
+        const acknowledgedAt = isAcknowledging 
+            ? (incident.acknowledged_at || new Date().toISOString()) 
+            : incident.acknowledged_at;
 
         const finalResolutionNotes = resolutionNotes !== undefined 
             ? resolutionNotes 
-            : (isResolving && !incident.resolution_notes ? (note || 'Incident resolved by commanding officer.') : incident.resolution_notes);
+            : (isResolving && !incident.resolution_notes ? (note || 'Incident marked completed and resolved.') : incident.resolution_notes);
 
         await db.run(
             `UPDATE incidents 
@@ -589,17 +611,40 @@ async function updateIncident(req, res, next) {
                  assigned_rescue_team = COALESCE(?, assigned_rescue_team),
                  resolution_notes = ?,
                  resolved_at = ?,
+                 acknowledged_at = ?,
                  updated_at = datetime('now')
              WHERE id = ?`,
             [
                 newStatus,
-                assignedAuthority || null,
-                assignedRescueTeam || null,
+                isAuthorityOrAdmin ? (assignedAuthority || null) : null,
+                isAuthorityOrAdmin ? (assignedRescueTeam || null) : null,
                 finalResolutionNotes || null,
                 resolvedAt,
+                acknowledgedAt,
                 id
             ]
         );
+
+        // Manage responder fleet availability
+        const teamIdToManage = incident.dispatch_team_id;
+        if (isResolving && teamIdToManage) {
+            await db.run(
+                `UPDATE rescue_teams 
+                 SET status = 'AVAILABLE', assigned_incident_id = NULL, updated_at = datetime('now') 
+                 WHERE id = ?`,
+                [teamIdToManage]
+            );
+        } else if ((newStatus === 'EN_ROUTE' || newStatus === 'TEAM_EN_ROUTE') && teamIdToManage) {
+            await db.run(
+                `UPDATE rescue_teams SET status = 'DISPATCHED', updated_at = datetime('now') WHERE id = ?`,
+                [teamIdToManage]
+            );
+        } else if ((newStatus === 'ARRIVED' || newStatus === 'ON_SCENE') && teamIdToManage) {
+            await db.run(
+                `UPDATE rescue_teams SET status = 'ON_SCENE', updated_at = datetime('now') WHERE id = ?`,
+                [teamIdToManage]
+            );
+        }
 
         // Record update timeline
         const updateNote = note || `Status updated from ${incident.status} to ${newStatus}${assignedRescueTeam ? ` (Assigned: ${assignedRescueTeam})` : ''}`;
@@ -812,17 +857,28 @@ async function addIncidentNote(req, res, next) {
 // Restricted to AUTHORITY and ADMIN
 async function getIncidentStats(req, res, next) {
     try {
+        const { checkAndEscalateUnacknowledgedIncidents } = require('../services/dispatchEngine');
+        try {
+            await checkAndEscalateUnacknowledgedIncidents();
+        } catch (escErr) {
+            console.warn('[Stats] Escalation check notice:', escErr.message);
+        }
+
         const totalRow = await db.get(`SELECT COUNT(*) as count FROM incidents`);
-        const activeRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE status NOT IN ('RESOLVED', 'CANCELLED')`);
-        const criticalRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE emergency_level = 'CRITICAL' AND status NOT IN ('RESOLVED', 'CANCELLED')`);
-        const resolvedRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE status = 'RESOLVED'`);
+        const activeRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE status NOT IN ('RESOLVED', 'CANCELLED', 'COMPLETED')`);
+        const criticalRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE emergency_level = 'CRITICAL' AND status NOT IN ('RESOLVED', 'CANCELLED', 'COMPLETED')`);
+        const resolvedRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE status IN ('RESOLVED', 'COMPLETED')`);
         const peopleRow = await db.get(`SELECT COALESCE(SUM(count), 0) as total_people FROM incidents`);
+        const unackedRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE status IN ('ASSIGNED', 'TEAM_ASSIGNED') AND acknowledged_at IS NULL`);
+        const awaitingRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE (assigned_rescue_team IS NULL OR status = 'REQUESTED') AND status NOT IN ('RESOLVED', 'CANCELLED', 'COMPLETED')`);
 
         const total = totalRow ? parseInt(totalRow.count, 10) || 0 : 0;
         const active = activeRow ? parseInt(activeRow.count, 10) || 0 : 0;
         const critical = criticalRow ? parseInt(criticalRow.count, 10) || 0 : 0;
         const resolved = resolvedRow ? parseInt(resolvedRow.count, 10) || 0 : 0;
         const people = peopleRow ? parseInt(peopleRow.total_people, 10) || 0 : 0;
+        const unacknowledged = unackedRow ? parseInt(unackedRow.count, 10) || 0 : 0;
+        const awaitingAssistance = awaitingRow ? parseInt(awaitingRow.count, 10) || 0 : 0;
 
         res.json({
             success: true,
@@ -832,7 +888,9 @@ async function getIncidentStats(req, res, next) {
                 critical,
                 resolved,
                 people,
-                peopleAffected: people
+                peopleAffected: people,
+                unacknowledged,
+                awaitingAssistance
             }
         });
     } catch (err) {
@@ -864,8 +922,8 @@ async function updateIncidentLocation(req, res, next) {
             });
         }
 
-        // Only owner citizen or authority/admin can update location
-        const isAuth = req.user.role === 'AUTHORITY' || req.user.role === 'ADMIN';
+        // Only owner citizen, assigned responder, or authority/admin can update location
+        const isAuth = req.user.role === 'AUTHORITY' || req.user.role === 'ADMIN' || req.user.role === 'RESPONDER';
         if (!isAuth && incident.user_id !== req.user.id) {
             return res.status(403).json({
                 success: false,
@@ -1435,6 +1493,21 @@ async function triggerEscalate(req, res, next) {
     }
 }
 
+// POST /api/incidents/check-escalations
+async function triggerEscalationsCheck(req, res, next) {
+    try {
+        const { checkAndEscalateUnacknowledgedIncidents } = require('../services/dispatchEngine');
+        const results = await checkAndEscalateUnacknowledgedIncidents();
+        res.json({
+            success: true,
+            count: results.length,
+            data: results
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
 module.exports = {
     createIncident,
     getIncidents,
@@ -1451,6 +1524,7 @@ module.exports = {
     uploadIncidentEvidence,
     supplementIncident,
     triggerAutoDispatch,
-    triggerEscalate
+    triggerEscalate,
+    triggerEscalationsCheck
 };
 
