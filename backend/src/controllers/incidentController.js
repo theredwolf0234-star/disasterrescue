@@ -4,6 +4,7 @@ const { calculateEmergencyPriority } = require('../services/priorityService');
 const { analyzeDisasterMedia } = require('../services/aiVisionService');
 const { logAction } = require('../services/auditService');
 const { emitNewIncident, emitIncidentUpdated } = require('../sockets/socketHandler');
+const { computeTacticalGrid, computeTacticalGridId } = require('../utils/tacticalGrid');
 
 const VALID_STATUSES = [
     'NEW',
@@ -195,16 +196,19 @@ async function createIncident(req, res, next) {
             ? String(address).trim()
             : `Coordinates: ${numLat.toFixed(4)}, ${numLng.toFixed(4)}`;
 
+        // Deterministic Tactical Grid ID generation (100m resolution)
+        const tacticalGridId = computeTacticalGridId(numLat, numLng);
+
         // Insert incident into persistent database
         await db.run(
             `INSERT INTO incidents (
                 id, user_id, category, emergency_level, count, details,
-                latitude, longitude, readable_address, status,
+                latitude, longitude, readable_address, tactical_grid_id, status,
                 assigned_authority, assigned_rescue_team, evidence_url,
                 risk_score, risk_factors, recommended_action, ai_vision_analysis, audio_url,
                 is_verified_gps, gps_accuracy, gps_timestamp, idempotency_key,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
             [
                 incidentId,
                 userId,
@@ -215,6 +219,7 @@ async function createIncident(req, res, next) {
                 numLat,
                 numLng,
                 readableAddress,
+                tacticalGridId,
                 finalEvidenceUrl,
                 priorityAssessment.score || 70,
                 JSON.stringify(priorityAssessment.factors || {}),
@@ -296,16 +301,16 @@ async function createIncident(req, res, next) {
             ipAddress: req.ip
         });
 
-        // Automatic Dispatch if One-Tap SOS or autoDispatch requested
+        // Automatic SOS assignment: initiated automatically upon submission for SOS beacons
         let dispatchResult = null;
-        const isAutoDispatch = req.body.autoDispatch === true || req.body.source === 'ONE_TAP_SOS' || req.headers['x-auto-dispatch'] === 'true';
+        const isAutoDispatch = req.body.autoDispatch === true || req.body.source === 'ONE_TAP_SOS' || req.headers['x-auto-dispatch'] === 'true' || Boolean(isQuickSos) || req.baseUrl === '/api/sos';
         if (isAutoDispatch) {
             try {
                 const { autoDispatchIncident } = require('../services/dispatchEngine');
                 dispatchResult = await autoDispatchIncident(incidentId, {
                     category: category.trim(),
                     details: details.trim(),
-                    dispatchedBy: userId || 'ONE_TAP_SOS_ENGINE'
+                    dispatchedBy: userId || 'AUTO_DISPATCH_ENGINE'
                 });
             } catch (dispErr) {
                 console.warn('[Incident] Automatic dispatch error:', dispErr.message);
@@ -418,7 +423,7 @@ async function getIncidents(req, res, next) {
 
         const isAuthorityOrAdmin = req.user.role === 'AUTHORITY' || req.user.role === 'ADMIN';
         const isResponder = req.user.role === 'RESPONDER';
-        const { status, level, search, limit = 100, offset = 0, mine } = req.query;
+        const { status, level, category, search, grid, limit = 100, offset = 0, mine, from, to, assigned } = req.query;
 
         let queryStr = `SELECT * FROM incidents WHERE 1=1`;
         const params = [];
@@ -440,10 +445,36 @@ async function getIncidents(req, res, next) {
             params.push(level);
         }
 
+        if (category && category !== 'all') {
+            queryStr += ` AND category = ?`;
+            params.push(category);
+        }
+
+        if (grid) {
+            queryStr += ` AND tactical_grid_id LIKE ?`;
+            params.push(`%${grid}%`);
+        }
+
         if (search) {
-            queryStr += ` AND (id LIKE ? OR category LIKE ? OR details LIKE ? OR readable_address LIKE ?)`;
+            queryStr += ` AND (id LIKE ? OR tactical_grid_id LIKE ? OR category LIKE ? OR details LIKE ? OR readable_address LIKE ?)`;
             const searchPattern = `%${search}%`;
-            params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+            params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+        }
+
+        if (from) {
+            queryStr += ` AND created_at >= ?`;
+            params.push(from);
+        }
+
+        if (to) {
+            queryStr += ` AND created_at <= ?`;
+            params.push(to);
+        }
+
+        if (assigned === 'true') {
+            queryStr += ` AND (assigned_rescue_team IS NOT NULL OR dispatch_team_id IS NOT NULL)`;
+        } else if (assigned === 'false') {
+            queryStr += ` AND assigned_rescue_team IS NULL AND dispatch_team_id IS NULL`;
         }
 
         queryStr += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
@@ -465,10 +496,31 @@ async function getIncidents(req, res, next) {
             countSql += ` AND emergency_level = ?`;
             countParams.push(level);
         }
+        if (category && category !== 'all') {
+            countSql += ` AND category = ?`;
+            countParams.push(category);
+        }
+        if (grid) {
+            countSql += ` AND tactical_grid_id LIKE ?`;
+            countParams.push(`%${grid}%`);
+        }
         if (search) {
-            countSql += ` AND (id LIKE ? OR category LIKE ? OR details LIKE ? OR readable_address LIKE ?)`;
+            countSql += ` AND (id LIKE ? OR tactical_grid_id LIKE ? OR category LIKE ? OR details LIKE ? OR readable_address LIKE ?)`;
             const searchPattern = `%${search}%`;
-            countParams.push(searchPattern, searchPattern, searchPattern, searchPattern);
+            countParams.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+        }
+        if (from) {
+            countSql += ` AND created_at >= ?`;
+            countParams.push(from);
+        }
+        if (to) {
+            countSql += ` AND created_at <= ?`;
+            countParams.push(to);
+        }
+        if (assigned === 'true') {
+            countSql += ` AND (assigned_rescue_team IS NOT NULL OR dispatch_team_id IS NOT NULL)`;
+        } else if (assigned === 'false') {
+            countSql += ` AND assigned_rescue_team IS NULL AND dispatch_team_id IS NULL`;
         }
         const countRow = await db.get(countSql, countParams);
 
@@ -871,6 +923,11 @@ async function getIncidentStats(req, res, next) {
         const peopleRow = await db.get(`SELECT COALESCE(SUM(count), 0) as total_people FROM incidents`);
         const unackedRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE status IN ('ASSIGNED', 'TEAM_ASSIGNED') AND acknowledged_at IS NULL`);
         const awaitingRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE (assigned_rescue_team IS NULL OR status = 'REQUESTED') AND status NOT IN ('RESOLVED', 'CANCELLED', 'COMPLETED')`);
+        const assignedRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE (assigned_rescue_team IS NOT NULL OR dispatch_team_id IS NOT NULL) AND status NOT IN ('RESOLVED', 'CANCELLED', 'COMPLETED')`);
+        const unassignedRow = await db.get(`SELECT COUNT(*) as count FROM incidents WHERE assigned_rescue_team IS NULL AND dispatch_team_id IS NULL AND status NOT IN ('RESOLVED', 'CANCELLED', 'COMPLETED')`);
+        const availableTeamsRow = await db.get(`SELECT COUNT(*) as count FROM rescue_teams WHERE status IN ('AVAILABLE', 'STANDBY')`);
+        const deployedTeamsRow = await db.get(`SELECT COUNT(*) as count FROM rescue_teams WHERE status IN ('DISPATCHED', 'EN_ROUTE', 'ON_SCENE', 'DEPLOYED')`);
+        const totalTeamsRow = await db.get(`SELECT COUNT(*) as count FROM rescue_teams`);
 
         const total = totalRow ? parseInt(totalRow.count, 10) || 0 : 0;
         const active = activeRow ? parseInt(activeRow.count, 10) || 0 : 0;
@@ -879,18 +936,32 @@ async function getIncidentStats(req, res, next) {
         const people = peopleRow ? parseInt(peopleRow.total_people, 10) || 0 : 0;
         const unacknowledged = unackedRow ? parseInt(unackedRow.count, 10) || 0 : 0;
         const awaitingAssistance = awaitingRow ? parseInt(awaitingRow.count, 10) || 0 : 0;
+        const assigned = assignedRow ? parseInt(assignedRow.count, 10) || 0 : 0;
+        const unassigned = unassignedRow ? parseInt(unassignedRow.count, 10) || 0 : 0;
+        const availableTeams = availableTeamsRow ? parseInt(availableTeamsRow.count, 10) || 0 : 0;
+        const deployedTeams = deployedTeamsRow ? parseInt(deployedTeamsRow.count, 10) || 0 : 0;
+        const totalTeams = totalTeamsRow ? parseInt(totalTeamsRow.count, 10) || 0 : 0;
 
         res.json({
             success: true,
             data: {
                 total,
+                totalIncidents: total,
                 active,
                 critical,
                 resolved,
+                resolvedIncidents: resolved,
                 people,
                 peopleAffected: people,
                 unacknowledged,
-                awaitingAssistance
+                awaitingAssistance,
+                assigned,
+                assignedIncidents: assigned,
+                unassigned,
+                unassignedIncidents: unassigned,
+                availableTeams,
+                deployedTeams,
+                totalTeams
             }
         });
     } catch (err) {
@@ -931,9 +1002,12 @@ async function updateIncidentLocation(req, res, next) {
             });
         }
 
+        // Deterministically recalculate Tactical Grid ID for updated GPS coordinates
+        const newTacticalGridId = computeTacticalGridId(lat, lng);
+
         await db.run(
-            `UPDATE incidents SET latitude = ?, longitude = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [lat, lng, id]
+            `UPDATE incidents SET latitude = ?, longitude = ?, tactical_grid_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [lat, lng, newTacticalGridId, id]
         );
 
         const updated = await db.get(`SELECT * FROM incidents WHERE id = ?`, [id]);
@@ -945,6 +1019,7 @@ async function updateIncidentLocation(req, res, next) {
                 id,
                 latitude: lat,
                 longitude: lng,
+                tactical_grid_id: newTacticalGridId,
                 accuracy: accuracy || null,
                 updated_at: new Date().toISOString()
             };
@@ -1010,9 +1085,11 @@ async function getIncidentReport(req, res, next) {
                 readableAddress: incident.readable_address,
                 latitude: incident.latitude,
                 longitude: incident.longitude,
+                tacticalGridId: incident.tactical_grid_id || computeTacticalGridId(incident.latitude, incident.longitude),
                 isVerifiedGps: Boolean(incident.is_verified_gps),
                 gpsAccuracy: incident.gps_accuracy
             },
+            tacticalGridId: incident.tactical_grid_id || computeTacticalGridId(incident.latitude, incident.longitude),
             reporter: reporter || { name: 'Anonymous Dispatch Beacon' },
             assignedTeam: team || { name: incident.assigned_rescue_team || 'Unassigned' },
             assignedAuthority: incident.assigned_authority || 'NDRF Central Command',
@@ -1080,7 +1157,7 @@ async function exportIncidentsCsv(req, res, next) {
         }
         
         const header = [
-            'Incident_ID', 'Category', 'Emergency_Level', 'Risk_Score', 
+            'Incident_ID', 'Category', 'Emergency_Level', 'Tactical_Grid_ID', 'Risk_Score', 
             'Victims', 'Status', 'Assigned_Team', 'Latitude', 'Longitude', 
             'Address', 'Verified_GPS', 'GPS_Accuracy_Meters', 'Created_At', 'Resolved_At'
         ];
@@ -1091,6 +1168,7 @@ async function exportIncidentsCsv(req, res, next) {
                 sanitizeCsvField(inc.id),
                 sanitizeCsvField(inc.category),
                 sanitizeCsvField(inc.emergency_level),
+                sanitizeCsvField(inc.tactical_grid_id || computeTacticalGridId(inc.latitude, inc.longitude)),
                 Number(inc.risk_score) || 70,
                 Number(inc.count) || 1,
                 sanitizeCsvField(inc.status),

@@ -2,11 +2,20 @@ const db = require('../config/database');
 const { generateUUID } = require('../utils/idGenerator');
 const { logAction } = require('../services/auditService');
 
+// Maximum operational dispatch radii in kilometers
+const SEARCH_RADII = [15, 30, 50]; // Tier 1: 15km, Tier 2: 30km, Tier 3: 50km
+const MAX_DISPATCH_RADIUS_KM = 50;
+
 /**
- * Calculates Haversine distance in kilometers between two GPS coordinates
+ * Calculates Haversine distance in kilometers between two GPS coordinates.
+ * Strictly verified geospatial standard.
  */
 function haversineDistanceKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Earth radius in km
+    if (lat1 === null || lat1 === undefined || lon1 === null || lon1 === undefined ||
+        lat2 === null || lat2 === undefined || lon2 === null || lon2 === undefined) {
+        return Infinity;
+    }
+    const R = 6371; // Earth's mean radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a =
@@ -18,91 +27,102 @@ function haversineDistanceKm(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Calculates Estimated Time of Arrival (ETA) in minutes
- * Assumes average urban response transit speed of 35 km/h + 3 min mobilization delay
+ * Calculates Estimated Time of Arrival (ETA) in minutes.
+ * Incorporates urban terrain transit speed (35 km/h) plus standard 3-minute mobilization.
  */
 function calculateEtaMinutes(distanceKm) {
+    if (!Number.isFinite(distanceKm) || distanceKm === Infinity) return null;
     const speedKmH = 35;
     const travelTimeMinutes = (distanceKm / speedKmH) * 60;
     return Math.max(2, Math.round(travelTimeMinutes + 3));
 }
 
 /**
- * Analyzes team capabilities against incident disaster type and characteristics
- * Returns { score: 0-100, isEligible: boolean, matchedTags: string[], missingCritical: string[] }
+ * Evaluates operational capability and suitability of a rescue team for a specific disaster.
+ * Ensures teams are not dispatched to missions they cannot safely handle.
  */
-function evaluateCapabilityMatch(team, disasterType, details = '') {
+function evaluateCapabilityMatch(team, disasterType = '', details = '') {
     const typeStr = `${disasterType || ''} ${details || ''}`.toLowerCase();
     const teamProfile = `${team.name || ''} ${team.type || ''} ${team.vehicle || ''} ${team.equipment || ''} ${team.capabilities || ''}`.toLowerCase();
 
-    let capabilityScore = 50; // Base readiness score for registered first-response squad
-    const matchedTags = ['All-Hazard First Response'];
+    let suitabilityTier = 'STANDARD'; // 'SPECIALIZED', 'STANDARD', 'UNSUITABLE'
+    let capabilityScore = 60; // Base score for certified first-response teams
+    const matchedTags = ['General First-Aid & Extrication'];
     const missingCritical = [];
 
-    // General rapid response capability
-    if (teamProfile.includes('rapid') || teamProfile.includes('ndrf') || teamProfile.includes('rescue') || teamProfile.includes('response') || teamProfile.includes('first-aid')) {
-        capabilityScore += 15;
-        matchedTags.push('Rapid Response Deployment');
-    }
-
-    const isFlood = typeStr.includes('flood') || typeStr.includes('water') || typeStr.includes('submerged') || typeStr.includes('drowning');
-    const isMedical = typeStr.includes('medical') || typeStr.includes('injury') || typeStr.includes('trauma') || typeStr.includes('cardiac') || typeStr.includes('unconscious');
-    const isEarthquakeOrCollapse = typeStr.includes('earthquake') || typeStr.includes('collapse') || typeStr.includes('rubble') || typeStr.includes('debris') || typeStr.includes('landslide');
-    const isFireOrHazard = typeStr.includes('fire') || typeStr.includes('burn') || typeStr.includes('smoke') || typeStr.includes('gas') || typeStr.includes('chemical');
-    const isCycloneOrStorm = typeStr.includes('cyclone') || typeStr.includes('storm') || typeStr.includes('gale') || typeStr.includes('wind');
+    const isFlood = typeStr.includes('flood') || typeStr.includes('water') || typeStr.includes('submerged') || typeStr.includes('drowning') || typeStr.includes('inundation');
+    const isMedical = typeStr.includes('medical') || typeStr.includes('injury') || typeStr.includes('trauma') || typeStr.includes('cardiac') || typeStr.includes('unconscious') || typeStr.includes('bleeding');
+    const isCollapse = typeStr.includes('collapse') || typeStr.includes('earthquake') || typeStr.includes('rubble') || typeStr.includes('debris') || typeStr.includes('landslide') || typeStr.includes('trapped');
+    const isFire = typeStr.includes('fire') || typeStr.includes('burn') || typeStr.includes('smoke') || typeStr.includes('gas') || typeStr.includes('chemical') || typeStr.includes('hazmat');
 
     if (isFlood) {
-        const hasWaterEquipment = teamProfile.includes('boat') || teamProfile.includes('water') || teamProfile.includes('raft') || teamProfile.includes('amphibious') || teamProfile.includes('life jacket');
-        if (hasWaterEquipment) {
-            capabilityScore += 60;
-            matchedTags.push('Water Rescue / Amphibious Craft / Life Jackets');
+        const hasWatercraft = teamProfile.includes('boat') || teamProfile.includes('water') || teamProfile.includes('raft') || teamProfile.includes('amphibious') || teamProfile.includes('aquatic') || teamProfile.includes('watercraft');
+        if (hasWatercraft) {
+            suitabilityTier = 'SPECIALIZED';
+            capabilityScore = 95;
+            matchedTags.push('Aquatic Craft / Inflatable Rafts / Water Rescue');
+        } else if (teamProfile.includes('ndrf') || teamProfile.includes('rapid') || teamProfile.includes('rescue')) {
+            // General rapid response teams can assist in perimeter rescue
+            suitabilityTier = 'STANDARD';
+            capabilityScore = 65;
+            matchedTags.push('Perimeter Evacuation / Life-Jackets');
         } else {
-            // High flood hazard strictly penalizes teams lacking watercraft
-            capabilityScore -= 20;
-            missingCritical.push('Inflatable Rafts / Amphibious Craft');
+            // Unsuitable for flood operations
+            suitabilityTier = 'UNSUITABLE';
+            capabilityScore = 20;
+            missingCritical.push('Watercraft / Aquatic Extrication Gear');
         }
-    }
-
-    if (isMedical) {
+    } else if (isMedical) {
         const hasMedical = teamProfile.includes('medical') || teamProfile.includes('ambulance') || teamProfile.includes('triage') || teamProfile.includes('trauma') || teamProfile.includes('doctor') || teamProfile.includes('paramedic');
         if (hasMedical) {
-            capabilityScore += 60;
+            suitabilityTier = 'SPECIALIZED';
+            capabilityScore = 95;
             matchedTags.push('Paramedic / ACLS Ambulance / Trauma Triage');
-        } else if (teamProfile.includes('first-aid')) {
-            capabilityScore += 25;
+        } else {
+            suitabilityTier = 'STANDARD';
+            capabilityScore = 60;
             matchedTags.push('First-Aid Kit');
         }
-    }
-
-    if (isEarthquakeOrCollapse) {
-        const hasExtrication = teamProfile.includes('search') || teamProfile.includes('extrication') || teamProfile.includes('cutter') || teamProfile.includes('crane') || teamProfile.includes('earthmover') || teamProfile.includes('spreader');
-        if (hasExtrication) {
-            capabilityScore += 60;
-            matchedTags.push('Hydraulic Spreaders / Search Cameras / Debris Clearing');
+    } else if (isCollapse) {
+        const hasSearchExtrication = teamProfile.includes('search') || teamProfile.includes('extrication') || teamProfile.includes('cutter') || teamProfile.includes('crane') || teamProfile.includes('spreader') || teamProfile.includes('hydraulic');
+        if (hasSearchExtrication) {
+            suitabilityTier = 'SPECIALIZED';
+            capabilityScore = 95;
+            matchedTags.push('Hydraulic Spreaders / Search Sensors / Heavy Extrication');
+        } else if (teamProfile.includes('ndrf') || teamProfile.includes('sdrf') || teamProfile.includes('rapid')) {
+            suitabilityTier = 'STANDARD';
+            capabilityScore = 70;
+            matchedTags.push('Urban Search & Rescue Squad');
+        } else {
+            suitabilityTier = 'UNSUITABLE';
+            capabilityScore = 25;
+            missingCritical.push('Structural Extrication Equipment');
+        }
+    } else if (isFire) {
+        const hasFireHazmat = teamProfile.includes('fire') || teamProfile.includes('hazmat') || teamProfile.includes('gas') || teamProfile.includes('scba');
+        if (hasFireHazmat) {
+            suitabilityTier = 'SPECIALIZED';
+            capabilityScore = 95;
+            matchedTags.push('Fire Containment / Breathing Apparatus / Gas Detectors');
+        } else {
+            suitabilityTier = 'STANDARD';
+            capabilityScore = 55;
+            matchedTags.push('Evacuation Assistance');
+        }
+    } else {
+        // General all-hazard emergency
+        if (teamProfile.includes('ndrf') || teamProfile.includes('rapid') || teamProfile.includes('rescue')) {
+            suitabilityTier = 'SPECIALIZED';
+            capabilityScore = 85;
+            matchedTags.push('All-Hazard Rapid Response Squad');
         }
     }
 
-    if (isFireOrHazard) {
-        const hasHazard = teamProfile.includes('hazard') || teamProfile.includes('fire') || teamProfile.includes('clearing') || teamProfile.includes('gas detector') || teamProfile.includes('scba');
-        if (hasHazard) {
-            capabilityScore += 60;
-            matchedTags.push('Hazard Containment / Gas Detectors / Chainsaws');
-        }
-    }
-
-    if (isCycloneOrStorm) {
-        const hasAllTerrain = teamProfile.includes('all-terrain') || teamProfile.includes('heavy') || teamProfile.includes('generator') || teamProfile.includes('cable');
-        if (hasAllTerrain) {
-            capabilityScore += 50;
-            matchedTags.push('All-Terrain Transit / Power Generation');
-        }
-    }
-
-    // A team is deemed capable if its capability score is at least 35 and it doesn't lack critical life-safety gear
-    const isEligible = capabilityScore >= 35 && missingCritical.length === 0;
+    const isEligible = suitabilityTier !== 'UNSUITABLE' && capabilityScore >= 40 && missingCritical.length === 0;
 
     return {
-        score: Math.max(0, Math.min(100, capabilityScore)),
+        score: capabilityScore,
+        suitabilityTier,
         isEligible,
         matchedTags,
         missingCritical
@@ -110,42 +130,79 @@ function evaluateCapabilityMatch(team, disasterType, details = '') {
 }
 
 /**
- * Finds and ranks all eligible rescue teams for a given incident location and disaster type
+ * Finds, evaluates, and ranks rescue teams strictly based on distance, availability, and operational suitability.
+ * The nearest suitable eligible team is ranked first by default.
  */
-async function findEligibleRescueTeams({ disasterType, latitude, longitude, victimCount = 1, details = '' }) {
+async function findEligibleRescueTeams({ disasterType, latitude, longitude, victimCount = 1, details = '', searchRadiusKm = MAX_DISPATCH_RADIUS_KM }) {
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
 
-    if (isNaN(lat) || isNaN(lng)) {
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
         throw new Error('Valid incident coordinates required to match rescue teams');
     }
 
     const allTeams = await db.query(`SELECT * FROM rescue_teams ORDER BY name ASC`);
+    
+    // Query active unresolved incidents to check if any assigned incident is still in progress
+    const activeIncidents = await db.query(
+        `SELECT id FROM incidents WHERE status NOT IN ('RESOLVED', 'CANCELLED', 'COMPLETED')`
+    );
+    const activeBusyIncidentIds = new Set(activeIncidents.map(i => i.id));
+
     const evaluatedTeams = [];
 
     for (const team of allTeams) {
-        const teamLat = team.current_lat !== null && team.current_lat !== undefined ? parseFloat(team.current_lat) : 26.8467;
-        const teamLng = team.current_lng !== null && team.current_lng !== undefined ? parseFloat(team.current_lng) : 80.9462;
+        // Validate coordinates
+        const hasValidCoords = team.current_lat !== null && team.current_lat !== undefined &&
+                               team.current_lng !== null && team.current_lng !== undefined &&
+                               !isNaN(parseFloat(team.current_lat)) && !isNaN(parseFloat(team.current_lng));
 
-        const distanceKm = haversineDistanceKm(lat, lng, teamLat, teamLng);
+        const teamLat = hasValidCoords ? parseFloat(team.current_lat) : null;
+        const teamLng = hasValidCoords ? parseFloat(team.current_lng) : null;
+
+        // Check telemetry freshness (stale if updated > 24 hours ago)
+        let isStaleLocation = false;
+        if (team.updated_at) {
+            const lastUpdate = new Date(team.updated_at).getTime();
+            if (Date.now() - lastUpdate > 24 * 60 * 60 * 1000) {
+                isStaleLocation = true;
+            }
+        }
+
+        // Calculate actual Haversine distance
+        const distanceKm = hasValidCoords ? haversineDistanceKm(lat, lng, teamLat, teamLng) : Infinity;
         const etaMinutes = calculateEtaMinutes(distanceKm);
+
+        // Check availability: team status must be AVAILABLE/STANDBY and not actively assigned to an ongoing incident
+        const isAssignedToActive = Boolean(team.assigned_incident_id && activeBusyIncidentIds.has(team.assigned_incident_id));
+        const isStatusAvailable = (team.status === 'AVAILABLE' || team.status === 'STANDBY') && !isAssignedToActive;
+
+        // Evaluate capability & suitability
         const capability = evaluateCapabilityMatch(team, disasterType, details);
 
-        // Distance score: 100 at 0km, decreasing with distance
-        const distanceScore = Math.max(0, 100 - (distanceKm * 4));
+        // Check within search radius
+        const isWithinRadius = distanceKm <= searchRadiusKm;
 
-        // Availability factor
-        let availabilityScore = 0;
-        if (team.status === 'AVAILABLE') availabilityScore = 100;
-        else if (team.status === 'STANDBY' || team.status === 'IDLE') availabilityScore = 80;
-        else if (team.status === 'DISPATCHED' || team.status === 'ON_SCENE') availabilityScore = 20;
+        // Team is strictly eligible ONLY if:
+        // 1. Has real, valid coordinates
+        // 2. Is available (not deployed or busy)
+        // 3. Is operationally suitable for the disaster
+        // 4. Is within the operational search radius
+        const isEligible = hasValidCoords && isStatusAvailable && capability.isEligible && isWithinRadius;
 
-        // Overall weighted ranking: Capability (45%), Distance/ETA (35%), Availability (20%)
-        const totalScore = Number((
-            (capability.score * 0.45) +
-            (distanceScore * 0.35) +
-            (availabilityScore * 0.20)
-        ).toFixed(1));
+        // Combined Ranking Score (Nearest eligible team ranked top by default):
+        // Primary driver: Distance (shorter distance = higher score, 100 at 0km, decreasing linearly)
+        // Secondary driver: Capability suitability bonus for specialized units
+        // Heavy penalty for unavailability or missing coords
+        let rankingScore = 0;
+        if (isEligible) {
+            const proximityScore = Math.max(0, 100 - (distanceKm * 1.5)); // 100 at 0km, 70 at 20km, 25 at 50km
+            const tierBonus = capability.suitabilityTier === 'SPECIALIZED' ? 15 : 0;
+            const stalenessPenalty = isStaleLocation ? 10 : 0;
+            rankingScore = Number((proximityScore + tierBonus - stalenessPenalty).toFixed(1));
+        } else {
+            rankingScore = -1; // Ineligible
+        }
 
         evaluatedTeams.push({
             team,
@@ -155,30 +212,71 @@ async function findEligibleRescueTeams({ disasterType, latitude, longitude, vict
             teamLeader: team.team_leader,
             contactPhone: team.contact_phone,
             status: team.status,
+            currentLat: teamLat,
+            currentLng: teamLng,
+            hasValidLocation: hasValidCoords,
+            isStaleLocation,
+            isAvailable: isStatusAvailable,
+            isCurrentlyDeployed: isAssignedToActive,
             distanceKm,
             etaMinutes,
             capabilityScore: capability.score,
-            isEligible: capability.isEligible && (team.status === 'AVAILABLE' || team.status === 'STANDBY'),
+            suitabilityTier: capability.suitabilityTier,
+            isEligible,
+            isWithinRadius,
             matchedTags: capability.matchedTags,
             missingCritical: capability.missingCritical,
-            totalScore
+            rankingScore
         });
     }
 
-    // Sort by totalScore descending
-    evaluatedTeams.sort((a, b) => b.totalScore - a.totalScore);
+    // Sort: Eligible teams first, ordered strictly by shortest distance (proximity priority)
+    // If operational suitability is equal, nearest team is ALWAYS first.
+    evaluatedTeams.sort((a, b) => {
+        if (a.isEligible && !b.isEligible) return -1;
+        if (!a.isEligible && b.isEligible) return 1;
+
+        if (a.isEligible && b.isEligible) {
+            // When suitability tiers are identical, nearest team wins strictly
+            if (a.suitabilityTier === b.suitabilityTier) {
+                return a.distanceKm - b.distanceKm;
+            }
+            // A specialized team wins over standard team only if within 10km difference
+            if (a.suitabilityTier === 'SPECIALIZED' && b.suitabilityTier !== 'SPECIALIZED') {
+                return (a.distanceKm - b.distanceKm) > 10 ? 1 : -1;
+            }
+            if (b.suitabilityTier === 'SPECIALIZED' && a.suitabilityTier !== 'SPECIALIZED') {
+                return (b.distanceKm - a.distanceKm) > 10 ? -1 : 1;
+            }
+            return a.distanceKm - b.distanceKm;
+        }
+
+        // For ineligible teams, sort by distance for transparent reporting of alternatives
+        return a.distanceKm - b.distanceKm;
+    });
 
     return evaluatedTeams;
 }
 
 /**
- * Automatically dispatches the best suitable team to an incident
- * Follows strict requirement: never falsely claims dispatched if no eligible team available.
+ * Automatically assigns and dispatches the nearest suitable available rescue team.
+ * Follows progressive search radius expansion (15km -> 30km -> 50km).
+ * Prevents concurrent double-booking via atomic status updates.
  */
 async function autoDispatchIncident(incidentId, options = {}) {
     const incident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [incidentId]);
     if (!incident) {
         throw new Error(`Incident ${incidentId} not found`);
+    }
+
+    // Validate coordinates
+    if (!incident.latitude || !incident.longitude || isNaN(parseFloat(incident.latitude)) || isNaN(parseFloat(incident.longitude))) {
+        return {
+            success: false,
+            dispatched: false,
+            reason: 'INVALID_VICTIM_COORDINATES',
+            message: 'Incident lacks verified GPS coordinates. Automated dispatch requires valid coordinates.'
+        };
     }
 
     // Check if incident already has an assigned team to prevent duplicate assignments
@@ -198,23 +296,64 @@ async function autoDispatchIncident(incidentId, options = {}) {
     const lat = incident.latitude;
     const lng = incident.longitude;
 
-    const candidates = await findEligibleRescueTeams({
-        disasterType,
-        latitude: lat,
-        longitude: lng,
-        victimCount: incident.count || 1,
-        details
-    });
+    // Progressive Search Radius expansion: 15km -> 30km -> 50km
+    let candidates = [];
+    let selectedCandidate = null;
 
-    // Pick top eligible available candidate
-    const eligibleTeam = candidates.find(c => c.isEligible);
+    for (const radius of SEARCH_RADII) {
+        candidates = await findEligibleRescueTeams({
+            disasterType,
+            latitude: lat,
+            longitude: lng,
+            victimCount: incident.count || 1,
+            details,
+            searchRadiusKm: radius
+        });
 
-    if (eligibleTeam) {
-        const teamObj = eligibleTeam.team;
-        const nowIso = new Date().toISOString();
+        // Find the top eligible candidate within this radius tier
+        const topEligible = candidates.find(c => c.isEligible);
+        if (topEligible) {
+            selectedCandidate = topEligible;
+            break; // Found nearest suitable team within this tier!
+        }
+    }
+
+    if (selectedCandidate) {
+        const teamObj = selectedCandidate.team;
         const ackDeadlineIso = new Date(Date.now() + 3 * 60 * 1000).toISOString(); // 3-minute acknowledgement window
 
-        // 1. Update incident
+        // Atomic lock to prevent concurrent double-booking of the same team
+        const lockResult = await db.run(
+            `UPDATE rescue_teams
+             SET status = 'DISPATCHED',
+                 assigned_incident_id = ?,
+                 updated_at = datetime('now')
+             WHERE id = ? AND status IN ('AVAILABLE', 'STANDBY')`,
+            [incidentId, teamObj.id]
+        );
+
+        if (lockResult.changes === 0) {
+            // Concurrent booking collision detected: another process booked this team.
+            // Re-evaluate and dispatch next nearest candidate.
+            console.warn(`[DispatchEngine] Race condition detected on team ${teamObj.id}. Retrying with next available candidate...`);
+            const fallbackCandidates = await findEligibleRescueTeams({
+                disasterType,
+                latitude: lat,
+                longitude: lng,
+                victimCount: incident.count || 1,
+                details,
+                searchRadiusKm: MAX_DISPATCH_RADIUS_KM
+            });
+            const fallback = fallbackCandidates.find(c => c.isEligible && c.teamId !== teamObj.id);
+            if (!fallback) {
+                return recordNoTeamAvailable(incident, disasterType, fallbackCandidates);
+            }
+            return autoDispatchIncident(incidentId, options);
+        }
+
+        // 1. Update incident with nearest assigned team details
+        const dispatchNote = `[AUTO-DISPATCH] Nearest eligible squad '${teamObj.name}' (${teamObj.unit_code}) assigned. Distance: ${selectedCandidate.distanceKm} km, ETA: ~${selectedCandidate.etaMinutes} mins. Capability Match: ${selectedCandidate.suitabilityTier} (${selectedCandidate.matchedTags.join('; ')}).`;
+
         await db.run(
             `UPDATE incidents
              SET assigned_rescue_team = ?,
@@ -230,26 +369,15 @@ async function autoDispatchIncident(incidentId, options = {}) {
             [
                 teamObj.name,
                 teamObj.id,
-                eligibleTeam.etaMinutes,
-                eligibleTeam.distanceKm,
+                selectedCandidate.etaMinutes,
+                selectedCandidate.distanceKm,
                 ackDeadlineIso,
-                `Auto-assigned via capability match (${eligibleTeam.matchedTags.join('; ')}). Distance: ${eligibleTeam.distanceKm}km, ETA: ${eligibleTeam.etaMinutes}m.`,
+                dispatchNote,
                 incidentId
             ]
         );
 
-        // 2. Update team status to DISPATCHED
-        await db.run(
-            `UPDATE rescue_teams
-             SET status = 'DISPATCHED',
-                 assigned_incident_id = ?,
-                 updated_at = datetime('now')
-             WHERE id = ?`,
-            [incidentId, teamObj.id]
-        );
-
-        // 3. Append to incident_updates audit timeline
-        const updateNote = `[AUTO-DISPATCH] Unit '${teamObj.name}' (${teamObj.unit_code}) dispatched to scene. Distance: ${eligibleTeam.distanceKm} km, ETA: ~${eligibleTeam.etaMinutes} mins. Capability Match Score: ${eligibleTeam.capabilityScore}/100. Acknowledgment deadline: 3 minutes.`;
+        // 2. Append to incident timeline
         await db.run(
             `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
              VALUES (?, ?, 'SYSTEM_DISPATCH_ENGINE', 'AUTHORITY', ?, 'TEAM_ASSIGNED', ?, datetime('now'))`,
@@ -257,23 +385,23 @@ async function autoDispatchIncident(incidentId, options = {}) {
                 generateUUID('INCU'),
                 incidentId,
                 incident.status,
-                updateNote
+                dispatchNote
             ]
         );
 
-        // 4. Create urgent notification for assigned team & authority
+        // 3. Urgent notification for assigned squad and dashboard
         await db.run(
             `INSERT INTO notifications (id, user_id, recipient_role, title, message, incident_id, type, is_read, created_at)
              VALUES (?, NULL, 'AUTHORITY', ?, ?, ?, 'DISPATCH', 0, datetime('now'))`,
             [
                 generateUUID('NOTIF'),
                 `DISPATCH ALERT: ${teamObj.unit_code} -> ${incidentId}`,
-                `Tactical squad ${teamObj.name} deployed to ${disasterType} emergency at [${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}]. ETA: ${eligibleTeam.etaMinutes} mins.`,
+                `Nearest suitable squad ${teamObj.name} deployed to ${disasterType} at [${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}]. Distance: ${selectedCandidate.distanceKm}km, ETA: ~${selectedCandidate.etaMinutes}m.`,
                 incidentId
             ]
         );
 
-        // 5. Audit log
+        // 4. Audit log
         await logAction({
             userId: options.dispatchedBy || 'SYSTEM_AUTO_DISPATCH',
             userRole: 'AUTHORITY',
@@ -283,20 +411,20 @@ async function autoDispatchIncident(incidentId, options = {}) {
             details: {
                 teamId: teamObj.id,
                 teamName: teamObj.name,
-                distanceKm: eligibleTeam.distanceKm,
-                etaMinutes: eligibleTeam.etaMinutes,
-                matchedCapabilities: eligibleTeam.matchedTags
+                distanceKm: selectedCandidate.distanceKm,
+                etaMinutes: selectedCandidate.etaMinutes,
+                suitabilityTier: selectedCandidate.suitabilityTier,
+                isStaleLocation: selectedCandidate.isStaleLocation
             }
         });
 
-        // 6. Broadcast via Socket.IO
+        // 5. Broadcast real-time update
         try {
             const { getIO } = require('../sockets/socketHandler');
             const io = getIO();
             if (io) {
                 const updatedInc = await db.get(`SELECT * FROM incidents WHERE id = ?`, [incidentId]);
                 const updates = await db.query(`SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at ASC`, [incidentId]);
-                
                 io.emit('incident:updated', { ...updatedInc, incident: updatedInc, updates });
                 io.to('authorities').emit('team:dispatched', {
                     incidentId,
@@ -305,17 +433,17 @@ async function autoDispatchIncident(incidentId, options = {}) {
                         name: teamObj.name,
                         unitCode: teamObj.unit_code,
                         leader: teamObj.team_leader,
-                        phone: teamObj.contact_phone
+                        phone: teamObj.contact_phone,
+                        distanceKm: selectedCandidate.distanceKm,
+                        etaMinutes: selectedCandidate.etaMinutes
                     },
                     location: { latitude: lat, longitude: lng },
                     priority: incident.emergency_level,
-                    distanceKm: eligibleTeam.distanceKm,
-                    etaMinutes: eligibleTeam.etaMinutes,
                     ackDeadline: ackDeadlineIso
                 });
             }
         } catch (sErr) {
-            console.warn('[Dispatch] Socket emission skipped:', sErr.message);
+            console.warn('[Dispatch] Socket emission notice:', sErr.message);
         }
 
         return {
@@ -330,64 +458,84 @@ async function autoDispatchIncident(incidentId, options = {}) {
                 phone: teamObj.contact_phone,
                 vehicle: teamObj.vehicle,
                 equipment: teamObj.equipment,
-                distanceKm: eligibleTeam.distanceKm,
-                etaMinutes: eligibleTeam.etaMinutes,
-                matchedCapabilities: eligibleTeam.matchedTags
+                distanceKm: selectedCandidate.distanceKm,
+                etaMinutes: selectedCandidate.etaMinutes,
+                suitabilityTier: selectedCandidate.suitabilityTier,
+                matchedCapabilities: selectedCandidate.matchedTags
             },
-            distanceKm: eligibleTeam.distanceKm,
-            etaMinutes: eligibleTeam.etaMinutes,
+            distanceKm: selectedCandidate.distanceKm,
+            etaMinutes: selectedCandidate.etaMinutes,
             ackDeadline: ackDeadlineIso
         };
     } else {
-        // No suitable team available — NEVER falsely state team dispatched!
-        const escalationNote = `[DISPATCH QUEUE] No available rescue squads meet operational capability criteria within local radius. Incident status set to AWAITING ASSISTANCE and escalated to regional command dispatcher.`;
-
-        await db.run(
-            `UPDATE incidents
-             SET dispatch_notes = ?,
-                 escalation_level = 1,
-                 updated_at = datetime('now')
-             WHERE id = ?`,
-            [escalationNote, incidentId]
-        );
-
-        await db.run(
-            `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
-             VALUES (?, ?, 'SYSTEM_DISPATCH_ENGINE', 'AUTHORITY', ?, ?, ?, datetime('now'))`,
-            [
-                generateUUID('INCU'),
-                incidentId,
-                incident.status,
-                incident.status,
-                escalationNote
-            ]
-        );
-
-        await db.run(
-            `INSERT INTO notifications (id, user_id, recipient_role, title, message, incident_id, type, is_read, created_at)
-             VALUES (?, NULL, 'AUTHORITY', ?, ?, ?, 'ESCALATION', 0, datetime('now'))`,
-            [
-                generateUUID('NOTIF'),
-                `ESCALATION: No Squad Available for ${incidentId}`,
-                `Emergency ${incidentId} (${disasterType}) requires mutual aid or manual responder assignment.`,
-                incidentId
-            ]
-        );
-
-        return {
-            success: true,
-            dispatched: false,
-            awaitingAssistance: true,
-            status: incident.status,
-            reason: 'All registered rescue teams are either currently deployed on high-priority emergencies or lack required specialized rescue gear.',
-            candidatesEvaluated: candidates.length,
-            message: 'Incident recorded and awaiting assistance; escalated to Command Authority queue.'
-        };
+        // No suitable team available within 50km radius
+        return recordNoTeamAvailable(incident, disasterType, candidates);
     }
 }
 
 /**
- * Acknowledges a dispatched incident on behalf of a rescue team
+ * Handles explicit "No suitable nearby team available" state with auditable fallback.
+ */
+async function recordNoTeamAvailable(incident, disasterType, candidates = []) {
+    const fallbackNote = `[DISPATCH ADVISORY] No suitable nearby team available within operational radius (${MAX_DISPATCH_RADIUS_KM}km). Incident placed in Priority Dispatch Queue awaiting regional mutual-aid or manual assignment.`;
+
+    await db.run(
+        `UPDATE incidents
+         SET dispatch_notes = ?,
+             escalation_level = 1,
+             updated_at = datetime('now')
+         WHERE id = ?`,
+        [fallbackNote, incident.id]
+    );
+
+    await db.run(
+        `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
+         VALUES (?, ?, 'SYSTEM_DISPATCH_ENGINE', 'AUTHORITY', ?, ?, ?, datetime('now'))`,
+        [
+            generateUUID('INCU'),
+            incident.id,
+            incident.status,
+            incident.status,
+            fallbackNote
+        ]
+    );
+
+    await db.run(
+        `INSERT INTO notifications (id, user_id, recipient_role, title, message, incident_id, type, is_read, created_at)
+         VALUES (?, NULL, 'AUTHORITY', ?, ?, ?, 'ESCALATION', 0, datetime('now'))`,
+        [
+            generateUUID('NOTIF'),
+            `NO NEARBY SQUAD: ${incident.id}`,
+            `No available rescue squads within ${MAX_DISPATCH_RADIUS_KM}km for ${incident.id} (${disasterType}). Commander review required.`,
+            incident.id
+        ]
+    );
+
+    // Provide nearest alternatives for manual authority inspection
+    const nearestAlternatives = (candidates || []).slice(0, 3).map(c => ({
+        teamId: c.teamId,
+        teamName: c.teamName,
+        distanceKm: c.distanceKm,
+        status: c.status,
+        reasonIneligible: !c.hasValidLocation ? 'Missing GPS telemetry' :
+                         !c.isAvailable ? 'Currently deployed' :
+                         !c.isWithinRadius ? `Beyond ${MAX_DISPATCH_RADIUS_KM}km boundary` :
+                         'Unsuitable equipment for disaster'
+    }));
+
+    return {
+        success: true,
+        dispatched: false,
+        noSuitableNearbyTeam: true,
+        status: incident.status,
+        message: `No suitable nearby team available within ${MAX_DISPATCH_RADIUS_KM}km operational radius.`,
+        nearestAlternatives,
+        candidatesEvaluated: candidates.length
+    };
+}
+
+/**
+ * Acknowledges a dispatched incident on behalf of a rescue team.
  */
 async function acknowledgeTeamDispatch({ teamId, incidentId, responderId = null, note = '' }) {
     const incident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [incidentId]);
@@ -462,7 +610,7 @@ async function acknowledgeTeamDispatch({ teamId, incidentId, responderId = null,
 }
 
 /**
- * Escalates an incident to another team or Duty Commander if unacknowledged
+ * Escalates an incident to another team or Duty Commander if unacknowledged or rejected.
  */
 async function escalateIncident({ incidentId, reason = 'Acknowledgment deadline exceeded', authorityUser = null }) {
     const incident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [incidentId]);
@@ -473,7 +621,7 @@ async function escalateIncident({ incidentId, reason = 'Acknowledgment deadline 
     const prevTeam = incident.assigned_rescue_team;
     const currentEscalation = (incident.escalation_level || 0) + 1;
 
-    // Release previous team
+    // Release previously assigned team back to AVAILABLE
     if (incident.dispatch_team_id) {
         await db.run(
             `UPDATE rescue_teams SET status = 'AVAILABLE', assigned_incident_id = NULL, updated_at = datetime('now') WHERE id = ?`,
@@ -481,21 +629,26 @@ async function escalateIncident({ incidentId, reason = 'Acknowledgment deadline 
         );
     }
 
-    // Try finding next best available team
+    // Try finding next nearest eligible team excluding previous team
     const candidates = await findEligibleRescueTeams({
         disasterType: incident.category,
         latitude: incident.latitude,
         longitude: incident.longitude,
         victimCount: incident.count || 1,
-        details: incident.details
+        details: incident.details,
+        searchRadiusKm: MAX_DISPATCH_RADIUS_KM
     });
 
-    // Exclude the previously unresponsive team
     const nextCandidate = candidates.find(c => c.isEligible && c.teamName !== prevTeam);
 
     if (nextCandidate) {
         const nextTeam = nextCandidate.team;
         const ackDeadline = new Date(Date.now() + 3 * 60 * 1000).toISOString();
+
+        await db.run(
+            `UPDATE rescue_teams SET status = 'DISPATCHED', assigned_incident_id = ?, updated_at = datetime('now') WHERE id = ?`,
+            [incidentId, nextTeam.id]
+        );
 
         await db.run(
             `UPDATE incidents
@@ -519,12 +672,7 @@ async function escalateIncident({ incidentId, reason = 'Acknowledgment deadline 
             ]
         );
 
-        await db.run(
-            `UPDATE rescue_teams SET status = 'DISPATCHED', assigned_incident_id = ?, updated_at = datetime('now') WHERE id = ?`,
-            [incidentId, nextTeam.id]
-        );
-
-        const escalationTimelineNote = `[ESCALATION LVL ${currentEscalation}] Reassigned from '${prevTeam || 'Previous'}' to '${nextTeam.name}' (${nextTeam.unit_code}) due to: ${reason}. ETA: ~${nextCandidate.etaMinutes} mins.`;
+        const escalationTimelineNote = `[ESCALATION LVL ${currentEscalation}] Reassigned from '${prevTeam || 'Previous'}' to nearest eligible squad '${nextTeam.name}' (${nextTeam.unit_code}). Reason: ${reason}. Distance: ${nextCandidate.distanceKm}km, ETA: ~${nextCandidate.etaMinutes}m.`;
         await db.run(
             `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
              VALUES (?, ?, ?, 'AUTHORITY', 'ESCALATED', 'TEAM_ASSIGNED', ?, datetime('now'))`,
@@ -541,6 +689,7 @@ async function escalateIncident({ incidentId, reason = 'Acknowledgment deadline 
             escalated: true,
             reassigned: true,
             newTeam: nextTeam.name,
+            distanceKm: nextCandidate.distanceKm,
             etaMinutes: nextCandidate.etaMinutes,
             escalationLevel: currentEscalation
         };
@@ -557,7 +706,7 @@ async function escalateIncident({ incidentId, reason = 'Acknowledgment deadline 
             [currentEscalation, incidentId]
         );
 
-        const unassignedEscalationNote = `[CRITICAL ESCALATION LVL ${currentEscalation}] Unacknowledged by '${prevTeam}'. No alternate field teams available in area. Staged for direct Dispatcher manual intervention.`;
+        const unassignedEscalationNote = `[CRITICAL ESCALATION LVL ${currentEscalation}] Unacknowledged by '${prevTeam}'. No alternate field teams available within ${MAX_DISPATCH_RADIUS_KM}km. Escalated for direct Command Officer manual intervention.`;
         await db.run(
             `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
              VALUES (?, ?, ?, 'AUTHORITY', 'ESCALATED', 'REQUESTED', ?, datetime('now'))`,
@@ -581,8 +730,8 @@ async function escalateIncident({ incidentId, reason = 'Acknowledgment deadline 
 }
 
 /**
- * Scans for unacknowledged incident assignments that have exceeded their ack deadline
- * Automatically escalates to secondary team or sets to REQUESTED for manual intervention
+ * Scans for unacknowledged incident assignments that have exceeded their ack deadline.
+ * Automatically escalates to secondary team or sets to REQUESTED for manual intervention.
  */
 async function checkAndEscalateUnacknowledgedIncidents() {
     try {

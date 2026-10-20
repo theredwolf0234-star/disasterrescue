@@ -534,7 +534,27 @@ async function createTables() {
         )
     `);
 
+    // 25. password_resets (Expiring Security Tokens for Password Recovery)
+    await run(`
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id ${idType},
+            user_id ${textType} NOT NULL,
+            user_type ${textType} NOT NULL,
+            email ${textType} NOT NULL,
+            token ${textType} NOT NULL,
+            expires_at ${textType} NOT NULL,
+            used ${intType} DEFAULT 0,
+            created_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+
+    // Migrations for users table (avatar, language, notifications)
+    try { await run(`ALTER TABLE users ADD COLUMN avatar_url ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE users ADD COLUMN language_pref ${textType} DEFAULT 'en'`); } catch (e) {}
+    try { await run(`ALTER TABLE users ADD COLUMN notification_prefs ${textType} DEFAULT '{"sms":true,"push":true,"email":true}'`); } catch (e) {}
+
     // Migrations for incidents table
+    try { await run(`ALTER TABLE incidents ADD COLUMN tactical_grid_id ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN risk_score ${intType} DEFAULT 70`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN risk_factors ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN cluster_id ${textType}`); } catch (e) {}
@@ -565,6 +585,10 @@ async function createTables() {
     try { await run(`ALTER TABLE incidents ADD COLUMN ai_alert_zone_match ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN ai_recommended_assistance ${textType}`); } catch (e) {}
 
+    // Migrations for password_resets table (token_hash and code_hash)
+    try { await run(`ALTER TABLE password_resets ADD COLUMN token_hash ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE password_resets ADD COLUMN code_hash ${textType}`); } catch (e) {}
+
     // Migrations for rescue_teams table
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN members ${intType} DEFAULT 6`); } catch (e) {}
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN type ${textType} DEFAULT 'Rapid Response'`); } catch (e) {}
@@ -576,6 +600,7 @@ async function createTables() {
     try { await run(`ALTER TABLE weather_reports ADD COLUMN forecast_json ${textType}`); } catch (e) {}
 
     // Performance Indexes
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_tactical_grid ON incidents(tactical_grid_id)`); } catch (e) {}
     try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status)`); } catch (e) {}
     try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_level ON incidents(emergency_level)`); } catch (e) {}
     try { await run(`CREATE INDEX IF NOT EXISTS idx_incidents_created ON incidents(created_at)`); } catch (e) {}
@@ -602,6 +627,20 @@ async function createTables() {
     try { await run(`CREATE INDEX IF NOT EXISTS idx_coord_msg_incident ON coordination_messages(incident_id)`); } catch (e) {}
     try { await run(`CREATE INDEX IF NOT EXISTS idx_gov_alerts_active ON government_alerts(is_active)`); } catch (e) {}
 
+    // Backfill any existing incidents missing tactical_grid_id
+    try {
+        const { computeTacticalGrid } = require('../utils/tacticalGrid');
+        const ungridded = await query(`SELECT id, latitude, longitude FROM incidents WHERE (tactical_grid_id IS NULL OR tactical_grid_id = '') AND latitude IS NOT NULL`);
+        for (const row of ungridded) {
+            const gridRes = computeTacticalGrid(row.latitude, row.longitude);
+            if (gridRes && gridRes.gridId) {
+                await run(`UPDATE incidents SET tactical_grid_id = ? WHERE id = ?`, [gridRes.gridId, row.id]);
+            }
+        }
+    } catch (bgErr) {
+        console.warn('[DB] Tactical Grid backfill notice:', bgErr.message);
+    }
+
     console.log('[DB] Core relational database tables and performance indexes verified.');
     await seedDefaultAdminAndAuthority();
 }
@@ -610,31 +649,46 @@ async function seedDefaultAdminAndAuthority() {
     try {
         const bcrypt = require('bcryptjs');
 
-        // 1. Ensure Admin AISTER23 exists with password @aster23
-        const adminHash = await bcrypt.hash('@aster23', 10);
-        const adminUser = await get(`SELECT id FROM authority_users WHERE LOWER(username) = LOWER('AISTER23') OR LOWER(badge_number) = LOWER('AISTER23')`);
+        // 1. Secure Admin Bootstrap: Read credentials from deployment environment variables
+        const bootstrapAdminUser = process.env.ADMIN_BOOTSTRAP_USER || process.env.ADMIN_USERNAME || 'AISTER23';
+        const bootstrapAdminPass = process.env.ADMIN_BOOTSTRAP_PASSWORD || process.env.ADMIN_PASSWORD || '@aster23';
+        const bootstrapAdminEmail = process.env.ADMIN_BOOTSTRAP_EMAIL || process.env.ADMIN_EMAIL || 'admin@aister23.gov.in';
+        const forceAdminReset = process.env.ADMIN_FORCE_PASSWORD_RESET === 'true';
+
+        const adminUser = await get(
+            `SELECT id, username, password_hash, role FROM authority_users WHERE LOWER(username) = LOWER(?) OR LOWER(badge_number) = LOWER(?) OR role = 'ADMIN'`,
+            [bootstrapAdminUser, bootstrapAdminUser]
+        );
+
         if (!adminUser) {
+            const adminHash = await bcrypt.hash(bootstrapAdminPass, 10);
             await run(
-                `INSERT OR REPLACE INTO authority_users (id, username, email, password_hash, badge_number, organization, role, created_at, updated_at)
+                `INSERT INTO authority_users (id, username, email, password_hash, badge_number, organization, role, created_at, updated_at)
                  VALUES (?, ?, ?, ?, ?, ?, 'ADMIN', datetime('now'), datetime('now'))`,
                 [
                     'AUTH_admin_aister23',
-                    'AISTER23',
-                    'admin@aster23.gov.in',
+                    bootstrapAdminUser,
+                    bootstrapAdminEmail,
                     adminHash,
-                    'AISTER23',
+                    bootstrapAdminUser,
                     'Disaster Rescue Administration Command'
                 ]
             );
-            console.log('[DB] Admin account AISTER23 created and verified.');
+            console.log(`[DB] Admin account '${bootstrapAdminUser}' securely bootstrapped.`);
         } else {
-            await run(
-                `UPDATE authority_users 
-                 SET password_hash = ?, badge_number = 'AISTER23', role = 'ADMIN', updated_at = datetime('now')
-                 WHERE id = ?`,
-                [adminHash, adminUser.id]
-            );
-            console.log('[DB] Admin account AISTER23 verified and active.');
+            // Preserve existing admin account and password; only reset if explicitly forced via env variable
+            if (forceAdminReset) {
+                const newHash = await bcrypt.hash(bootstrapAdminPass, 10);
+                await run(
+                    `UPDATE authority_users 
+                     SET password_hash = ?, updated_at = datetime('now')
+                     WHERE id = ?`,
+                    [newHash, adminUser.id]
+                );
+                console.log(`[DB] Admin account '${adminUser.username}' password reset via ADMIN_FORCE_PASSWORD_RESET.`);
+            } else {
+                console.log(`[DB] Admin account '${adminUser.username}' verified and preserved (credentials maintained).`);
+            }
         }
 
         // 2. Ensure ndrf_commander exists
@@ -930,6 +984,7 @@ async function seedDefaultAdminAndAuthority() {
 
 module.exports = {
     initDatabase,
+    initDB: initDatabase,
     query,
     all: query,
     get,

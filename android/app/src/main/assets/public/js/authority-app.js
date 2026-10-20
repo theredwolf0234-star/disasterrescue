@@ -15,42 +15,6 @@ let activeFilter = 'all';
 let currentInspectedIncident = null;
 let audioSirenEnabled = true;
 
-window.quickAdminLogin = async function(username = 'AISTER23', password = '@aster23') {
-    const errBox = document.getElementById('auth-login-error');
-    if (errBox) errBox.classList.add('hidden');
-    const submitBtn = document.getElementById('btn-quick-admin-login');
-    if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span> Authenticating Commander Clearance...';
-    }
-
-    try {
-        const res = await api.post('/api/auth/authority-login', { username, password });
-        if (!res.success || !res.data) throw new Error(res.message || 'Authentication failed');
-
-        const { token, user } = res.data;
-        api.setToken(token, user);
-        
-        const modal = document.getElementById('auth-login-modal');
-        if (modal) modal.remove();
-        const accessDenied = document.getElementById('access-denied-screen');
-        if (accessDenied) accessDenied.remove();
-
-        showToast(`Welcome, Commander ${user.username}. Authority clearance verified.`, 'success');
-        await initAuthorityDashboard();
-    } catch (err) {
-        console.error('Quick admin login error:', err);
-        if (errBox) {
-            errBox.innerText = err.message || 'Authentication failed. Please verify credentials.';
-            errBox.classList.remove('hidden');
-        }
-        if (submitBtn) {
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '⚡ Instant Commander Access (AISTER23)';
-        }
-    }
-};
-
 window.initAuthorityTheme = function() {
     const saved = localStorage.getItem('rescue_authority_theme') || localStorage.getItem('rescue_theme') || 'dark';
     window.applyAuthorityTheme(saved);
@@ -107,25 +71,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.initAuthorityTheme();
     if (typeof lucide !== 'undefined') lucide.createIcons();
 
-    // Check query params: if auto=1 or demo=1, perform instant demo login
-    const urlParams = new URLSearchParams(window.location.search);
-    const shouldAutoLogin = urlParams.has('auto') || urlParams.get('demo') === '1';
-
     let user = api.getUser();
     let token = api.getToken();
-
-    if (shouldAutoLogin && (!token || !user)) {
-        try {
-            const res = await api.post('/api/auth/authority-login', { username: 'AISTER23', password: '@aster23' });
-            if (res.success && res.data) {
-                api.setToken(res.data.token, res.data.user);
-                user = res.data.user;
-                token = res.data.token;
-            }
-        } catch (autoErr) {
-            console.warn('Auto-login notice:', autoErr.message);
-        }
-    }
 
     if (!token || !user) {
         showAuthorityLoggedOutState();
@@ -133,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Role check: If citizen attempts to open authority dashboard, show Access Denied screen
-    if (user.role !== 'AUTHORITY' && user.role !== 'ADMIN') {
+    if (user.role !== 'AUTHORITY' && user.role !== 'ADMIN' && user.role !== 'RESPONDER') {
         showAccessDeniedScreen(user);
         return;
     }
@@ -236,8 +183,9 @@ function updateOfficerBadge() {
     const badgeEl = document.getElementById('duty-officer-badge');
     if (badgeEl && user) {
         const org = user.organization ? ` • ${user.organization}` : '';
-        const badgeNum = user.badgeNumber || user.badge_number || 'HQ-CMD';
-        badgeEl.innerText = `Duty Officer: ${user.username || user.fullName || 'NDRF Officer'} (${badgeNum})${org}`;
+        const badgeNum = user.badgeNumber || user.badge_number || (user.role === 'RESPONDER' ? 'RESP-NDRF-11-A' : 'HQ-CMD');
+        const roleLabel = user.role === 'RESPONDER' ? 'First Responder' : (user.role === 'ADMIN' ? 'Commander / Admin' : 'Duty Officer');
+        badgeEl.innerText = `${roleLabel}: ${user.username || user.fullName || 'Officer'} (${badgeNum})${org}`;
     }
 }
 
@@ -280,9 +228,9 @@ function showAccessDeniedScreen(user) {
             </div>
 
             <div class="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
-                <button onclick="quickAdminLogin('AISTER23', '@aster23')" class="bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-black px-5 py-3 rounded-xl text-xs uppercase shadow-lg transition flex items-center justify-center space-x-1.5">
-                    <i data-lucide="zap" class="w-4 h-4 text-yellow-300"></i>
-                    <span>⚡ Switch to Commander AISTER23 (1-Click)</span>
+                <button onclick="switchAuthorityAccount()" class="bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-bold px-5 py-3 rounded-xl text-xs uppercase shadow-lg transition flex items-center justify-center space-x-1.5">
+                    <i data-lucide="shield" class="w-4 h-4 text-purple-200"></i>
+                    <span>Authenticate With Authorized Account</span>
                 </button>
                 <a href="index.html" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold px-5 py-3 rounded-xl text-xs uppercase transition flex items-center justify-center">
                     Return to Citizen Portal
@@ -359,8 +307,8 @@ async function handleAuthorityLogin(e) {
 
         const { token, user } = res.data;
 
-        if (user.role !== 'AUTHORITY' && user.role !== 'ADMIN') {
-            throw new Error('Access denied: User account lacks Authority / Admin permissions.');
+        if (user.role !== 'AUTHORITY' && user.role !== 'ADMIN' && user.role !== 'RESPONDER') {
+            throw new Error('Access denied: User account lacks Authority / Responder permissions.');
         }
 
         api.setToken(token, user);
@@ -467,11 +415,16 @@ async function fetchOverviewStats() {
         const res = await api.get('/api/incidents/stats/overview');
         if (res.success && res.data) {
             const s = res.data;
-            document.getElementById('stat-total').innerText = s.total !== undefined ? s.total : 0;
-            document.getElementById('stat-active').innerText = s.active !== undefined ? s.active : 0;
-            document.getElementById('stat-critical').innerText = s.critical !== undefined ? s.critical : 0;
-            document.getElementById('stat-resolved').innerText = s.resolved !== undefined ? s.resolved : 0;
-            document.getElementById('stat-people').innerText = s.people !== undefined ? s.people : (s.peopleAffected || 0);
+            if (document.getElementById('stat-total')) document.getElementById('stat-total').innerText = s.total !== undefined ? s.total : 0;
+            if (document.getElementById('stat-active')) document.getElementById('stat-active').innerText = s.active !== undefined ? s.active : 0;
+            if (document.getElementById('stat-critical')) document.getElementById('stat-critical').innerText = s.critical !== undefined ? s.critical : 0;
+            if (document.getElementById('stat-unassigned')) document.getElementById('stat-unassigned').innerText = s.unassigned !== undefined ? s.unassigned : 0;
+            if (document.getElementById('stat-assigned')) document.getElementById('stat-assigned').innerText = s.assigned !== undefined ? s.assigned : 0;
+            if (document.getElementById('stat-teams-status')) {
+                document.getElementById('stat-teams-status').innerText = `${s.deployedTeams || 0} Deployed / ${s.availableTeams || 0} Ready`;
+            }
+            if (document.getElementById('stat-resolved')) document.getElementById('stat-resolved').innerText = s.resolved !== undefined ? s.resolved : 0;
+            if (document.getElementById('stat-people')) document.getElementById('stat-people').innerText = s.people !== undefined ? s.people : (s.peopleAffected || 0);
 
             const syncEl = document.getElementById('last-sync-time');
             if (syncEl) syncEl.innerText = 'Last Sync: ' + new Date().toLocaleTimeString();
@@ -593,6 +546,7 @@ function renderMapMarkers() {
 
         const latVal = Number(item.latitude).toFixed(5);
         const lngVal = Number(item.longitude).toFixed(5);
+        const gridId = item.tactical_grid_id || (window.TacticalGrid ? window.TacticalGrid.computeTacticalGrid(item.latitude, item.longitude) : 'GRID-PENDING');
 
         const popupHTML = `
             <div style="color:#0f172a; font-family:sans-serif; padding:6px; min-width:240px; max-width:290px;">
@@ -603,11 +557,15 @@ function renderMapMarkers() {
                     </span>
                     <span style="background:${color}22; color:${color}; font-size:9px; font-weight:bold; padding:2px 5px; border-radius:4px; text-transform:uppercase;">${item.emergency_level}</span>
                 </div>
-                <strong style="color:#6d28d9; font-family:monospace; font-size:12px;">${item.id}</strong>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="color:#6d28d9; font-family:monospace; font-size:12px;">${item.id}</strong>
+                    <span style="font-family:monospace; font-size:10px; font-weight:bold; color:#b45309; background:#fef3c7; padding:1px 5px; border-radius:4px;">${gridId}</span>
+                </div>
                 <p style="margin:2px 0; font-size:12px; font-weight:bold; color:#1e293b;">${item.category}</p>
                 <p style="margin:2px 0 4px 0; font-size:11px; color:#475569;">${item.details || ''}</p>
                 
                 <div style="background:#f1f5f9; padding:5px 8px; border-radius:6px; margin:4px 0; font-size:11px; font-family:monospace; color:#334155;">
+                    <div><strong>GRID:</strong> <span style="color:#b45309; font-weight:bold;">${gridId}</span></div>
                     <div><strong>GPS:</strong> ${latVal}, ${lngVal}</div>
                     ${item.readable_address ? `<div style="font-family:sans-serif; font-size:10px; color:#64748b; margin-top:2px;">📍 ${item.readable_address}</div>` : ''}
                 </div>
@@ -677,6 +635,23 @@ function renderIncidentQueue() {
 
     container.innerHTML = '';
 
+    const unacknowledged = allIncidents.filter(i => (i.status === 'ASSIGNED' || i.status === 'TEAM_ASSIGNED') && !i.acknowledged_at);
+    const awaitingSquad = allIncidents.filter(i => !i.assigned_rescue_team && i.status !== 'RESOLVED' && i.status !== 'CANCELLED');
+
+    if (awaitingSquad.length > 0 || unacknowledged.length > 0) {
+        const alertEl = document.createElement('div');
+        alertEl.className = 'p-3 bg-amber-950/80 border border-amber-600 rounded-xl text-amber-200 text-xs space-y-1 shadow-md mb-2';
+        alertEl.innerHTML = `
+            <div class="flex items-center justify-between font-bold">
+                <span class="flex items-center space-x-1.5"><i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i><span>DISPATCH ATTENTION REQUIRED</span></span>
+                <span class="text-[10px] bg-amber-900 px-2 py-0.5 rounded text-amber-100">${awaitingSquad.length + unacknowledged.length} Action Items</span>
+            </div>
+            ${awaitingSquad.length > 0 ? `<div class="text-[11px] text-amber-300">⚠️ <strong>${awaitingSquad.length} incident(s)</strong> awaiting squad assignment (manual intervention needed).</div>` : ''}
+            ${unacknowledged.length > 0 ? `<div class="text-[11px] text-amber-300">⏳ <strong>${unacknowledged.length} squad assignment(s)</strong> unacknowledged (auto-escalation active).</div>` : ''}
+        `;
+        container.appendChild(alertEl);
+    }
+
     const searchInput = document.getElementById('queue-search-input');
     const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
 
@@ -686,15 +661,17 @@ function renderIncidentQueue() {
         // Status filters
         if (activeFilter === 'Active' && (inc.status === 'RESOLVED' || inc.status === 'CANCELLED')) return false;
         if (activeFilter === 'Critical' && inc.emergency_level !== 'CRITICAL') return false;
+        if (activeFilter === 'Unassigned' && (inc.assigned_rescue_team || inc.dispatch_team_id || inc.status === 'RESOLVED' || inc.status === 'CANCELLED')) return false;
         if (activeFilter === 'Resolved' && inc.status !== 'RESOLVED') return false;
 
-        // Search filter with safe null checks
+        // Search filter with safe null checks (including Tactical Grid ID)
         if (searchTerm) {
             const matchesId = (inc.id || '').toLowerCase().includes(searchTerm);
+            const matchesGrid = (inc.tactical_grid_id || '').toLowerCase().includes(searchTerm);
             const matchesCat = (inc.category || '').toLowerCase().includes(searchTerm);
             const matchesDetails = (inc.details || '').toLowerCase().includes(searchTerm);
             const matchesLoc = (inc.readable_address || '').toLowerCase().includes(searchTerm);
-            if (!matchesId && !matchesCat && !matchesDetails && !matchesLoc) return false;
+            if (!matchesId && !matchesGrid && !matchesCat && !matchesDetails && !matchesLoc) return false;
         }
 
         return true;
@@ -712,6 +689,7 @@ function renderIncidentQueue() {
         const isCritical = item.emergency_level === 'CRITICAL';
         const isResolved = item.status === 'RESOLVED';
         const levelBadgeClass = `badge-${(item.emergency_level || 'HIGH').toLowerCase()}`;
+        const gridId = item.tactical_grid_id || (window.TacticalGrid ? window.TacticalGrid.computeTacticalGrid(item.latitude, item.longitude) : 'GRID-PENDING');
 
         card.className = `p-3.5 rounded-xl border text-xs space-y-2.5 transition ${isCritical && !isResolved ? 'bg-red-950/20 border-red-800/80 shadow-lg shadow-red-950/20' : 'bg-slate-950/80 border-slate-800 hover:border-slate-700'}`;
         
@@ -729,6 +707,11 @@ function renderIncidentQueue() {
                 <span class="font-extrabold uppercase text-[10px] px-2 py-0.5 rounded-full ${isResolved ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-purple-950 text-purple-200 border border-purple-700'}">
                     ${item.status}
                 </span>
+            </div>
+
+            <div class="flex items-center justify-between text-[10px] bg-slate-900/90 px-2 py-1 rounded border border-slate-800 font-mono">
+                <span class="text-purple-300 font-bold">GRID: <span class="text-amber-300">${gridId}</span></span>
+                <span class="text-slate-400">${latStr}, ${lngStr}</span>
             </div>
 
             <div>
@@ -806,6 +789,7 @@ function setQueueFilter(filter) {
     let btnId = 'qtab-all';
     if (filter === 'Active') btnId = 'qtab-active';
     if (filter === 'Critical') btnId = 'qtab-critical';
+    if (filter === 'Unassigned') btnId = 'qtab-unassigned';
     if (filter === 'Resolved') btnId = 'qtab-resolved';
 
     const activeBtn = document.getElementById(btnId);
@@ -1243,6 +1227,7 @@ function renderIncidentInspectModal(inc) {
     const createdTimeStr = inc.created_at ? new Date(inc.created_at).toLocaleString() : 'Recent';
     const updatedTimeStr = inc.updated_at ? new Date(inc.updated_at).toLocaleString() : createdTimeStr;
     const resolvedTimeStr = inc.resolved_at ? new Date(inc.resolved_at).toLocaleString() : null;
+    const gridId = inc.tactical_grid_id || (window.TacticalGrid ? window.TacticalGrid.computeTacticalGrid(inc.latitude, inc.longitude) : 'GRID-PENDING');
 
     modal.innerHTML = `
         <div class="bg-slate-900 border border-purple-800 rounded-2xl max-w-2xl w-full p-6 text-slate-200 space-y-5 max-h-[90vh] overflow-y-auto shadow-2xl">
@@ -1250,6 +1235,7 @@ function renderIncidentInspectModal(inc) {
             <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div class="flex items-center space-x-2">
                     <span class="font-mono text-base font-black text-purple-400">${inc.id}</span>
+                    <span class="font-mono text-xs font-bold text-amber-300 bg-amber-950 px-2 py-0.5 rounded border border-amber-800">GRID: ${gridId}</span>
                     <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase badge-${(inc.emergency_level || 'HIGH').toLowerCase()}">${inc.emergency_level}</span>
                     <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800">Risk: ${inc.risk_score || 75}/100</span>
                 </div>
@@ -1318,6 +1304,40 @@ function renderIncidentInspectModal(inc) {
 
             <!-- Incident Overview Details -->
             <div class="grid sm:grid-cols-2 gap-4 text-xs bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <!-- Field Responder Mission Action Bar -->
+                <div class="sm:col-span-2 bg-gradient-to-r from-emerald-950/70 via-slate-900 to-purple-950/70 p-3.5 rounded-xl border border-emerald-600/70 space-y-2.5 shadow-lg">
+                    <div class="flex items-center justify-between">
+                        <span class="font-black text-white text-xs uppercase flex items-center space-x-1.5">
+                            <i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i>
+                            <span>First Responder Mission Actions</span>
+                        </span>
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold">
+                            Current: ${inc.status}
+                        </span>
+                    </div>
+                    <div class="flex flex-wrap gap-2 pt-1">
+                        <button onclick="responderAdvanceStatus('${inc.id}', 'ACCEPTED')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${(inc.status === 'ASSIGNED' || inc.status === 'TEAM_ASSIGNED') ? 'bg-amber-600 hover:bg-amber-500 text-white animate-pulse' : 'bg-slate-800 text-slate-300 hover:text-white'}">
+                            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                            <span>1. Accept (Ack)</span>
+                        </button>
+                        <button onclick="responderAdvanceStatus('${inc.id}', 'EN_ROUTE')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${(inc.status === 'ACCEPTED' || inc.status === 'ACKNOWLEDGED') ? 'bg-purple-600 hover:bg-purple-500 text-white' : 'bg-slate-800 text-slate-300 hover:text-white'}">
+                            <i data-lucide="navigation" class="w-3.5 h-3.5"></i>
+                            <span>2. En Route</span>
+                        </button>
+                        <button onclick="responderAdvanceStatus('${inc.id}', 'ARRIVED')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${(inc.status === 'EN_ROUTE' || inc.status === 'TEAM_EN_ROUTE') ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-slate-800 text-slate-300 hover:text-white'}">
+                            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                            <span>3. Arrived On Scene</span>
+                        </button>
+                        <button onclick="responderAdvanceStatus('${inc.id}', 'COMPLETED')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1 ${(inc.status === 'ARRIVED' || inc.status === 'ON_SCENE') ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-slate-800 text-slate-300 hover:text-white'}">
+                            <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
+                            <span>4. Complete Rescue</span>
+                        </button>
+                        <button onclick="transmitResponderTelemetry('${inc.id}')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-700/60 transition flex items-center space-x-1">
+                            <i data-lucide="radio" class="w-3.5 h-3.5"></i>
+                            <span>Transmit GPS Telemetry</span>
+                        </button>
+                    </div>
+                </div>
                 <div>
                     <span class="text-slate-400 block text-[10px] uppercase font-bold">Category</span>
                     <strong class="text-white text-sm">${inc.category}</strong>
@@ -1449,17 +1469,24 @@ function renderIncidentInspectModal(inc) {
                         </span>
                     </div>
 
-                    <div class="grid sm:grid-cols-2 gap-3">
+                    <div class="grid sm:grid-cols-3 gap-3">
+                        <div class="bg-slate-950 p-3 rounded-lg border border-purple-800/80 bg-gradient-to-b from-purple-950/40 to-slate-950">
+                            <div class="flex items-center justify-between">
+                                <span class="text-purple-300 block text-[10px] uppercase font-black tracking-wider">Tactical Grid ID</span>
+                                <span class="text-[9px] font-mono text-emerald-400 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">100m UTM</span>
+                            </div>
+                            <span class="text-amber-300 font-mono text-sm font-black block mt-1" id="inspect-grid-id">${gridId}</span>
+                        </div>
                         <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
                             <span class="text-slate-400 block text-[10px] uppercase font-bold">Exact Coordinates</span>
-                            <span class="text-emerald-400 font-mono text-sm font-bold block mt-0.5">
+                            <span class="text-emerald-400 font-mono text-xs font-bold block mt-1">
                                 <span id="inspect-live-lat">${typeof inc.latitude === 'number' ? inc.latitude.toFixed(6) : inc.latitude}</span>, 
                                 <span id="inspect-live-lng">${typeof inc.longitude === 'number' ? inc.longitude.toFixed(6) : inc.longitude}</span>
                             </span>
                         </div>
                         <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
-                            <span class="text-slate-400 block text-[10px] uppercase font-bold">Landmark / Geocoded Address</span>
-                            <span class="text-slate-200 text-xs font-semibold block mt-0.5 truncate" title="${inc.readable_address || ''}">
+                            <span class="text-slate-400 block text-[10px] uppercase font-bold">Landmark / Address</span>
+                            <span class="text-slate-200 text-xs font-semibold block mt-1 truncate" title="${inc.readable_address || ''}">
                                 ${inc.readable_address || 'Lucknow Regional Coordinates'}
                             </span>
                         </div>
@@ -1470,6 +1497,10 @@ function renderIncidentInspectModal(inc) {
                         <button onclick="trackLiveLocationOnMap('${inc.id}', ${inc.latitude}, ${inc.longitude})" class="bg-purple-700 hover:bg-purple-600 text-white font-bold py-2 px-3.5 rounded-xl text-xs flex items-center space-x-1.5 shadow transition">
                             <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
                             <span>Track on Tactical Map</span>
+                        </button>
+                        <button onclick="navigator.clipboard.writeText('${gridId}'); showToast('Tactical Grid ID copied: ${gridId}', 'success');" class="bg-slate-950 hover:bg-slate-800 text-purple-300 border border-purple-700/60 py-2 px-3 rounded-xl text-xs flex items-center space-x-1 transition font-bold">
+                            <i data-lucide="grid" class="w-3.5 h-3.5"></i>
+                            <span>Copy Grid ID</span>
                         </button>
                         <a href="https://www.google.com/maps/search/?api=1&query=${inc.latitude},${inc.longitude}" target="_blank" class="bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-700/60 font-bold py-2 px-3.5 rounded-xl text-xs flex items-center space-x-1.5 transition shadow">
                             <i data-lucide="navigation" class="w-3.5 h-3.5 text-purple-400"></i>
@@ -1564,13 +1595,11 @@ function renderIncidentInspectModal(inc) {
                         <label class="block text-slate-300 font-bold mb-1">Incident Lifecycle Status</label>
                         <select id="modal-status-select" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-xs focus:border-purple-500 focus:outline-none">
                             <option value="NEW" ${inc.status === 'NEW' ? 'selected' : ''}>NEW (Beacon Received)</option>
-                            <option value="ACKNOWLEDGED" ${inc.status === 'ACKNOWLEDGED' ? 'selected' : ''}>ACKNOWLEDGED</option>
-                            <option value="ANALYZING" ${inc.status === 'ANALYZING' ? 'selected' : ''}>ANALYZING (Risk Triage)</option>
-                            <option value="ASSIGNED" ${inc.status === 'ASSIGNED' ? 'selected' : ''}>ASSIGNED</option>
-                            <option value="TEAM_DISPATCHED" ${inc.status === 'TEAM_DISPATCHED' ? 'selected' : ''}>TEAM_DISPATCHED</option>
-                            <option value="TEAM_APPROACHING" ${inc.status === 'TEAM_APPROACHING' ? 'selected' : ''}>TEAM_APPROACHING</option>
-                            <option value="ON_SCENE" ${inc.status === 'ON_SCENE' ? 'selected' : ''}>ON_SCENE</option>
-                            <option value="RESOLVED" ${inc.status === 'RESOLVED' ? 'selected' : ''}>RESOLVED</option>
+                            <option value="ASSIGNED" ${inc.status === 'ASSIGNED' || inc.status === 'TEAM_ASSIGNED' ? 'selected' : ''}>ASSIGNED (Squad Dispatched)</option>
+                            <option value="ACCEPTED" ${inc.status === 'ACCEPTED' || inc.status === 'ACKNOWLEDGED' ? 'selected' : ''}>ACCEPTED (Squad Acknowledged)</option>
+                            <option value="EN_ROUTE" ${inc.status === 'EN_ROUTE' || inc.status === 'TEAM_EN_ROUTE' ? 'selected' : ''}>EN_ROUTE (Transit to Scene)</option>
+                            <option value="ARRIVED" ${inc.status === 'ARRIVED' || inc.status === 'ON_SCENE' ? 'selected' : ''}>ARRIVED (On Scene)</option>
+                            <option value="COMPLETED" ${inc.status === 'COMPLETED' || inc.status === 'RESOLVED' ? 'selected' : ''}>COMPLETED (Resolved)</option>
                             <option value="CANCELLED" ${inc.status === 'CANCELLED' ? 'selected' : ''}>CANCELLED</option>
                         </select>
                     </div>
@@ -1661,6 +1690,52 @@ function renderIncidentInspectModal(inc) {
 // -------------------------------------------------------------
 // ACTION BUTTON HANDLERS (SECTION 13)
 // -------------------------------------------------------------
+window.responderAdvanceStatus = async function(id, targetStatus) {
+    try {
+        const res = await api.patch(`/api/incidents/${id}/status`, {
+            status: targetStatus,
+            note: `Status updated to ${targetStatus} by field responder.`
+        });
+        if (!res.success) throw new Error(res.message || 'Status update failed');
+        showToast(`Incident #${id} advanced to ${targetStatus}!`, 'success');
+        await inspectIncident(id);
+        await fetchOverviewStats();
+        await fetchIncidentsList();
+    } catch (e) {
+        showToast(e.message || 'Failed to update status', 'error');
+    }
+};
+
+window.transmitResponderTelemetry = async function(id) {
+    if (!navigator.geolocation) {
+        showToast('Geolocation unavailable on this device.', 'warning');
+        return;
+    }
+    showToast('Acquiring high-precision GPS telemetry...', 'info');
+    navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+            try {
+                const { latitude, longitude, accuracy } = pos.coords;
+                const res = await api.patch(`/api/incidents/${id}/location`, {
+                    latitude,
+                    longitude,
+                    accuracy
+                });
+                if (res.success) {
+                    showToast(`Telemetry transmitted: ${latitude.toFixed(4)}°, ${longitude.toFixed(4)}° (±${Math.round(accuracy)}m)`, 'success');
+                    await inspectIncident(id);
+                }
+            } catch (err) {
+                showToast(err.message || 'Telemetry transmission failed', 'error');
+            }
+        },
+        (err) => {
+            showToast('GPS position unavailable: ' + err.message, 'error');
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+    );
+};
+
 async function acknowledgeIncident(id) {
     try {
         const res = await api.patch(`/api/incidents/${id}`, {
@@ -2161,9 +2236,9 @@ function switchAuthorityView(viewName, subTable = null) {
         ndrf: '📡 NDRF Grid'
     };
     if (viewName === 'database' && subTable === 'users') {
-        viewLabels.database = '👤 User Registrations';
+        viewLabels.database = '🗄️ Database: Users';
     } else if (viewName === 'database' && subTable === 'incidents') {
-        viewLabels.database = '🚨 Incident Reports DB';
+        viewLabels.database = '🗄️ Database: Incidents';
     }
 
     const activeLabel = document.getElementById('admin-active-view-label');
@@ -2173,13 +2248,13 @@ function switchAuthorityView(viewName, subTable = null) {
 
     // Reset and highlight right-top dropdown menu items & quick view buttons
     document.querySelectorAll('.admin-nav-item').forEach(el => {
-        el.classList.remove('bg-purple-700', 'text-white', 'font-bold');
+        el.classList.remove('bg-purple-700', 'text-white', 'font-bold', 'shadow');
         el.classList.add('text-slate-300', 'hover:bg-slate-800');
     });
-    const highlightKey = (viewName === 'database' && subTable) ? `database-${subTable}` : viewName;
+    const highlightKey = viewName === 'database' ? 'database' : viewName;
     document.querySelectorAll(`.admin-nav-item[data-view="${highlightKey}"]`).forEach(el => {
         el.classList.remove('text-slate-300', 'hover:bg-slate-800');
-        el.classList.add('bg-purple-700', 'text-white', 'font-bold');
+        el.classList.add('bg-purple-700', 'text-white', 'font-bold', 'shadow');
     });
 
     const viewNames = ['tactical', 'teams', 'resources', 'clusters', 'analytics', 'database', 'audit', 'ndrf', 'ngos', 'alerts'];
@@ -3538,6 +3613,8 @@ window.closeAssignNgoModal = closeAssignNgoModal;
 window.handleAssignNgoSubmit = handleAssignNgoSubmit;
 window.fetchAuthorityAlerts = fetchAuthorityAlerts;
 window.syncAuthorityAlerts = syncAuthorityAlerts;
+window.fetchResourcesInventory = renderResourcesInventory;
+window.renderResourcesInventory = renderResourcesInventory;
 
 // Smartphone Back Navigation for Authority Portal
 function handleSmartphoneBack() {

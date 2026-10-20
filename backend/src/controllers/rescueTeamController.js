@@ -68,7 +68,7 @@ async function createRescueTeam(req, res, next) {
     }
 }
 
-// PATCH /api/rescue-teams/:id
+// PATCH /api/rescue-teams/:id and PATCH /api/rescue-teams/:id/status
 async function updateRescueTeam(req, res, next) {
     try {
         const { id } = req.params;
@@ -76,29 +76,85 @@ async function updateRescueTeam(req, res, next) {
 
         const team = await db.get(`SELECT * FROM rescue_teams WHERE id = ?`, [id]);
         if (!team) {
-            return res.status(404).json({ success: false, message: 'Rescue team not found.' });
+            return res.status(404).json({ success: false, message: 'Rescue team not found.', errorCode: 'NOT_FOUND' });
         }
+
+        const newStatus = status || team.status;
+        const newAssigned = assignedIncidentId !== undefined 
+            ? assignedIncidentId 
+            : (newStatus === 'AVAILABLE' ? null : team.assigned_incident_id);
+        const newLat = currentLat !== undefined ? parseFloat(currentLat) : team.current_lat;
+        const newLng = currentLng !== undefined ? parseFloat(currentLng) : team.current_lng;
+        const newPhone = contactPhone || team.contact_phone;
 
         await db.run(
             `UPDATE rescue_teams
-             SET status = COALESCE(?, status),
-                 assigned_incident_id = COALESCE(?, assigned_incident_id),
-                 current_lat = COALESCE(?, current_lat),
-                 current_lng = COALESCE(?, current_lng),
-                 contact_phone = COALESCE(?, contact_phone),
+             SET status = ?,
+                 assigned_incident_id = ?,
+                 current_lat = ?,
+                 current_lng = ?,
+                 contact_phone = ?,
                  updated_at = datetime('now')
              WHERE id = ?`,
-            [
-                status || null,
-                assignedIncidentId !== undefined ? assignedIncidentId : null,
-                currentLat !== undefined ? parseFloat(currentLat) : null,
-                currentLng !== undefined ? parseFloat(currentLng) : null,
-                contactPhone || null,
-                id
-            ]
+            [newStatus, newAssigned, newLat, newLng, newPhone, id]
         );
 
+        // Synchronize incident status when team status changes on mission
+        const targetIncidentId = assignedIncidentId || team.assigned_incident_id;
+        if (targetIncidentId) {
+            let incidentStatusTo = null;
+            if (newStatus === 'EN_ROUTE' || newStatus === 'TEAM_EN_ROUTE') incidentStatusTo = 'EN_ROUTE';
+            else if (newStatus === 'ON_SCENE' || newStatus === 'ARRIVED') incidentStatusTo = 'ARRIVED';
+            else if (newStatus === 'RESCUE_IN_PROGRESS' || newStatus === 'IN_PROGRESS') incidentStatusTo = 'IN_PROGRESS';
+            else if (newStatus === 'COMPLETED' || newStatus === 'RESOLVED' || newStatus === 'AVAILABLE') incidentStatusTo = 'RESOLVED';
+
+            if (incidentStatusTo) {
+                try {
+                    const resolvedSql = incidentStatusTo === 'RESOLVED' 
+                        ? `UPDATE incidents SET status = ?, resolved_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`
+                        : `UPDATE incidents SET status = ?, updated_at = datetime('now') WHERE id = ?`;
+                    await db.run(resolvedSql, [incidentStatusTo, targetIncidentId]);
+                    await db.run(
+                        `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+                        [
+                            generateUUID('INCU'),
+                            targetIncidentId,
+                            req.user ? req.user.id : team.id,
+                            req.user ? req.user.role : 'RESPONDER',
+                            team.status,
+                            incidentStatusTo,
+                            `Squad ${team.name} updated operational status to ${newStatus}.`
+                        ]
+                    );
+                } catch (syncErr) {
+                    console.warn('[RescueTeam] Incident status sync warning:', syncErr.message);
+                }
+            }
+        }
+
         const updated = await db.get(`SELECT * FROM rescue_teams WHERE id = ?`, [id]);
+
+        // Socket.IO real-time emission to authorities and squad
+        try {
+            const { getIO } = require('../sockets/socketHandler');
+            const io = getIO();
+            if (io) {
+                io.emit('rescue-team:updated', updated);
+                io.to('authorities').emit('team:status_changed', { teamId: id, status: newStatus, assignedIncidentId: newAssigned });
+            }
+        } catch (sErr) {}
+
+        await logAction({
+            userId: req.user ? req.user.id : id,
+            userRole: req.user ? req.user.role : 'RESPONDER',
+            action: 'RESCUE_TEAM_STATUS_UPDATE',
+            entityType: 'RESCUE_TEAM',
+            entityId: id,
+            details: { previousStatus: team.status, newStatus, assignedIncidentId: newAssigned },
+            ipAddress: req.ip
+        });
+
         res.json({
             success: true,
             message: 'Rescue team updated successfully.',

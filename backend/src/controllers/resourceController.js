@@ -49,21 +49,22 @@ async function updateResource(req, res, next) {
             return res.status(404).json({ success: false, message: 'Resource not found.' });
         }
 
+        const newTotal = totalUnits !== undefined ? parseInt(totalUnits, 10) : current.total_units;
+        const newDeployed = deployedUnits !== undefined ? parseInt(deployedUnits, 10) : current.deployed_units;
+        const newAvailable = availableUnits !== undefined 
+            ? parseInt(availableUnits, 10) 
+            : Math.max(0, newTotal - newDeployed);
+        const newLocationHub = locationHub !== undefined ? locationHub : current.location_hub;
+
         await db.run(
             `UPDATE resources 
-             SET total_units = COALESCE(?, total_units),
-                 available_units = COALESCE(?, available_units),
-                 deployed_units = COALESCE(?, deployed_units),
-                 location_hub = COALESCE(?, location_hub),
+             SET total_units = ?,
+                 available_units = ?,
+                 deployed_units = ?,
+                 location_hub = ?,
                  updated_at = datetime('now')
              WHERE id = ?`,
-            [
-                totalUnits !== undefined ? parseInt(totalUnits, 10) : null,
-                availableUnits !== undefined ? parseInt(availableUnits, 10) : null,
-                deployedUnits !== undefined ? parseInt(deployedUnits, 10) : null,
-                locationHub || null,
-                id
-            ]
+            [newTotal, newAvailable, newDeployed, newLocationHub, id]
         );
 
         const updated = await db.get(`SELECT * FROM resources WHERE id = ?`, [id]);

@@ -103,12 +103,13 @@ async function runTests() {
 
     // 2. Citizen Registration & Login
     await test('2. Citizen registration and login', async () => {
+        const u1 = Date.now();
         // Register Citizen 1
         const reg1 = await makeRequest('POST', '/api/auth/register', {
             fullName: 'Test Citizen Alpha',
-            email: `citizen.alpha.${Date.now()}@example.com`,
+            email: `citizen.alpha.${u1}@example.com`,
             password: 'password123',
-            phone: '9988776655'
+            phone: `9${u1.toString().slice(-9)}`
         });
         assert.strictEqual(reg1.status, 201);
         assert.strictEqual(reg1.body.success, true);
@@ -118,11 +119,12 @@ async function runTests() {
         citizen1Id = reg1.body.data.user.id;
 
         // Register Citizen 2 (for multi-tenant data isolation testing)
+        const u2 = u1 + 1;
         const reg2 = await makeRequest('POST', '/api/auth/register', {
             fullName: 'Test Citizen Beta',
-            email: `citizen.beta.${Date.now()}@example.com`,
+            email: `citizen.beta.${u2}@example.com`,
             password: 'password123',
-            phone: '9988776644'
+            phone: `8${u2.toString().slice(-9)}`
         });
         assert.strictEqual(reg2.status, 201);
         citizen2Token = reg2.body.data.token;
@@ -621,7 +623,7 @@ async function runTests() {
             fullName: 'Delete Target Citizen',
             email: `delete.me.${Date.now()}@example.com`,
             password: 'deletePassword123',
-            phone: '9111222333'
+            phone: `7${Date.now().toString().slice(-9)}`
         });
         assert.strictEqual(tempReg.status, 201);
         const tempToken = tempReg.body.data.token;

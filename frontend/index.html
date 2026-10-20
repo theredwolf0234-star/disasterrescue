@@ -2181,35 +2181,84 @@
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
-            <form onsubmit="saveCitizenProfile(event)" class="space-y-3 text-xs">
+            <form onsubmit="saveCitizenProfile(event)" class="space-y-3 text-xs max-h-[75vh] overflow-y-auto pr-1">
+                <!-- Avatar selection & preview -->
+                <div class="flex items-center space-x-3 p-3 bg-slate-950/80 rounded-xl border border-slate-800">
+                    <img id="prof-avatar-preview" src="assets/default-avatar.png" onerror="this.src='https://ui-avatars.com/api/?name=Citizen&background=7e22ce&color=fff'" alt="Profile Photo" class="w-12 h-12 rounded-full border border-purple-500 object-cover bg-slate-900">
+                    <div class="flex-1">
+                        <label class="block text-slate-300 font-bold mb-0.5">Profile Avatar / Photo URL</label>
+                        <input type="url" id="prof-avatar" oninput="updateAvatarPreview(this.value)" placeholder="https://example.com/photo.jpg" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-[11px] focus:border-purple-500 focus:outline-none">
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-slate-300 font-bold mb-1">Full Name</label>
                     <input type="text" id="prof-name" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" required>
                 </div>
-                <div>
-                    <label class="block text-slate-300 font-bold mb-1">Primary Phone Number</label>
-                    <input type="tel" id="prof-phone" placeholder="+91 9876543210" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Primary Phone</label>
+                        <input type="tel" id="prof-phone" placeholder="+91 9876543210" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Emergency Relative Phone</label>
+                        <input type="tel" id="prof-em-phone" placeholder="+91 9876543211" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-slate-300 font-bold mb-1">Emergency Relative Contact</label>
-                    <input type="tel" id="prof-em-phone" placeholder="+91 9876543211" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Blood Group</label>
+                        <select id="prof-blood" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                            <option value="O+">O+ Positive</option>
+                            <option value="O-">O- Negative</option>
+                            <option value="A+">A+ Positive</option>
+                            <option value="A-">A- Negative</option>
+                            <option value="B+">B+ Positive</option>
+                            <option value="B-">B- Negative</option>
+                            <option value="AB+">AB+ Positive</option>
+                            <option value="AB-">AB- Negative</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Language Preference</label>
+                        <select id="prof-lang" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                            <option value="en">English</option>
+                            <option value="hi">हिंदी (Hindi)</option>
+                            <option value="bn">বাংলা (Bengali)</option>
+                            <option value="ta">தமிழ் (Tamil)</option>
+                            <option value="te">తెలుగు (Telugu)</option>
+                            <option value="mr">मराठी (Marathi)</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-slate-300 font-bold mb-1">Blood Group</label>
-                    <select id="prof-blood" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
-                        <option value="O+">O+ Positive</option>
-                        <option value="O-">O- Negative</option>
-                        <option value="A+">A+ Positive</option>
-                        <option value="A-">A- Negative</option>
-                        <option value="B+">B+ Positive</option>
-                        <option value="B-">B- Negative</option>
-                        <option value="AB+">AB+ Positive</option>
-                        <option value="AB-">AB- Negative</option>
-                    </select>
+
+                <!-- Notification Preferences -->
+                <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                    <label class="block text-slate-300 font-bold mb-1 uppercase text-[10px] tracking-wide text-purple-400">Notification Channels</label>
+                    <div class="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>Emergency Push Notifications</span>
+                        <input type="checkbox" id="prof-notif-push" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>SMS Incident Dispatch Alerts</span>
+                        <input type="checkbox" id="prof-notif-sms" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>Email Status Reports</span>
+                        <input type="checkbox" id="prof-notif-email" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                    </div>
                 </div>
-                <button type="submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl uppercase text-xs transition">
+
+                <button type="submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl uppercase text-xs transition shadow-lg">
                     Save Profile Information
                 </button>
+
+                <!-- Danger Zone: Account Deletion -->
+                <div class="pt-3 border-t border-slate-800">
+                    <button type="button" onclick="promptDeleteAccount()" class="w-full bg-red-950/50 hover:bg-red-900/60 border border-red-800/80 text-red-300 hover:text-red-100 font-bold py-2 rounded-xl text-xs transition">
+                        🗑️ Delete Account Permanently
+                    </button>
+                </div>
             </form>
         </div>
     </div>
@@ -2414,6 +2463,7 @@
     <script src="js/i18n.js?v=20261015-v7"></script>
     <script src="js/api.js?v=20261015-v7"></script>
     <script src="js/socket.js?v=20261015-v7"></script>
+    <script src="js/tactical-grid.js?v=20261020-v1"></script>
     <script src="js/voice-sos.js?v=20261015-v7"></script>
     <script src="js/citizen-map.js?v=20261015-v7"></script>
     <script src="js/citizen-app.js?v=20261015-v7"></script>

@@ -161,7 +161,10 @@ function openCitizenAuthModal(tab = 'login') {
                     <input type="email" id="citizen-login-email" placeholder="name@example.com" required autocomplete="email" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none">
                 </div>
                 <div>
-                    <label class="block text-slate-300 font-bold uppercase mb-1">Password</label>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-slate-300 font-bold uppercase">Password</label>
+                        <a href="javascript:void(0)" onclick="openForgotPasswordModal()" class="text-purple-400 hover:text-purple-300 underline font-semibold text-[11px]">Forgot Password?</a>
+                    </div>
                     <input type="password" id="citizen-login-password" placeholder="••••••••" required autocomplete="current-password" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none">
                 </div>
 
@@ -301,6 +304,176 @@ function citizenLogout() {
     updateCitizenAuthUI();
     showToast('Signed out of citizen session.', 'info');
     fetchCitizenReports();
+}
+
+let pendingResetEmail = '';
+
+function openForgotPasswordModal() {
+    let authModal = document.getElementById('citizen-auth-modal');
+    if (authModal) authModal.classList.add('hidden');
+
+    let modal = document.getElementById('forgot-password-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'forgot-password-modal';
+        modal.className = 'fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4';
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div class="bg-slate-900 border border-purple-800 rounded-2xl max-w-md w-full p-6 text-slate-200 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-lg bg-purple-700 text-white flex items-center justify-center font-bold">
+                        <i data-lucide="key" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-white text-base">Password Recovery</h3>
+                        <p class="text-[11px] text-slate-400">Expiring token verification for emergency access</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('forgot-password-modal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Step 1: Request Code -->
+            <form id="forgot-step1-form" onsubmit="handleForgotPasswordRequest(event)" class="space-y-3 text-xs">
+                <p class="text-slate-300 leading-relaxed">Enter your registered email address. We will verify your emergency contact records and issue a secure 6-digit recovery code.</p>
+                <div>
+                    <label class="block text-slate-300 font-bold uppercase mb-1">Registered Email</label>
+                    <input type="email" id="forgot-email" placeholder="name@example.com" required autocomplete="email" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none">
+                </div>
+                <div id="forgot-step1-error" class="hidden p-2.5 bg-red-950/60 border border-red-800 text-red-300 rounded-xl text-xs"></div>
+                <button type="submit" id="forgot-step1-btn" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-extrabold py-2.5 rounded-xl uppercase text-xs shadow-lg transition">
+                    Send Verification Code
+                </button>
+            </form>
+
+            <!-- Step 2: Verify Code & Set New Password -->
+            <form id="forgot-step2-form" onsubmit="handlePasswordResetSubmit(event)" class="space-y-3 text-xs hidden">
+                <div class="p-2.5 bg-purple-950/50 border border-purple-800/60 rounded-xl text-purple-200">
+                    <p class="font-bold">✓ Verification Code Sent</p>
+                    <p class="text-[11px] mt-0.5 text-purple-300">Code transmitted to: <strong id="forgot-target-email-display"></strong></p>
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-bold uppercase mb-1">6-Digit Verification Code</label>
+                    <input type="text" id="reset-token-input" placeholder="e.g. 583921" required maxlength="12" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-base font-mono tracking-widest text-center focus:border-purple-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-bold uppercase mb-1">New Password (min 6 characters)</label>
+                    <input type="password" id="reset-new-password" placeholder="••••••••" required minlength="6" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-slate-300 font-bold uppercase mb-1">Confirm New Password</label>
+                    <input type="password" id="reset-confirm-password" placeholder="••••••••" required minlength="6" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white text-sm focus:border-purple-500 focus:outline-none">
+                </div>
+                <div id="forgot-step2-error" class="hidden p-2.5 bg-red-950/60 border border-red-800 text-red-300 rounded-xl text-xs"></div>
+                <button type="submit" id="forgot-step2-btn" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-2.5 rounded-xl uppercase text-xs shadow-lg transition">
+                    Confirm & Update Password
+                </button>
+            </form>
+
+            <div class="pt-2 text-center border-t border-slate-800">
+                <a href="javascript:void(0)" onclick="document.getElementById('forgot-password-modal').classList.add('hidden'); openCitizenAuthModal('login');" class="text-purple-400 hover:text-purple-300 text-xs font-semibold underline">
+                    ← Back to Sign In
+                </a>
+            </div>
+        </div>
+    `;
+
+    modal.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function handleForgotPasswordRequest(e) {
+    e.preventDefault();
+    const email = document.getElementById('forgot-email').value.trim();
+    const errBox = document.getElementById('forgot-step1-error');
+    const btn = document.getElementById('forgot-step1-btn');
+
+    try {
+        if (btn) { btn.disabled = true; btn.innerText = 'Generating Token...'; }
+        if (errBox) errBox.classList.add('hidden');
+
+        const res = await api.post('/api/auth/forgot-password', { email });
+        if (!res.success) {
+            if (res.errorCode === 'EMAIL_SERVICE_NOT_CONFIGURED' || res.emailConfigured === false) {
+                throw new Error('Email delivery service is not configured on this server. Setup is required with valid SMTP credentials to deliver reset tokens.');
+            }
+            throw new Error(res.message || 'Failed to request reset token');
+        }
+
+        if (res.data && res.data.emailConfigured === false) {
+            if (errBox) {
+                errBox.innerText = 'Notice: Email delivery setup is required on server. SMTP is not yet configured.';
+                errBox.classList.remove('hidden');
+            }
+            showToast('Email service setup required on server.', 'warning');
+            return;
+        }
+
+        pendingResetEmail = email;
+        document.getElementById('forgot-step1-form').classList.add('hidden');
+        document.getElementById('forgot-step2-form').classList.remove('hidden');
+        document.getElementById('forgot-target-email-display').innerText = email;
+
+        if (res.data && res.data.resetCode) {
+            const tokenInput = document.getElementById('reset-token-input');
+            if (tokenInput) tokenInput.value = res.data.resetCode;
+            showToast(`Verification code [${res.data.resetCode}] issued (valid 30m).`, 'info');
+        } else {
+            showToast('Verification code transmitted. Check your registered inbox.', 'success');
+        }
+    } catch (err) {
+        if (errBox) {
+            errBox.innerText = err.message || 'Failed to generate password reset code.';
+            errBox.classList.remove('hidden');
+        }
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = 'Send Verification Code'; }
+    }
+}
+
+async function handlePasswordResetSubmit(e) {
+    e.preventDefault();
+    const token = document.getElementById('reset-token-input').value.trim();
+    const newPassword = document.getElementById('reset-new-password').value;
+    const confirmPassword = document.getElementById('reset-confirm-password').value;
+    const errBox = document.getElementById('forgot-step2-error');
+    const btn = document.getElementById('forgot-step2-btn');
+
+    if (newPassword !== confirmPassword) {
+        if (errBox) {
+            errBox.innerText = 'Passwords do not match.';
+            errBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    try {
+        if (btn) { btn.disabled = true; btn.innerText = 'Updating Password...'; }
+        if (errBox) errBox.classList.add('hidden');
+
+        const res = await api.post('/api/auth/reset-password', {
+            email: pendingResetEmail,
+            token,
+            newPassword
+        });
+
+        if (!res.success) throw new Error(res.message || 'Password update failed');
+
+        showToast('Password reset successfully! You can now log in.', 'success');
+        document.getElementById('forgot-password-modal').classList.add('hidden');
+        openCitizenAuthModal('login');
+    } catch (err) {
+        if (errBox) {
+            errBox.innerText = err.message || 'Failed to update password. Code may be invalid or expired.';
+            errBox.classList.remove('hidden');
+        }
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = 'Confirm & Update Password'; }
+    }
 }
 
 // -------------------------------------------------------------
@@ -960,12 +1133,21 @@ function openCitizenProfileModal() {
 
 function loadCitizenProfile() {
     const stored = api.getUser();
+    let notifPrefs = { sms: true, push: true, email: true };
     if (stored) {
+        if (stored.notificationPrefs) {
+            try {
+                notifPrefs = typeof stored.notificationPrefs === 'string' ? JSON.parse(stored.notificationPrefs) : stored.notificationPrefs;
+            } catch (e) {}
+        }
         citizenProfile = {
             name: stored.fullName || stored.username || stored.name || 'Citizen User',
             phone: stored.phone || '',
             emergencyPhone: stored.emergencyPhone || '',
-            bloodGroup: stored.bloodGroup || 'O+ Positive'
+            bloodGroup: stored.bloodGroup || 'O+ Positive',
+            avatarUrl: stored.avatarUrl || '',
+            languagePref: stored.languagePref || 'en',
+            notificationPrefs: notifPrefs
         };
     } else {
         const local = localStorage.getItem('citizenProfile');
@@ -978,11 +1160,32 @@ function loadCitizenProfile() {
     const phoneInput = document.getElementById('prof-phone');
     const emgInput = document.getElementById('prof-em-phone');
     const bloodInput = document.getElementById('prof-blood');
+    const avatarInput = document.getElementById('prof-avatar');
+    const avatarPreview = document.getElementById('prof-avatar-preview');
+    const langInput = document.getElementById('prof-lang');
+    const notifPush = document.getElementById('prof-notif-push');
+    const notifSms = document.getElementById('prof-notif-sms');
+    const notifEmail = document.getElementById('prof-notif-email');
 
     if (nameInput) nameInput.value = citizenProfile.name || '';
     if (phoneInput) phoneInput.value = citizenProfile.phone || '';
     if (emgInput) emgInput.value = citizenProfile.emergencyPhone || '';
     if (bloodInput) bloodInput.value = citizenProfile.bloodGroup || 'O+ Positive';
+    if (avatarInput) avatarInput.value = citizenProfile.avatarUrl || '';
+    if (avatarPreview) {
+        avatarPreview.src = citizenProfile.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(citizenProfile.name || 'Citizen')}&background=7e22ce&color=fff`;
+    }
+    if (langInput) langInput.value = citizenProfile.languagePref || 'en';
+    if (notifPush) notifPush.checked = citizenProfile.notificationPrefs?.push !== false;
+    if (notifSms) notifSms.checked = citizenProfile.notificationPrefs?.sms !== false;
+    if (notifEmail) notifEmail.checked = citizenProfile.notificationPrefs?.email !== false;
+}
+
+function updateAvatarPreview(url) {
+    const preview = document.getElementById('prof-avatar-preview');
+    if (preview) {
+        preview.src = url || 'https://ui-avatars.com/api/?name=Citizen&background=7e22ce&color=fff';
+    }
 }
 
 async function saveCitizenProfile(e) {
@@ -991,18 +1194,38 @@ async function saveCitizenProfile(e) {
     const phone = document.getElementById('prof-phone').value.trim();
     const emgPhone = document.getElementById('prof-em-phone').value.trim();
     const blood = document.getElementById('prof-blood').value;
+    const avatarUrl = document.getElementById('prof-avatar') ? document.getElementById('prof-avatar').value.trim() : '';
+    const languagePref = document.getElementById('prof-lang') ? document.getElementById('prof-lang').value : 'en';
+    const notifPush = document.getElementById('prof-notif-push') ? document.getElementById('prof-notif-push').checked : true;
+    const notifSms = document.getElementById('prof-notif-sms') ? document.getElementById('prof-notif-sms').checked : true;
+    const notifEmail = document.getElementById('prof-notif-email') ? document.getElementById('prof-notif-email').checked : true;
+    const notificationPrefs = { push: notifPush, sms: notifSms, email: notifEmail };
 
-    citizenProfile = { name, phone, emergencyPhone: emgPhone, bloodGroup: blood };
+    citizenProfile = {
+        name,
+        phone,
+        emergencyPhone: emgPhone,
+        bloodGroup: blood,
+        avatarUrl,
+        languagePref,
+        notificationPrefs
+    };
     localStorage.setItem('citizenProfile', JSON.stringify(citizenProfile));
 
     if (api.getToken()) {
         try {
-            await api.patch('/api/auth/profile', {
+            const res = await api.patch('/api/auth/profile', {
                 fullName: name,
                 phone,
                 emergencyPhone: emgPhone,
-                bloodGroup: blood
+                bloodGroup: blood,
+                avatarUrl,
+                languagePref,
+                notificationPrefs
             });
+            if (res.success && res.data && res.data.user) {
+                api.setToken(api.getToken(), res.data.user);
+            }
         } catch (e) {
             console.warn('Profile sync with server skipped:', e.message);
         }
@@ -1011,6 +1234,29 @@ async function saveCitizenProfile(e) {
     document.getElementById('citizen-profile-modal').classList.add('hidden');
     updateCitizenAuthUI();
     showToast('Citizen emergency profile updated successfully.', 'success');
+}
+
+async function promptDeleteAccount() {
+    if (!api.isLoggedIn()) {
+        showToast('Please sign in to manage account deletion.', 'warning');
+        return;
+    }
+
+    const password = prompt('SECURITY CONFIRMATION:\n\nDeleting your account is permanent and irreversible.\nAll personal contact details and saved preferences will be erased.\n(Emergency operational rescue reports will be anonymized for public safety records).\n\nEnter your account password to confirm:');
+    if (!password) return;
+
+    try {
+        const res = await api.delete('/api/auth/account', { password });
+        if (!res.success) throw new Error(res.message || 'Account deletion failed');
+
+        showToast(res.message || 'Account deleted successfully.', 'success');
+        api.clearAuth();
+        document.getElementById('citizen-profile-modal').classList.add('hidden');
+        updateCitizenAuthUI();
+        window.location.reload();
+    } catch (err) {
+        showToast(err.message || 'Account deletion failed. Incorrect password.', 'error');
+    }
 }
 
 // -------------------------------------------------------------
@@ -1576,6 +1822,7 @@ function showDispatchSuccessModal(incident) {
 
     const createdTimeStr = incident.created_at ? new Date(incident.created_at).toLocaleString() : new Date().toLocaleString();
     const locStr = incident.readable_address || `Coordinates: ${Number(incident.latitude).toFixed(4)}, ${Number(incident.longitude).toFixed(4)}`;
+    const gridId = incident.tactical_grid_id || (window.TacticalGrid ? window.TacticalGrid.computeTacticalGrid(incident.latitude, incident.longitude) : 'GRID-PENDING');
 
     modal.innerHTML = `
         <div class="bg-slate-900 border border-purple-800 text-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -1590,6 +1837,10 @@ function showDispatchSuccessModal(incident) {
                 <div class="flex justify-between items-center">
                     <span class="text-slate-400">Incident Tracking ID:</span>
                     <strong class="font-mono text-purple-400 text-sm">${incident.id}</strong>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Tactical Grid ID:</span>
+                    <strong class="font-mono text-amber-300 text-sm">${gridId}</strong>
                 </div>
                 <div class="flex justify-between items-center">
                     <span class="text-slate-400">Priority Level:</span>
@@ -1771,15 +2022,21 @@ function renderReports() {
         const isResolved = r.status === 'RESOLVED';
         const formattedDate = new Date(r.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
 
+        const gridId = r.tactical_grid_id || (window.TacticalGrid ? window.TacticalGrid.computeTacticalGrid(r.latitude, r.longitude) : 'GRID-PENDING');
+
         card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between transition hover:border-purple-600/50";
         card.innerHTML = `
             <div>
-                <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center justify-between mb-2">
                     <div class="flex items-center space-x-1.5">
                         <span class="font-mono text-xs font-bold text-purple-400 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800/60">${r.id}</span>
                         <span class="text-[9px] font-black uppercase text-emerald-400 bg-emerald-950/80 px-1.5 py-0.5 rounded border border-emerald-800/60">✓ Server Confirmed</span>
                     </div>
                     <span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${levelBadgeClass}">${r.emergency_level || 'HIGH'}</span>
+                </div>
+                <div class="flex items-center justify-between text-[10px] bg-slate-950 px-2 py-1 rounded border border-slate-800 font-mono mb-2">
+                    <span class="text-purple-300 font-bold">GRID: <span class="text-amber-300">${gridId}</span></span>
+                    <span class="text-slate-400">${Number(r.latitude).toFixed(4)}, ${Number(r.longitude).toFixed(4)}</span>
                 </div>
                 <h4 class="font-bold text-white text-base mb-1">${r.category}</h4>
                 <p class="text-xs text-slate-300 leading-relaxed">${r.details}</p>
@@ -2711,4 +2968,9 @@ window.closeGovAlertsModal = closeGovAlertsModal;
 window.fetchGovernmentAlerts = fetchGovernmentAlerts;
 window.deleteOfflineDraft = deleteOfflineDraft;
 window.flushOfflineQueue = flushOfflineQueue;
+window.openForgotPasswordModal = openForgotPasswordModal;
+window.handleForgotPasswordRequest = handleForgotPasswordRequest;
+window.handlePasswordResetSubmit = handlePasswordResetSubmit;
+window.updateAvatarPreview = updateAvatarPreview;
+window.promptDeleteAccount = promptDeleteAccount;
 

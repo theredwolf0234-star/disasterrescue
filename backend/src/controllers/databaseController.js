@@ -41,9 +41,9 @@ const ALLOWED_TABLES = {
         label: 'Emergency Rescue Teams',
         icon: 'truck',
         description: 'Field response squads, boat squads, ambulances, personnel strength, and live telemetry coordinates',
-        columns: ['id', 'name', 'unit_type', 'vehicle_type', 'personnel_count', 'contact_phone', 'status', 'assigned_incident_id', 'current_lat', 'current_lng', 'created_at'],
-        selectSql: `SELECT id, name, unit_type, vehicle_type, personnel_count, contact_phone, status, assigned_incident_id, current_lat, current_lng, created_at FROM rescue_teams`,
-        searchColumns: ['id', 'name', 'unit_type', 'vehicle_type', 'contact_phone', 'status']
+        columns: ['id', 'name', 'unit_code', 'type', 'vehicle', 'members', 'team_leader', 'contact_phone', 'status', 'assigned_incident_id', 'current_lat', 'current_lng', 'created_at'],
+        selectSql: `SELECT id, name, unit_code, type, vehicle, members, team_leader, contact_phone, status, assigned_incident_id, current_lat, current_lng, created_at FROM rescue_teams`,
+        searchColumns: ['id', 'name', 'unit_code', 'type', 'vehicle', 'contact_phone', 'status']
     },
     incident_updates: {
         label: 'Incident Timeline Logs',
@@ -116,6 +116,54 @@ const ALLOWED_TABLES = {
         columns: ['id', 'cluster_name', 'disaster_type', 'centroid_lat', 'centroid_lng', 'radius_km', 'incident_count', 'total_victims', 'priority', 'status', 'created_at'],
         selectSql: `SELECT id, cluster_name, disaster_type, centroid_lat, centroid_lng, radius_km, incident_count, total_victims, priority, status, created_at FROM incident_clusters`,
         searchColumns: ['id', 'cluster_name', 'disaster_type', 'priority', 'status']
+    },
+    ndrf_transmissions: {
+        label: 'NDRF 1078 Gateway Transmissions',
+        icon: 'radio',
+        description: 'Disaster telemetry relayed to National Disaster Response Force Command Grid',
+        columns: ['id', 'incident_id', 'transmission_ref', 'status', 'payload', 'ndrf_cad_id', 'assigned_battalion', 'created_at'],
+        selectSql: `SELECT id, incident_id, transmission_ref, status, payload, ndrf_cad_id, assigned_battalion, created_at FROM ndrf_transmissions`,
+        searchColumns: ['id', 'incident_id', 'transmission_ref', 'status', 'assigned_battalion']
+    },
+    ngos: {
+        label: 'NGO Relief & Volunteer Partners',
+        icon: 'heart-handshake',
+        description: 'Registered humanitarian organizations, Red Cross chapters, and relief coordinators',
+        columns: ['id', 'name', 'registration_number', 'contact_person', 'email', 'phone', 'operating_regions', 'status', 'created_at'],
+        selectSql: `SELECT id, name, registration_number, contact_person, email, phone, operating_regions, status, created_at FROM ngos`,
+        searchColumns: ['id', 'name', 'registration_number', 'contact_person', 'email', 'phone']
+    },
+    volunteers: {
+        label: 'Field Volunteers',
+        icon: 'users',
+        description: 'Registered disaster relief volunteers, skill certifications, and operational assignments',
+        columns: ['id', 'ngo_id', 'full_name', 'phone', 'email', 'skills', 'status', 'current_location', 'created_at'],
+        selectSql: `SELECT id, ngo_id, full_name, phone, email, skills, status, current_location, created_at FROM volunteers`,
+        searchColumns: ['id', 'full_name', 'phone', 'email', 'skills', 'status']
+    },
+    government_alerts: {
+        label: 'Official Govt SACHET Alerts',
+        icon: 'alert-triangle',
+        description: 'CAP feeds from NDMA, IMD, CWC, and State Disaster Management Authorities',
+        columns: ['id', 'cap_identifier', 'sender', 'headline', 'severity', 'urgency', 'hazard_type', 'effective_from', 'expires_at', 'is_active', 'created_at'],
+        selectSql: `SELECT id, cap_identifier, sender, headline, severity, urgency, hazard_type, effective_from, expires_at, is_active, created_at FROM government_alerts`,
+        searchColumns: ['id', 'cap_identifier', 'sender', 'headline', 'severity', 'hazard_type']
+    },
+    coordination_messages: {
+        label: 'Inter-Agency Coordination Messages',
+        icon: 'message-square',
+        description: 'Secure operational messaging between NDRF, SDRF, Police, and NGO command posts',
+        columns: ['id', 'incident_id', 'sender_id', 'sender_role', 'message', 'recipient_role', 'created_at'],
+        selectSql: `SELECT id, incident_id, sender_id, sender_role, message, recipient_role, created_at FROM coordination_messages`,
+        searchColumns: ['id', 'incident_id', 'sender_role', 'message']
+    },
+    password_resets: {
+        label: 'Security Password Recovery Logs',
+        icon: 'key',
+        description: 'Expiring security tokens and audit records for account password recovery',
+        columns: ['id', 'user_id', 'user_type', 'email', 'token', 'expires_at', 'used', 'created_at'],
+        selectSql: `SELECT id, user_id, user_type, email, token, expires_at, used, created_at FROM password_resets`,
+        searchColumns: ['id', 'user_id', 'user_type', 'email']
     }
 };
 

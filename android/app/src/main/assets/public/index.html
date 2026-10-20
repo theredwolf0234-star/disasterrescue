@@ -295,7 +295,10 @@
 
             <!-- Section 1: Emergency Operations -->
             <div class="space-y-1">
-                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-2">Emergency Operations</p>
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-purple-400/90 px-3 mb-2 flex items-center space-x-1.5">
+                    <i data-lucide="shield-alert" class="w-3 h-3 text-purple-400"></i>
+                    <span>Emergency Operations</span>
+                </p>
                 <button type="button" onclick="switchTab('home')" data-tab="home" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-bold transition bg-purple-700 text-white shadow-md">
                     <i data-lucide="home" class="w-4 h-4 shrink-0"></i>
                     <span data-i18n="navHome">Home Command</span>
@@ -314,50 +317,64 @@
                 </button>
             </div>
 
-            <!-- Section 2: Relief & Aid -->
-            <div class="space-y-1">
-                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-2">Relief & Aid Directory</p>
+            <!-- Section 2: Relief & Medical Aid -->
+            <div class="space-y-1 pt-2 border-t border-slate-800/80">
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400/90 px-3 mb-2 flex items-center space-x-1.5">
+                    <i data-lucide="cross" class="w-3 h-3 text-emerald-400"></i>
+                    <span>Relief & Medical Aid</span>
+                </p>
                 <button type="button" onclick="switchTab('shelters')" data-tab="shelters" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="tent" class="w-4 h-4 shrink-0"></i>
+                    <i data-lucide="tent" class="w-4 h-4 shrink-0 text-amber-400"></i>
                     <span data-i18n="navShelters">Relief Shelters</span>
                 </button>
                 <button type="button" onclick="switchTab('hospitals')" data-tab="hospitals" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="cross" class="w-4 h-4 shrink-0"></i>
+                    <i data-lucide="cross" class="w-4 h-4 shrink-0 text-red-400"></i>
                     <span data-i18n="navHospitals">Hospitals & Trauma</span>
                 </button>
-                <button type="button" onclick="switchTab('contacts')" data-tab="contacts" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="phone-call" class="w-4 h-4 shrink-0"></i>
-                    <span data-i18n="navContacts">Emergency Hotlines</span>
-                </button>
-                <button type="button" onclick="switchTab('risk')" data-tab="risk" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="activity" class="w-4 h-4 shrink-0"></i>
-                    <span data-i18n="navLiveRisk">AI Risk Analysis</span>
-                </button>
-                <button type="button" onclick="switchTab('weather')" data-tab="weather" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="cloud-rain" class="w-4 h-4 shrink-0"></i>
-                    <span data-i18n="navWeather">Weather Radar</span>
-                </button>
                 <button type="button" onclick="switchTab('help')" data-tab="help" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="help-circle" class="w-4 h-4 shrink-0"></i>
+                    <i data-lucide="heart-pulse" class="w-4 h-4 shrink-0 text-pink-400"></i>
                     <span data-i18n="navHelp">Triage & First Aid</span>
+                </button>
+                <button type="button" onclick="switchTab('contacts')" data-tab="contacts" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="phone-call" class="w-4 h-4 shrink-0 text-emerald-400"></i>
+                    <span data-i18n="navContacts">Emergency Hotlines</span>
                 </button>
             </div>
 
-            <!-- Section 3: Portals & Info -->
-            <div class="space-y-1 pt-2 border-t border-slate-800">
-                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-2">Platform Portals</p>
+            <!-- Section 3: AI Risk & Meteorology -->
+            <div class="space-y-1 pt-2 border-t border-slate-800/80">
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-400/90 px-3 mb-2 flex items-center space-x-1.5">
+                    <i data-lucide="cloud-rain" class="w-3 h-3 text-cyan-400"></i>
+                    <span>AI Risk & Meteorology</span>
+                </p>
+                <button type="button" onclick="switchTab('risk')" data-tab="risk" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="activity" class="w-4 h-4 shrink-0 text-purple-400"></i>
+                    <span data-i18n="navLiveRisk">AI Risk Analysis</span>
+                </button>
+                <button type="button" onclick="switchTab('weather')" data-tab="weather" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="cloud-sun" class="w-4 h-4 shrink-0 text-cyan-400"></i>
+                    <span data-i18n="navWeather">Weather Radar</span>
+                </button>
+            </div>
+
+            <!-- Section 4: Portals & Info -->
+            <div class="space-y-1 pt-2 border-t border-slate-800/80">
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-2 flex items-center space-x-1.5">
+                    <i data-lucide="globe" class="w-3 h-3 text-slate-400"></i>
+                    <span>Portals & Info</span>
+                </p>
+                <button type="button" onclick="switchTab('about')" data-tab="about" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="info" class="w-4 h-4 shrink-0 text-purple-400"></i>
+                    <span data-i18n="navAbout">About RESCUE AI</span>
+                </button>
                 <a href="ngo.html" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-purple-300">
-                    <i data-lucide="heart-handshake" class="w-4 h-4 shrink-0 text-purple-400"></i>
+                    <i data-lucide="heart-handshake" class="w-4 h-4 shrink-0 text-pink-400"></i>
                     <span>NGO Relief Portal</span>
                 </a>
                 <a href="authority.html" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-amber-300">
                     <i data-lucide="shield" class="w-4 h-4 shrink-0 text-amber-400"></i>
                     <span>Authority Command HQ</span>
                 </a>
-                <button type="button" onclick="switchTab('about')" data-tab="about" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="info" class="w-4 h-4 shrink-0"></i>
-                    <span data-i18n="navAbout">About RESCUE AI</span>
-                </button>
             </div>
         </aside>
 
@@ -1189,7 +1206,7 @@
                         </div>
                         <div>
                             <label class="block text-slate-400 font-bold mb-1">Victims / Density Affected</label>
-                            <input type="number" id="eval-people-count" value="5" min="1" max="1000" oninput="runModularRiskAssessment()" onchange="runModularRiskAssessment()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                            <input type="number" id="eval-people-count" value="5" min="1" max="1000" onchange="runModularRiskAssessment()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
                         </div>
                     </div>
 
@@ -1502,35 +1519,12 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                 <div>
                     <h1 class="text-3xl font-black text-white" data-i18n="hospitalsTitle">Emergency Hospitals & Trauma Centers</h1>
-                    <p class="text-xs text-slate-400 mt-1">Live trauma center availability, ICU beds, emergency fleet & verified contact numbers.</p>
+                    <p class="text-xs text-slate-400 mt-1">Live trauma center availability, ICU beds, emergency fleet & contact numbers.</p>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <button onclick="fetchHospitalsDirectory('', true)" class="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 shadow transition">
-                        <i data-lucide="crosshair" class="w-3.5 h-3.5"></i>
-                        <span>Near My GPS</span>
-                    </button>
-                    <button onclick="fetchHospitalsDirectory()" class="bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
-                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                        <span>Refresh</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Hospital City & Landmark Search Bar (User Requirement: show real data hospitals near to the live location) -->
-            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-3 shadow-md">
-                <div class="flex items-center space-x-2 w-full md:w-auto flex-grow max-w-xl">
-                    <div class="relative w-full">
-                        <input type="text" id="hospital-search-input" placeholder="Search city, area or landmark (e.g. Hazratganj, Chowk, Gomti Nagar)..." onkeydown="if(event.key === 'Enter') searchHospitalsDirectory()" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-white placeholder-slate-400 focus:border-blue-500 focus:outline-none">
-                    </div>
-                    <button onclick="searchHospitalsDirectory()" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow flex items-center space-x-1.5 transition shrink-0">
-                        <i data-lucide="search" class="w-3.5 h-3.5"></i>
-                        <span>Search</span>
-                    </button>
-                </div>
-                <div id="hospital-location-indicator" class="text-xs text-slate-400 flex items-center space-x-2 shrink-0">
-                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span id="hospital-location-label">Sorted by distance to your live location</span>
-                </div>
+                <button onclick="fetchHospitalsDirectory()" class="bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 px-4 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    <span>Refresh Hospitals</span>
+                </button>
             </div>
 
             <div id="hospitals-directory-grid" class="grid md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
@@ -2187,35 +2181,84 @@
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
-            <form onsubmit="saveCitizenProfile(event)" class="space-y-3 text-xs">
+            <form onsubmit="saveCitizenProfile(event)" class="space-y-3 text-xs max-h-[75vh] overflow-y-auto pr-1">
+                <!-- Avatar selection & preview -->
+                <div class="flex items-center space-x-3 p-3 bg-slate-950/80 rounded-xl border border-slate-800">
+                    <img id="prof-avatar-preview" src="assets/default-avatar.png" onerror="this.src='https://ui-avatars.com/api/?name=Citizen&background=7e22ce&color=fff'" alt="Profile Photo" class="w-12 h-12 rounded-full border border-purple-500 object-cover bg-slate-900">
+                    <div class="flex-1">
+                        <label class="block text-slate-300 font-bold mb-0.5">Profile Avatar / Photo URL</label>
+                        <input type="url" id="prof-avatar" oninput="updateAvatarPreview(this.value)" placeholder="https://example.com/photo.jpg" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white text-[11px] focus:border-purple-500 focus:outline-none">
+                    </div>
+                </div>
+
                 <div>
                     <label class="block text-slate-300 font-bold mb-1">Full Name</label>
                     <input type="text" id="prof-name" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none" required>
                 </div>
-                <div>
-                    <label class="block text-slate-300 font-bold mb-1">Primary Phone Number</label>
-                    <input type="tel" id="prof-phone" placeholder="+91 9876543210" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Primary Phone</label>
+                        <input type="tel" id="prof-phone" placeholder="+91 9876543210" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Emergency Relative Phone</label>
+                        <input type="tel" id="prof-em-phone" placeholder="+91 9876543211" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-slate-300 font-bold mb-1">Emergency Relative Contact</label>
-                    <input type="tel" id="prof-em-phone" placeholder="+91 9876543211" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Blood Group</label>
+                        <select id="prof-blood" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                            <option value="O+">O+ Positive</option>
+                            <option value="O-">O- Negative</option>
+                            <option value="A+">A+ Positive</option>
+                            <option value="A-">A- Negative</option>
+                            <option value="B+">B+ Positive</option>
+                            <option value="B-">B- Negative</option>
+                            <option value="AB+">AB+ Positive</option>
+                            <option value="AB-">AB- Negative</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-300 font-bold mb-1">Language Preference</label>
+                        <select id="prof-lang" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
+                            <option value="en">English</option>
+                            <option value="hi">हिंदी (Hindi)</option>
+                            <option value="bn">বাংলা (Bengali)</option>
+                            <option value="ta">தமிழ் (Tamil)</option>
+                            <option value="te">తెలుగు (Telugu)</option>
+                            <option value="mr">मराठी (Marathi)</option>
+                        </select>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-slate-300 font-bold mb-1">Blood Group</label>
-                    <select id="prof-blood" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:border-purple-500 focus:outline-none">
-                        <option value="O+">O+ Positive</option>
-                        <option value="O-">O- Negative</option>
-                        <option value="A+">A+ Positive</option>
-                        <option value="A-">A- Negative</option>
-                        <option value="B+">B+ Positive</option>
-                        <option value="B-">B- Negative</option>
-                        <option value="AB+">AB+ Positive</option>
-                        <option value="AB-">AB- Negative</option>
-                    </select>
+
+                <!-- Notification Preferences -->
+                <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                    <label class="block text-slate-300 font-bold mb-1 uppercase text-[10px] tracking-wide text-purple-400">Notification Channels</label>
+                    <div class="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>Emergency Push Notifications</span>
+                        <input type="checkbox" id="prof-notif-push" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>SMS Incident Dispatch Alerts</span>
+                        <input type="checkbox" id="prof-notif-sms" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-slate-300">
+                        <span>Email Status Reports</span>
+                        <input type="checkbox" id="prof-notif-email" checked class="w-4 h-4 rounded bg-slate-900 border-slate-700 text-purple-600 focus:ring-0">
+                    </div>
                 </div>
-                <button type="submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl uppercase text-xs transition">
+
+                <button type="submit" class="w-full bg-purple-700 hover:bg-purple-600 text-white font-bold py-2.5 rounded-xl uppercase text-xs transition shadow-lg">
                     Save Profile Information
                 </button>
+
+                <!-- Danger Zone: Account Deletion -->
+                <div class="pt-3 border-t border-slate-800">
+                    <button type="button" onclick="promptDeleteAccount()" class="w-full bg-red-950/50 hover:bg-red-900/60 border border-red-800/80 text-red-300 hover:text-red-100 font-bold py-2 rounded-xl text-xs transition">
+                        🗑️ Delete Account Permanently
+                    </button>
+                </div>
             </form>
         </div>
     </div>
@@ -2271,9 +2314,12 @@
 
         <!-- Mobile Drawer Navigation Links -->
         <div class="space-y-4 flex-grow">
-            <!-- Emergency Operations -->
+            <!-- Category 1: Emergency Operations -->
             <div class="space-y-1">
-                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-1">Emergency Operations</p>
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-purple-400/90 px-3 mb-1 flex items-center space-x-1.5">
+                    <i data-lucide="shield-alert" class="w-3 h-3 text-purple-400"></i>
+                    <span>Emergency Operations</span>
+                </p>
                 <button type="button" onclick="switchTab('home')" data-tab="home" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-bold transition bg-purple-700 text-white shadow">
                     <i data-lucide="home" class="w-4 h-4 shrink-0"></i>
                     <span data-i18n="navHome">Home Command</span>
@@ -2292,50 +2338,64 @@
                 </button>
             </div>
 
-            <!-- Relief & Aid Directory -->
-            <div class="space-y-1">
-                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-1">Relief & Aid Directory</p>
+            <!-- Category 2: Relief & Medical Aid -->
+            <div class="space-y-1 pt-2 border-t border-slate-800/80">
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400/90 px-3 mb-1 flex items-center space-x-1.5">
+                    <i data-lucide="cross" class="w-3 h-3 text-emerald-400"></i>
+                    <span>Relief & Medical Aid</span>
+                </p>
                 <button type="button" onclick="switchTab('shelters')" data-tab="shelters" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="tent" class="w-4 h-4 shrink-0"></i>
+                    <i data-lucide="tent" class="w-4 h-4 shrink-0 text-amber-400"></i>
                     <span data-i18n="navShelters">Relief Shelters</span>
                 </button>
                 <button type="button" onclick="switchTab('hospitals')" data-tab="hospitals" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="cross" class="w-4 h-4 shrink-0"></i>
+                    <i data-lucide="cross" class="w-4 h-4 shrink-0 text-red-400"></i>
                     <span data-i18n="navHospitals">Hospitals & Trauma</span>
                 </button>
-                <button type="button" onclick="switchTab('contacts')" data-tab="contacts" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="phone-call" class="w-4 h-4 shrink-0"></i>
-                    <span data-i18n="navContacts">Emergency Hotlines</span>
-                </button>
-                <button type="button" onclick="switchTab('risk')" data-tab="risk" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="activity" class="w-4 h-4 shrink-0"></i>
-                    <span data-i18n="navLiveRisk">AI Risk Analysis</span>
-                </button>
-                <button type="button" onclick="switchTab('weather')" data-tab="weather" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="cloud-rain" class="w-4 h-4 shrink-0"></i>
-                    <span data-i18n="navWeather">Weather Radar</span>
-                </button>
                 <button type="button" onclick="switchTab('help')" data-tab="help" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="help-circle" class="w-4 h-4 shrink-0"></i>
+                    <i data-lucide="heart-pulse" class="w-4 h-4 shrink-0 text-pink-400"></i>
                     <span data-i18n="navHelp">Triage & First Aid</span>
+                </button>
+                <button type="button" onclick="switchTab('contacts')" data-tab="contacts" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="phone-call" class="w-4 h-4 shrink-0 text-emerald-400"></i>
+                    <span data-i18n="navContacts">Emergency Hotlines</span>
                 </button>
             </div>
 
-            <!-- Platform Portals -->
-            <div class="space-y-1 pt-2 border-t border-slate-800">
-                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-1">Platform Portals</p>
+            <!-- Category 3: AI Risk & Meteorology -->
+            <div class="space-y-1 pt-2 border-t border-slate-800/80">
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-400/90 px-3 mb-1 flex items-center space-x-1.5">
+                    <i data-lucide="cloud-rain" class="w-3 h-3 text-cyan-400"></i>
+                    <span>AI Risk & Meteorology</span>
+                </p>
+                <button type="button" onclick="switchTab('risk')" data-tab="risk" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="activity" class="w-4 h-4 shrink-0 text-purple-400"></i>
+                    <span data-i18n="navLiveRisk">AI Risk Analysis</span>
+                </button>
+                <button type="button" onclick="switchTab('weather')" data-tab="weather" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="cloud-sun" class="w-4 h-4 shrink-0 text-cyan-400"></i>
+                    <span data-i18n="navWeather">Weather Radar</span>
+                </button>
+            </div>
+
+            <!-- Category 4: Portals & Info -->
+            <div class="space-y-1 pt-2 border-t border-slate-800/80">
+                <p class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 px-3 mb-1 flex items-center space-x-1.5">
+                    <i data-lucide="globe" class="w-3 h-3 text-slate-400"></i>
+                    <span>Portals & Info</span>
+                </p>
+                <button type="button" onclick="switchTab('about')" data-tab="about" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
+                    <i data-lucide="info" class="w-4 h-4 shrink-0 text-purple-400"></i>
+                    <span data-i18n="navAbout">About RESCUE AI</span>
+                </button>
                 <a href="ngo.html" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-purple-300">
-                    <i data-lucide="heart-handshake" class="w-4 h-4 shrink-0 text-purple-400"></i>
+                    <i data-lucide="heart-handshake" class="w-4 h-4 shrink-0 text-pink-400"></i>
                     <span>NGO Relief Portal</span>
                 </a>
                 <a href="authority.html" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-amber-300">
                     <i data-lucide="shield" class="w-4 h-4 shrink-0 text-amber-400"></i>
                     <span>Authority Command HQ</span>
                 </a>
-                <button type="button" onclick="switchTab('about')" data-tab="about" class="sidebar-nav-btn w-full flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition text-slate-400 hover:bg-slate-800 hover:text-slate-200">
-                    <i data-lucide="info" class="w-4 h-4 shrink-0"></i>
-                    <span data-i18n="navAbout">About RESCUE AI</span>
-                </button>
             </div>
         </div>
     </aside>
@@ -2403,6 +2463,7 @@
     <script src="js/i18n.js?v=20261015-v7"></script>
     <script src="js/api.js?v=20261015-v7"></script>
     <script src="js/socket.js?v=20261015-v7"></script>
+    <script src="js/tactical-grid.js?v=20261020-v1"></script>
     <script src="js/voice-sos.js?v=20261015-v7"></script>
     <script src="js/citizen-map.js?v=20261015-v7"></script>
     <script src="js/citizen-app.js?v=20261015-v7"></script>

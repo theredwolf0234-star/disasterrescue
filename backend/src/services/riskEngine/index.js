@@ -44,10 +44,11 @@ function evaluateDisasterRisk({
     const windSpeed = Number(weather.windSpeed || weather.wind_kph || 0);
     const temperature = Number(weather.temperature || weather.temp_c || 30);
 
+    let rawResult;
     // 1. FLOOD & EVACUATION
     if (text.includes('flood') || text.includes('water') || text.includes('drowning') || text.includes('submerged') || text.includes('inundation') || text.includes('evacuat')) {
         const isCriticalFlood = text.includes('flash flood') || (text.includes('trapped') && victimCount >= 2) || text.includes('submerged') || text.includes('drowning');
-        return calculateFloodRisk({
+        rawResult = calculateFloodRisk({
             rainfall: isCriticalFlood ? 45 : Math.max(rainfall, 15),
             waterLevelMeters: isCriticalFlood ? 2.5 : 1.0,
             elevationMeters: isCriticalFlood ? 105 : 115,
@@ -57,8 +58,8 @@ function evaluateDisasterRisk({
     }
 
     // 2. LANDSLIDE
-    if (text.includes('landslide') || text.includes('mudslide') || text.includes('debris flow') || text.includes('slope')) {
-        return calculateLandslideRisk({
+    else if (text.includes('landslide') || text.includes('mudslide') || text.includes('debris flow') || text.includes('slope')) {
+        rawResult = calculateLandslideRisk({
             slopeDegrees: 36,
             rainfall: Math.max(rainfall, 22),
             soilSaturation: 78,
@@ -68,9 +69,9 @@ function evaluateDisasterRisk({
     }
 
     // 3. EARTHQUAKE
-    if (text.includes('earthquake') || text.includes('tremor') || text.includes('quake') || text.includes('seismic')) {
+    else if (text.includes('earthquake') || text.includes('tremor') || text.includes('quake') || text.includes('seismic')) {
         const estMag = text.includes('severe') || text.includes('major') ? 6.8 : 5.4;
-        return calculateEarthquakeRisk({
+        rawResult = calculateEarthquakeRisk({
             magnitude: estMag,
             epicentralDistanceKm: text.includes('epicenter') ? 15 : 45,
             seismicZone: 'IV',
@@ -80,8 +81,8 @@ function evaluateDisasterRisk({
     }
 
     // 4. CYCLONE
-    if (text.includes('cyclone') || text.includes('storm surge') || text.includes('hurricane') || text.includes('gale') || text.includes('typhoon')) {
-        return calculateCycloneRisk({
+    else if (text.includes('cyclone') || text.includes('storm surge') || text.includes('hurricane') || text.includes('gale') || text.includes('typhoon')) {
+        rawResult = calculateCycloneRisk({
             windSpeedKph: Math.max(windSpeed, text.includes('severe') ? 110 : 75),
             rainfall: Math.max(rainfall, 25),
             warningLevel: victimCount >= 3 ? 'RED' : 'ORANGE',
@@ -90,8 +91,8 @@ function evaluateDisasterRisk({
     }
 
     // 5. FIRE
-    if (text.includes('fire') || text.includes('blaze') || text.includes('burn') || text.includes('explosion') || text.includes('smoke')) {
-        return calculateFireRisk({
+    else if (text.includes('fire') || text.includes('blaze') || text.includes('burn') || text.includes('explosion') || text.includes('smoke')) {
+        rawResult = calculateFireRisk({
             temperatureC: Math.max(temperature, 38),
             windSpeedKph: Math.max(windSpeed, 20),
             isEnclosedStructure: !text.includes('forest') && !text.includes('wildfire'),
@@ -101,8 +102,8 @@ function evaluateDisasterRisk({
     }
 
     // 6. LIGHTNING
-    if (text.includes('lightning') || text.includes('thunder') || text.includes('struck by lightning')) {
-        return calculateLightningRisk({
+    else if (text.includes('lightning') || text.includes('thunder') || text.includes('struck by lightning')) {
+        rawResult = calculateLightningRisk({
             convectiveIndex: 'HIGH',
             rainfall: Math.max(rainfall, 18),
             isOutdoor: !text.includes('inside') && !text.includes('indoors'),
@@ -111,8 +112,8 @@ function evaluateDisasterRisk({
     }
 
     // 7. STRUCTURAL COLLAPSE
-    if (text.includes('collapse') || text.includes('rubble') || text.includes('trapped') || text.includes('crushed') || text.includes('building fall')) {
-        return calculateStructuralRisk({
+    else if (text.includes('collapse') || text.includes('rubble') || text.includes('trapped') || text.includes('crushed') || text.includes('building fall')) {
+        rawResult = calculateStructuralRisk({
             damageLevel: victimCount >= 3 ? 'TOTAL_COLLAPSE' : 'SEVERE',
             trappedCount: victimCount,
             secondaryCollapseRisk: true,
@@ -121,24 +122,47 @@ function evaluateDisasterRisk({
     }
 
     // 8. GENERAL / MEDICAL EMERGENCY OR OTHER
-    const isCriticalGeneral = text.includes('cardiac') || text.includes('unconscious') || text.includes('severe head injury') || victimCount >= 4;
-    const baseScore = isCriticalGeneral ? 85 : victimCount >= 2 ? 65 : 45;
-    const level = baseScore >= 76 ? 'CRITICAL' : baseScore >= 51 ? 'HIGH' : 'MODERATE';
+    else {
+        const isCriticalGeneral = text.includes('cardiac') || text.includes('unconscious') || text.includes('severe head injury') || victimCount >= 4;
+        const baseScore = isCriticalGeneral ? 85 : victimCount >= 2 ? 65 : 45;
+        const level = baseScore >= 76 ? 'CRITICAL' : baseScore >= 51 ? 'HIGH' : 'MODERATE';
+
+        rawResult = {
+            disasterType: (category || 'GENERAL_EMERGENCY').toUpperCase(),
+            score: baseScore,
+            level,
+            confidence: 85,
+            reason: `General emergency triage assigned score of ${baseScore}/100 (${level}) based on victim headcount (${victimCount}) and urgent field report: "${details.substring(0, 80)}..."`,
+            factors: {
+                casualtyLoad: victimCount >= 3 ? 'HIGH' : 'MODERATE',
+                urgency: isCriticalGeneral ? 'CRITICAL' : 'MODERATE',
+                fieldCondition: 'Active Response Required'
+            },
+            recommendedAction: isCriticalGeneral 
+                ? 'Dispatch Advanced Life Support (ALS) Ambulance and trauma response squad immediately.'
+                : 'Mobilize regional response unit and confirm victim baseline.'
+        };
+    }
+
+    const locLat = location && (location.latitude !== undefined ? location.latitude : (location.lat !== undefined ? location.lat : null));
+    const locLng = location && (location.longitude !== undefined ? location.longitude : (location.lng !== undefined ? location.lng : null));
 
     return {
-        disasterType: category.toUpperCase() || 'GENERAL_EMERGENCY',
-        score: baseScore,
-        level,
-        confidence: 85,
-        reason: `General emergency triage assigned score of ${baseScore}/100 (${level}) based on victim headcount (${victimCount}) and urgent field report: "${details.substring(0, 80)}..."`,
-        factors: {
-            casualtyLoad: victimCount >= 3 ? 'HIGH' : 'MODERATE',
-            urgency: isCriticalGeneral ? 'CRITICAL' : 'MODERATE',
-            fieldCondition: 'Active Response Required'
-        },
-        recommendedAction: isCriticalGeneral 
-            ? 'Dispatch Advanced Life Support (ALS) Ambulance and trauma response squad immediately.'
-            : 'Mobilize regional response unit and confirm victim baseline.'
+        ...rawResult,
+        hazardType: rawResult.disasterType || (category ? String(category).toUpperCase() : 'GENERAL_EMERGENCY'),
+        disasterType: rawResult.disasterType || (category ? String(category).toUpperCase() : 'GENERAL_EMERGENCY'),
+        score: rawResult.score,
+        level: rawResult.level,
+        confidence: rawResult.confidence || 88,
+        assessmentTime: new Date().toISOString(),
+        assessmentType: 'RULE_BASED_MULTIDISASTER_ASSESSMENT',
+        source: 'AISTER Multi-Criteria Geospatial & Empirical Decision Matrix (NDMA / Sendai Framework guidelines)',
+        limitations: 'Calculated using empirical hazard decision rules, geospatial proximity heuristics, and available weather telemetry. Sensor confidence contingent on GPS coordinate accuracy and local weather station coverage. Does not replace on-ground geotechnical/seismological sensor feeds or official NDMA red alerts.',
+        location: (locLat !== null && locLng !== null) ? {
+            latitude: Number(locLat),
+            longitude: Number(locLng),
+            accuracy: location.accuracy || 'GPS/Reported'
+        } : null
     };
 }
 

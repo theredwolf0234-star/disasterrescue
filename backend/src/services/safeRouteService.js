@@ -253,6 +253,7 @@ async function calculateSafeRoute({ originLat, originLng, destLat, destLng, team
         etaMinutes,
         routeRisk,
         avoidedHazards,
+        disclaimer: 'DISCLAIMER: Evacuation and rescue routes are advisory recommendations calculated from available road network heuristics and reported hazard data. Changing disaster conditions, localized flash flooding, road collapses, or powerline hazards may arise without warning. Field personnel and citizens must exercise judgment; route safety cannot be guaranteed.',
         summary: `Road Transit: ${routeDistanceKm} km • ETA: ~${etaMinutes} mins • Risk: ${routeRisk}`,
         waypoints,
         instructions
