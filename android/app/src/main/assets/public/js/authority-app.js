@@ -2178,10 +2178,17 @@ function escapeHtml(str) {
 // RIGHT-TOP ADMIN NAVIGATION MENU
 // -------------------------------------------------------------
 function toggleAdminMenu(event) {
-    if (event) event.stopPropagation();
+    if (event) {
+        if (typeof event.stopPropagation === 'function') event.stopPropagation();
+    }
     const dropdown = document.getElementById('admin-nav-dropdown');
     if (!dropdown) return;
-    dropdown.classList.toggle('hidden');
+    const willShow = dropdown.classList.contains('hidden');
+    if (willShow) {
+        dropdown.classList.remove('hidden');
+    } else {
+        dropdown.classList.add('hidden');
+    }
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -2196,8 +2203,21 @@ window.closeAdminMenu = closeAdminMenu;
 document.addEventListener('click', (e) => {
     const dropdown = document.getElementById('admin-nav-dropdown');
     const btn = document.getElementById('admin-menu-btn');
-    if (dropdown && !dropdown.contains(e.target) && (!btn || !btn.contains(e.target))) {
-        dropdown.classList.add('hidden');
+    if (dropdown && !dropdown.classList.contains('hidden')) {
+        if (!dropdown.contains(e.target) && (!btn || !btn.contains(e.target))) {
+            dropdown.classList.add('hidden');
+        }
+    }
+});
+
+// Direct event listener fallback to ensure clicking any sub-element opens dropdown
+document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('admin-menu-btn');
+    if (btn && !btn._hasMenuClick) {
+        btn._hasMenuClick = true;
+        btn.addEventListener('click', (e) => {
+            toggleAdminMenu(e);
+        });
     }
 });
 
