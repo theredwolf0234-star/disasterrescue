@@ -285,7 +285,25 @@ class VoiceSOSEngine {
 
             this.playEmergencyAudio();
 
-            const coords = typeof getUserCoordinates === 'function' ? getUserCoordinates() : [26.8467, 80.9462];
+            const coords = typeof getUserCoordinates === 'function' ? getUserCoordinates() : null;
+            if (!coords || !coords[0] || !coords[1]) {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalBtnContent || `<span>⚡ SEND INSTANT VOICE SOS (ZERO DELAY)</span>`;
+                }
+                this.isRecording = false;
+                this.updateRecordingUI('idle');
+                if (typeof showToast === 'function') {
+                    showToast('⚠️ Emergency location is required before dispatching voice SOS. Please allow GPS or set landmark.', 'warning');
+                }
+                if (typeof openLocationModal === 'function') openLocationModal();
+                return;
+            }
+
+            const gpsTelemetry = (typeof window.getGpsTelemetry === 'function')
+                ? window.getGpsTelemetry()
+                : { isVerifiedGps: false, accuracy: null, timestamp: new Date().toISOString(), source: 'manual' };
+
             const voiceText = "VOICE SOS TRANSMISSION: It's an emergency, I need help. Immediate emergency assistance and medical rescue triage requested.";
 
             let res;
@@ -296,6 +314,12 @@ class VoiceSOSEngine {
                 formData.append('details', voiceText + (this.fullTranscript ? ` (Dictated: ${this.fullTranscript})` : ''));
                 formData.append('latitude', coords[0].toString());
                 formData.append('longitude', coords[1].toString());
+                formData.append('is_verified_gps', gpsTelemetry.isVerifiedGps ? '1' : '0');
+                formData.append('location_source', gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'));
+                if (gpsTelemetry.accuracy !== null && gpsTelemetry.accuracy !== undefined) {
+                    formData.append('gps_accuracy', gpsTelemetry.accuracy.toString());
+                }
+                formData.append('gps_timestamp', gpsTelemetry.timestamp || new Date().toISOString());
                 formData.append('evidence', this.recordedAudioBlob, 'voice-sos.webm');
                 res = await api.postMultipart('/api/incidents', formData);
             } else {
@@ -304,7 +328,11 @@ class VoiceSOSEngine {
                     count: 1,
                     details: voiceText,
                     latitude: coords[0],
-                    longitude: coords[1]
+                    longitude: coords[1],
+                    is_verified_gps: gpsTelemetry.isVerifiedGps ? 1 : 0,
+                    location_source: gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'),
+                    gps_accuracy: gpsTelemetry.accuracy || null,
+                    gps_timestamp: gpsTelemetry.timestamp || new Date().toISOString()
                 };
                 res = await api.post('/api/incidents', payload);
             }

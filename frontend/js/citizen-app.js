@@ -751,10 +751,24 @@ async function triggerOneTapSos() {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 
-    let coords = typeof getUserCoordinates === 'function' ? getUserCoordinates() : [26.8467, 80.9462];
+    let coords = typeof getUserCoordinates === 'function' ? getUserCoordinates() : null;
     const gpsTelemetry = (typeof window.getGpsTelemetry === 'function')
         ? window.getGpsTelemetry()
-        : { isVerifiedGps: true, accuracy: 5.0, timestamp: new Date().toISOString() };
+        : { isVerifiedGps: false, accuracy: null, timestamp: new Date().toISOString(), source: 'unresolved' };
+
+    // Strict location verification: NEVER silently fall back to hardcoded fake coordinates
+    if (!coords || !coords[0] || !coords[1]) {
+        window.isSosSubmitting = false;
+        window.pendingSosAfterLocation = true;
+        if (cockpit) cockpit.classList.add('hidden');
+        if (typeof showToast === 'function') {
+            showToast('⚠️ Precise emergency location is required before dispatching rescue teams. Please allow GPS or set your landmark.', 'warning');
+        }
+        if (typeof openLocationModal === 'function') {
+            openLocationModal();
+        }
+        return;
+    }
 
     const idempotencyKey = `sos_onetap_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 
@@ -766,6 +780,7 @@ async function triggerOneTapSos() {
                 details: 'ONE-TAP EMERGENCY SOS: Network offline. Queued locally for immediate dispatch.',
                 latitude: coords[0],
                 longitude: coords[1],
+                location_source: gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'),
                 timestamp: new Date().toISOString()
             });
             showToast('SOS Beacon saved offline. Will auto-dispatch immediately when connectivity returns.', 'warning');
@@ -785,7 +800,8 @@ async function triggerOneTapSos() {
             latitude: coords[0],
             longitude: coords[1],
             is_verified_gps: gpsTelemetry.isVerifiedGps ? 1 : 0,
-            gps_accuracy: gpsTelemetry.accuracy || 4.2,
+            location_source: gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'),
+            gps_accuracy: gpsTelemetry.accuracy || null,
             gps_timestamp: gpsTelemetry.timestamp || new Date().toISOString(),
             autoDispatch: true,
             source: 'ONE_TAP_SOS',
@@ -1326,10 +1342,41 @@ async function handleSosSubmit(e) {
     let address = addressInput ? addressInput.value.trim() : '';
     const evidenceFileInput = document.getElementById('sos-evidence');
 
-    let coords = typeof getUserCoordinates === 'function' ? getUserCoordinates() : [26.8467, 80.9462];
+    let coords = typeof getUserCoordinates === 'function' ? getUserCoordinates() : null;
 
     const submitBtn = document.getElementById('sos-submit-btn');
     const originalBtnText = submitBtn ? submitBtn.innerHTML : 'Dispatch Beacon';
+
+    // If coordinates are missing, attempt to geocode the address input
+    if (!coords || !coords[0] || !coords[1]) {
+        if (address) {
+            try {
+                const geo = await api.get(`/api/geocode/search?q=${encodeURIComponent(address)}`);
+                const items = (geo.features && geo.features.length > 0) ? geo.features : (geo.results || []);
+                if (geo.success && items.length > 0) {
+                    const place = items[0];
+                    const lng = place.longitude || (place.center ? place.center[0] : null);
+                    const lat = place.latitude || (place.center ? place.center[1] : null);
+                    if (lat !== null && lng !== null) {
+                        coords = [lat, lng];
+                        if (typeof window.setManualLocation === 'function') {
+                            window.setManualLocation(lng, lat, place.place_name || place.text, 'manual_address');
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
+    }
+
+    if (!coords || !coords[0] || !coords[1]) {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+        }
+        showToast('⚠️ Precise location is required before dispatching rescue teams. Please allow GPS or enter an address.', 'warning');
+        if (typeof openLocationModal === 'function') openLocationModal();
+        return;
+    }
 
     try {
         if (submitBtn) {
@@ -1342,6 +1389,10 @@ async function handleSosSubmit(e) {
             `;
         }
 
+        const gpsTelemetry = (typeof window.getGpsTelemetry === 'function')
+            ? window.getGpsTelemetry()
+            : { isVerifiedGps: false, accuracy: null, timestamp: new Date().toISOString(), source: 'manual' };
+
         // Check if offline
         if (!navigator.onLine) {
             saveOfflineReport({
@@ -1351,6 +1402,7 @@ async function handleSosSubmit(e) {
                 address,
                 latitude: coords[0],
                 longitude: coords[1],
+                location_source: gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'),
                 timestamp: new Date().toISOString()
             });
             document.getElementById('sos-modal').classList.add('hidden');
@@ -1362,9 +1414,6 @@ async function handleSosSubmit(e) {
         const hasEvidenceFile = evidenceFileInput && evidenceFileInput.files && evidenceFileInput.files.length > 0;
         const hasAudioBlob = voiceEngine && voiceEngine.recordedAudioBlob;
         const idempotencyKey = `sos_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const gpsTelemetry = (typeof window.getGpsTelemetry === 'function')
-            ? window.getGpsTelemetry()
-            : { isVerifiedGps: true, accuracy: null, timestamp: new Date().toISOString() };
 
         if (hasEvidenceFile || hasAudioBlob) {
             const formData = new FormData();
@@ -1375,6 +1424,7 @@ async function handleSosSubmit(e) {
             formData.append('longitude', coords[1].toString());
             formData.append('idempotency_key', idempotencyKey);
             formData.append('is_verified_gps', gpsTelemetry.isVerifiedGps ? '1' : '0');
+            formData.append('location_source', gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'));
             if (gpsTelemetry.accuracy !== null && gpsTelemetry.accuracy !== undefined) {
                 formData.append('gps_accuracy', gpsTelemetry.accuracy.toString());
             }
@@ -1398,6 +1448,7 @@ async function handleSosSubmit(e) {
                 address: address || undefined,
                 idempotency_key: idempotencyKey,
                 is_verified_gps: gpsTelemetry.isVerifiedGps ? 1 : 0,
+                location_source: gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'),
                 gps_accuracy: gpsTelemetry.accuracy,
                 gps_timestamp: gpsTelemetry.timestamp || new Date().toISOString()
             };
@@ -1450,7 +1501,38 @@ async function handleFullReportSubmit(e) {
     const evidenceInput = document.getElementById('report-evidence');
     const submitBtn = document.getElementById('report-submit-btn');
 
-    let coords = typeof getUserCoordinates === 'function' ? getUserCoordinates() : [26.8467, 80.9462];
+    let coords = typeof getUserCoordinates === 'function' ? getUserCoordinates() : null;
+
+    // If coordinates are missing, attempt to geocode the address input
+    if (!coords || !coords[0] || !coords[1]) {
+        if (address) {
+            try {
+                const geo = await api.get(`/api/geocode/search?q=${encodeURIComponent(address)}`);
+                const items = (geo.features && geo.features.length > 0) ? geo.features : (geo.results || []);
+                if (geo.success && items.length > 0) {
+                    const place = items[0];
+                    const lng = place.longitude || (place.center ? place.center[0] : null);
+                    const lat = place.latitude || (place.center ? place.center[1] : null);
+                    if (lat !== null && lng !== null) {
+                        coords = [lat, lng];
+                        if (typeof window.setManualLocation === 'function') {
+                            window.setManualLocation(lng, lat, place.place_name || place.text, 'manual_address');
+                        }
+                    }
+                }
+            } catch(e) {}
+        }
+    }
+
+    if (!coords || !coords[0] || !coords[1]) {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = `<span>Submit Rescue Report</span>`;
+        }
+        showToast('⚠️ Valid incident location is required. Please allow GPS or specify your landmark/address.', 'warning');
+        if (typeof openLocationModal === 'function') openLocationModal();
+        return;
+    }
 
     try {
         if (submitBtn) {
@@ -1458,16 +1540,26 @@ async function handleFullReportSubmit(e) {
             submitBtn.innerHTML = `<span>DISPATCHING REPORT...</span>`;
         }
 
+        const gpsTelemetry = (typeof window.getGpsTelemetry === 'function')
+            ? window.getGpsTelemetry()
+            : { isVerifiedGps: false, accuracy: null, timestamp: new Date().toISOString(), source: 'manual' };
+
         if (!navigator.onLine) {
-            saveOfflineReport({ category, count, details, address, latitude: coords[0], longitude: coords[1], timestamp: new Date().toISOString() });
+            saveOfflineReport({
+                category,
+                count,
+                details,
+                address,
+                latitude: coords[0],
+                longitude: coords[1],
+                location_source: gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'),
+                timestamp: new Date().toISOString()
+            });
             document.getElementById('full-disaster-form').reset();
             return;
         }
 
         const idempotencyKey = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        const gpsTelemetry = (typeof window.getGpsTelemetry === 'function')
-            ? window.getGpsTelemetry()
-            : { isVerifiedGps: true, accuracy: null, timestamp: new Date().toISOString() };
 
         let res;
         const hasEvidence = evidenceInput && evidenceInput.files && evidenceInput.files.length > 0;
@@ -1482,6 +1574,7 @@ async function handleFullReportSubmit(e) {
             formData.append('longitude', coords[1].toString());
             formData.append('idempotency_key', idempotencyKey);
             formData.append('is_verified_gps', gpsTelemetry.isVerifiedGps ? '1' : '0');
+            formData.append('location_source', gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'));
             if (gpsTelemetry.accuracy !== null && gpsTelemetry.accuracy !== undefined) {
                 formData.append('gps_accuracy', gpsTelemetry.accuracy.toString());
             }
@@ -1502,6 +1595,7 @@ async function handleFullReportSubmit(e) {
                 address: address || undefined,
                 idempotency_key: idempotencyKey,
                 is_verified_gps: gpsTelemetry.isVerifiedGps ? 1 : 0,
+                location_source: gpsTelemetry.source || (gpsTelemetry.isVerifiedGps ? 'gps' : 'manual'),
                 gps_accuracy: gpsTelemetry.accuracy,
                 gps_timestamp: gpsTelemetry.timestamp || new Date().toISOString()
             }, { 'Idempotency-Key': idempotencyKey });

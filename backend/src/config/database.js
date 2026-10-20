@@ -563,6 +563,7 @@ async function createTables() {
     try { await run(`ALTER TABLE incidents ADD COLUMN audio_url ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN recommended_action ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN is_verified_gps ${intType} DEFAULT 1`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN location_source ${textType} DEFAULT 'gps'`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN gps_accuracy ${numType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN gps_timestamp ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN idempotency_key ${textType}`); } catch (e) {}

@@ -141,6 +141,7 @@ async function createIncident(req, res, next) {
 
         // GPS Telemetry verification & accuracy
         const isVerifiedGps = req.body.is_verified_gps !== undefined ? (req.body.is_verified_gps ? 1 : 0) : (req.body.isVerifiedGps !== undefined ? (req.body.isVerifiedGps ? 1 : 0) : 1);
+        const locationSource = req.body.location_source || req.body.locationSource || (isVerifiedGps ? 'gps' : 'manual');
         const rawAccuracy = req.body.gps_accuracy !== undefined ? parseFloat(req.body.gps_accuracy) : (req.body.gpsAccuracy !== undefined ? parseFloat(req.body.gpsAccuracy) : null);
         const gpsAccuracy = !isNaN(rawAccuracy) ? rawAccuracy : null;
         const gpsTimestamp = req.body.gps_timestamp || req.body.gpsTimestamp || new Date().toISOString();
@@ -206,9 +207,9 @@ async function createIncident(req, res, next) {
                 latitude, longitude, readable_address, tactical_grid_id, status,
                 assigned_authority, assigned_rescue_team, evidence_url,
                 risk_score, risk_factors, recommended_action, ai_vision_analysis, audio_url,
-                is_verified_gps, gps_accuracy, gps_timestamp, idempotency_key,
+                is_verified_gps, location_source, gps_accuracy, gps_timestamp, idempotency_key,
                 created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'RECEIVED', NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
             [
                 incidentId,
                 userId,
@@ -227,6 +228,7 @@ async function createIncident(req, res, next) {
                 aiVisionData ? JSON.stringify(aiVisionData) : null,
                 audioUrl,
                 isVerifiedGps,
+                locationSource,
                 gpsAccuracy,
                 gpsTimestamp,
                 idempotencyKey
