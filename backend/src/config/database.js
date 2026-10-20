@@ -598,6 +598,24 @@ async function createTables() {
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN capabilities ${textType} DEFAULT 'General Rescue, First-Aid'`); } catch (e) {}
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN active_incident_count ${intType} DEFAULT 0`); } catch (e) {}
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN last_ack_at ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN operational_zone ${textType} DEFAULT 'ZONE_LUCKNOW'`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN max_capacity ${intType} DEFAULT 2`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN last_location_update ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN is_verified_location ${intType} DEFAULT 1`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN notification_status ${textType} DEFAULT 'IDLE'`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN skills ${textType}`); } catch (e) {}
+
+    // Migrations for incidents dispatch & lifecycle
+    try { await run(`ALTER TABLE incidents ADD COLUMN dispatch_distance_type ${textType} DEFAULT 'road'`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN escalation_reason ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN nearest_distance_km ${numType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN last_status_update ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN assignment_time ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN road_distance_km ${numType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN straight_line_distance_km ${numType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN dispatch_eta_text ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN routing_engine ${textType}`); } catch (e) {}
+
     try { await run(`ALTER TABLE weather_reports ADD COLUMN forecast_json ${textType}`); } catch (e) {}
 
     // Performance Indexes
@@ -747,23 +765,45 @@ async function seedDefaultAdminAndAuthority() {
             }
         }
 
-        // 4. Ensure default rescue teams exist if table is empty
-        const teamCount = await get(`SELECT COUNT(*) as cnt FROM rescue_teams`);
-        if (!teamCount || Number(teamCount.cnt) === 0) {
-            const teams = [
-                ['TEAM_01', 'NDRF Battalion 11 Unit Alpha', 'NDRF-11-A', 'Insp. Rajesh Sharma', '+91 94150 11001', 'AVAILABLE', 8, 'Urban Search & Extrication', 'Heavy Rescue ARV-1', 'Hydraulic Spreaders, Search Cameras, Gas Detectors', 26.8500, 80.9400],
-                ['TEAM_02', 'Gomti Flood Water Rescue Unit Boat-2', 'SDRF-W-02', 'Sub-Insp. Amit Verma', '+91 94150 11002', 'AVAILABLE', 6, 'Water Rescue & Inundation', 'Amphibious Motor Boat #2', 'Inflatable Gemini Boats, Life Jackets, Sonar Scanner', 26.8610, 80.9550],
-                ['TEAM_03', 'Rapid Trauma & Triage Medical Squad 04', 'MED-SQ-04', 'Dr. Priya Saxena', '+91 94150 11003', 'AVAILABLE', 5, 'Medical Emergency Triage', 'Advanced Cardiac Life Support Ambulance', 'Defibrillators, Mobile Oxygen, Trauma Field Kits', 26.8390, 80.9320],
-                ['TEAM_04', 'Civil Defense Hazard Response Squad', 'CD-HZ-01', 'Commander Vikram Singh', '+91 94150 11004', 'AVAILABLE', 10, 'Hazard & Debris Clearing', 'Hydraulic Crane & Earthmover', 'Chain Saws, Power Generators, Heavy Tow Cables', 26.8250, 80.9150]
-            ];
-            for (const t of teams) {
-                await run(
-                    `INSERT INTO rescue_teams (id, name, unit_code, team_leader, contact_phone, status, members, type, vehicle, equipment, current_lat, current_lng, created_at, updated_at)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
-                    t
-                );
-            }
+        // 4. Ensure default rescue teams exist and operational attributes are set
+        const defaultTeams = [
+            ['TEAM_01', 'NDRF Battalion 11 Unit Alpha', 'NDRF-11-A', 'Insp. Rajesh Sharma', '+91 94150 11001', 'AVAILABLE', 8, 'Urban Search & Extrication', 'Heavy Rescue ARV-1', 'Hydraulic Spreaders, Search Cameras, Gas Detectors', 26.8500, 80.9400, 'ZONE_LUCKNOW', 2, 1, 'Urban Search & Extrication, First-Aid, Collapse Rescue, General Rescue'],
+            ['TEAM_02', 'Gomti Flood Water Rescue Unit Boat-2', 'SDRF-W-02', 'Sub-Insp. Amit Verma', '+91 94150 11002', 'AVAILABLE', 6, 'Water Rescue & Inundation', 'Amphibious Motor Boat #2', 'Inflatable Gemini Boats, Life Jackets, Sonar Scanner', 26.8750, 80.9720, 'ZONE_LUCKNOW', 2, 1, 'Water Rescue & Inundation, Flood Evacuation, Aquatic Craft'],
+            ['TEAM_03', 'Rapid Trauma & Triage Medical Squad 04', 'MED-SQ-04', 'Dr. Priya Saxena', '+91 94150 11003', 'AVAILABLE', 5, 'Medical Emergency Triage', 'Advanced Cardiac Life Support Ambulance', 'Defibrillators, Mobile Oxygen, Trauma Field Kits', 26.8390, 80.9320, 'ZONE_LUCKNOW', 2, 1, 'Medical Emergency Triage, Paramedic, Advanced Trauma Care, First-Aid'],
+            ['TEAM_04', 'Civil Defense Hazard Response Squad', 'CD-HZ-01', 'Commander Vikram Singh', '+91 94150 11004', 'AVAILABLE', 10, 'Hazard & Debris Clearing', 'Hydraulic Crane & Earthmover', 'Chain Saws, Power Generators, Heavy Tow Cables', 26.8250, 80.9150, 'ZONE_LUCKNOW', 2, 1, 'Hazard & Debris Clearing, Fire Containment, Evacuation Assistance'],
+            ['TEAM_05', 'NDRF Battalion 08 Quick Response Unit (NCR / Ghaziabad)', 'NDRF-08-NCR', 'Asst. Comdt. Alok Verma', '+91 94150 11005', 'AVAILABLE', 8, 'Urban Search & Extrication', 'All-Terrain Rescue Vehicle ARV-8', 'Hydraulic Cutters, Search Sensors, Gas Detectors, Life Jackets', 28.6692, 77.4538, 'ZONE_NCR_DELHI', 3, 1, 'Urban Search & Extrication, Structural Collapse, Hazmat, General Rescue, First-Aid'],
+            ['TEAM_06', 'SDRF Noida Sector 29 Disaster Intervention Squad', 'SDRF-NOIDA-01', 'Insp. Neeraj Tyagi', '+91 94150 11006', 'AVAILABLE', 6, 'Rapid Water & Urban Rescue', 'Emergency Response Vehicle ERV-2', 'Inflatable Boats, Flood Evacuation Rafts, Trauma First-Aid', 28.5700, 77.3250, 'ZONE_NCR_DELHI', 2, 1, 'Water Rescue & Inundation, Flood Evacuation, Urban Extrication, First-Aid, General Rescue'],
+            ['TEAM_07', 'Delhi Disaster Management Authority (DDMA Central Squad)', 'DDMA-CENTRAL-01', 'Capt. Sunita Rao', '+91 94150 11007', 'AVAILABLE', 6, 'Emergency Medical & Tactical Triage', 'ACLS Mobile Intensive Care Unit', 'Defibrillators, Cardiac Monitors, Trauma Kits, Evacuation Stretchers', 28.6139, 77.2090, 'ZONE_NCR_DELHI', 2, 1, 'Medical Emergency Triage, Paramedic, Trauma Field Kits, Evacuation Assistance, First-Aid'],
+            ['TEAM_08', 'NDRF Battalion 11 Unit Bravo (Varanasi Base)', 'NDRF-11-VNS', 'Insp. Manoj Upadhyay', '+91 94150 11008', 'AVAILABLE', 8, 'Aquatic & Riverine Search Rescue', 'Twin-Engine Rescue Launch #4', 'Deep-Water Sonar, Life Rafts, Flood Evacuation Kits', 25.3176, 82.9739, 'ZONE_VARANASI', 2, 1, 'Water Rescue & Inundation, Flood Evacuation, Aquatic Craft, First-Aid']
+        ];
+        for (const t of defaultTeams) {
+            await run(
+                `INSERT OR IGNORE INTO rescue_teams (
+                    id, name, unit_code, team_leader, contact_phone, status, members, type, vehicle, equipment, current_lat, current_lng, operational_zone, max_capacity, is_verified_location, last_location_update, skills, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), ?, datetime('now'), datetime('now'))`,
+                t
+            );
         }
+
+        // Align TEAM_02 coordinates to Gomti Barrage station if at old clash location
+        await run(`UPDATE rescue_teams SET current_lat = 26.8750, current_lng = 80.9720 WHERE id = 'TEAM_02' AND current_lat = 26.8610`);
+
+        // Backfill any teams that have null operational columns
+        await run(`
+            UPDATE rescue_teams SET
+                operational_zone = CASE 
+                    WHEN operational_zone IS NOT NULL AND operational_zone != '' THEN operational_zone
+                    WHEN id IN ('TEAM_05', 'TEAM_06', 'TEAM_07') THEN 'ZONE_NCR_DELHI'
+                    WHEN id = 'TEAM_08' THEN 'ZONE_VARANASI'
+                    ELSE 'ZONE_LUCKNOW'
+                END,
+                max_capacity = COALESCE(max_capacity, 2),
+                is_verified_location = COALESCE(is_verified_location, 1),
+                last_location_update = COALESCE(last_location_update, datetime('now')),
+                notification_status = COALESCE(notification_status, 'IDLE'),
+                skills = COALESCE(skills, capabilities, type)
+            WHERE operational_zone IS NULL OR max_capacity IS NULL OR last_location_update IS NULL OR skills IS NULL
+        `);
 
         // 5. Ensure default emergency hospitals exist if table is empty
         const hospitalCount = await get(`SELECT COUNT(*) as cnt FROM hospitals`);

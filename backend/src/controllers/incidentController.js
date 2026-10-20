@@ -8,8 +8,11 @@ const { computeTacticalGrid, computeTacticalGridId } = require('../utils/tactica
 
 const VALID_STATUSES = [
     'NEW',
+    'BEACON_SENT',
     'RECEIVED',
+    'AI_EVALUATED',
     'REQUESTED',
+    'AWAITING_SQUAD',
     'ACKNOWLEDGED',
     'ACCEPTED',
     'ANALYZING',
@@ -18,6 +21,7 @@ const VALID_STATUSES = [
     'ASSIGNED',
     'DISPATCHING',
     'TEAM_ASSIGNED',
+    'TEAM_NOTIFIED',
     'TEAM_DISPATCHED',
     'DISPATCHED',
     'TEAM_APPROACHING',
@@ -30,6 +34,7 @@ const VALID_STATUSES = [
     'COMPLETED',
     'CANCELLED'
 ];
+
 
 // POST /api/incidents or /api/sos
 async function createIncident(req, res, next) {
@@ -666,6 +671,7 @@ async function updateIncident(req, res, next) {
                  resolution_notes = ?,
                  resolved_at = ?,
                  acknowledged_at = ?,
+                 last_status_update = datetime('now'),
                  updated_at = datetime('now')
              WHERE id = ?`,
             [
@@ -679,12 +685,16 @@ async function updateIncident(req, res, next) {
             ]
         );
 
-        // Manage responder fleet availability
+        // Manage responder fleet availability & capacity
         const teamIdToManage = incident.dispatch_team_id;
         if (isResolving && teamIdToManage) {
             await db.run(
                 `UPDATE rescue_teams 
-                 SET status = 'AVAILABLE', assigned_incident_id = NULL, updated_at = datetime('now') 
+                 SET status = 'AVAILABLE',
+                     assigned_incident_id = NULL,
+                     active_incident_count = MAX(0, COALESCE(active_incident_count, 1) - 1),
+                     notification_status = 'IDLE',
+                     updated_at = datetime('now') 
                  WHERE id = ?`,
                 [teamIdToManage]
             );

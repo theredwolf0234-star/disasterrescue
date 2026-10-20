@@ -21,7 +21,10 @@ async function getRescueTeams(req, res, next) {
 // POST /api/rescue-teams
 async function createRescueTeam(req, res, next) {
     try {
-        const { name, unitCode, teamLeader, contactPhone, currentLat, currentLng } = req.body;
+        const {
+            name, unitCode, teamLeader, contactPhone, currentLat, currentLng,
+            operationalZone, maxCapacity, skills, type, vehicle, equipment, members
+        } = req.body;
 
         if (!name || !unitCode || !teamLeader) {
             return res.status(400).json({
@@ -32,17 +35,36 @@ async function createRescueTeam(req, res, next) {
         }
 
         const id = generateUUID('TEAM');
+        const numLat = currentLat !== undefined && currentLat !== null && !isNaN(parseFloat(currentLat)) ? parseFloat(currentLat) : null;
+        const numLng = currentLng !== undefined && currentLng !== null && !isNaN(parseFloat(currentLng)) ? parseFloat(currentLng) : null;
+        const isVerified = (numLat !== null && numLng !== null) ? 1 : 0;
+        const zone = operationalZone ? operationalZone.trim() : 'ZONE_LUCKNOW';
+        const capacity = maxCapacity ? parseInt(maxCapacity, 10) : 2;
+        const squadMembers = members ? parseInt(members, 10) : 6;
+
         await db.run(
-            `INSERT INTO rescue_teams (id, name, unit_code, team_leader, contact_phone, status, assigned_incident_id, current_lat, current_lng, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, 'AVAILABLE', NULL, ?, ?, datetime('now'), datetime('now'))`,
+            `INSERT INTO rescue_teams (
+                id, name, unit_code, team_leader, contact_phone, status, assigned_incident_id,
+                current_lat, current_lng, operational_zone, max_capacity, is_verified_location,
+                last_location_update, skills, type, vehicle, equipment, members, notification_status,
+                created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, 'AVAILABLE', NULL, ?, ?, ?, ?, ?, datetime('now'), ?, ?, ?, ?, ?, 'IDLE', datetime('now'), datetime('now'))`,
             [
                 id,
                 name.trim(),
                 unitCode.trim().toUpperCase(),
                 teamLeader.trim(),
                 contactPhone || null,
-                currentLat ? parseFloat(currentLat) : null,
-                currentLng ? parseFloat(currentLng) : null
+                numLat,
+                numLng,
+                zone,
+                capacity,
+                isVerified,
+                skills || 'General Rescue, First-Aid',
+                type || 'Rapid Response',
+                vehicle || 'All-Terrain Rescue Vehicle',
+                equipment || 'First-Aid, Inflatable Rafts, Cutters',
+                squadMembers
             ]
         );
 
@@ -54,7 +76,7 @@ async function createRescueTeam(req, res, next) {
             action: 'CREATE_RESCUE_TEAM',
             entityType: 'RESCUE_TEAM',
             entityId: id,
-            details: { name, unitCode },
+            details: { name, unitCode, operationalZone: zone, maxCapacity: capacity },
             ipAddress: req.ip
         });
 
@@ -72,7 +94,10 @@ async function createRescueTeam(req, res, next) {
 async function updateRescueTeam(req, res, next) {
     try {
         const { id } = req.params;
-        const { status, assignedIncidentId, currentLat, currentLng, contactPhone } = req.body;
+        const {
+            status, assignedIncidentId, currentLat, currentLng, contactPhone,
+            operationalZone, maxCapacity, skills, type, vehicle, equipment, members, isVerifiedLocation
+        } = req.body;
 
         const team = await db.get(`SELECT * FROM rescue_teams WHERE id = ?`, [id]);
         if (!team) {
@@ -86,6 +111,17 @@ async function updateRescueTeam(req, res, next) {
         const newLat = currentLat !== undefined ? parseFloat(currentLat) : team.current_lat;
         const newLng = currentLng !== undefined ? parseFloat(currentLng) : team.current_lng;
         const newPhone = contactPhone || team.contact_phone;
+        const newZone = operationalZone || team.operational_zone || 'ZONE_LUCKNOW';
+        const newCapacity = maxCapacity !== undefined ? parseInt(maxCapacity, 10) : (team.max_capacity || 2);
+        const newSkills = skills || team.skills || team.capabilities || 'General Rescue, First-Aid';
+        const newType = type || team.type || 'Rapid Response';
+        const newVehicle = vehicle || team.vehicle || 'Standard Emergency Transit';
+        const newEquipment = equipment || team.equipment || 'Standard Gear';
+        const newMembers = members !== undefined ? parseInt(members, 10) : (team.members || 6);
+        const hasCoordsUpdate = currentLat !== undefined || currentLng !== undefined;
+        const newVerified = isVerifiedLocation !== undefined 
+            ? (isVerifiedLocation ? 1 : 0) 
+            : (hasCoordsUpdate ? 1 : (team.is_verified_location !== null ? team.is_verified_location : 1));
 
         await db.run(
             `UPDATE rescue_teams
@@ -94,9 +130,22 @@ async function updateRescueTeam(req, res, next) {
                  current_lat = ?,
                  current_lng = ?,
                  contact_phone = ?,
+                 operational_zone = ?,
+                 max_capacity = ?,
+                 skills = ?,
+                 type = ?,
+                 vehicle = ?,
+                 equipment = ?,
+                 members = ?,
+                 is_verified_location = ?,
+                 last_location_update = CASE WHEN ? = 1 THEN datetime('now') ELSE last_location_update END,
                  updated_at = datetime('now')
              WHERE id = ?`,
-            [newStatus, newAssigned, newLat, newLng, newPhone, id]
+            [
+                newStatus, newAssigned, newLat, newLng, newPhone,
+                newZone, newCapacity, newSkills, newType, newVehicle, newEquipment, newMembers,
+                newVerified, hasCoordsUpdate ? 1 : 0, id
+            ]
         );
 
         // Synchronize incident status when team status changes on mission
@@ -208,7 +257,13 @@ async function updateTeamLocation(req, res, next) {
 
         // 2. Update rescue_teams current coordinates
         await db.run(
-            `UPDATE rescue_teams SET current_lat = ?, current_lng = ?, updated_at = datetime('now') WHERE id = ?`,
+            `UPDATE rescue_teams 
+             SET current_lat = ?, 
+                 current_lng = ?, 
+                 last_location_update = datetime('now'),
+                 is_verified_location = 1,
+                 updated_at = datetime('now') 
+             WHERE id = ?`,
             [numLat, numLng, id]
         );
 
@@ -353,6 +408,37 @@ async function getSuitableTeams(req, res, next) {
     }
 }
 
+// GET /api/rescue-teams/:id/assignments
+async function getTeamAssignments(req, res, next) {
+    try {
+        const { id } = req.params;
+        const team = await db.get(`SELECT id, name FROM rescue_teams WHERE id = ?`, [id]);
+        if (!team) {
+            return res.status(404).json({ success: false, message: 'Rescue team not found.', errorCode: 'NOT_FOUND' });
+        }
+
+        const assignments = await db.query(
+            `SELECT id, category, emergency_level, status, latitude, longitude, readable_address,
+                    assignment_time, resolved_at, dispatch_distance_km, dispatch_distance_type, dispatch_eta_minutes, created_at
+             FROM incidents
+             WHERE dispatch_team_id = ? OR assigned_rescue_team = ?
+             ORDER BY created_at DESC
+             LIMIT 50`,
+            [id, team.name]
+        );
+
+        res.json({
+            success: true,
+            teamId: id,
+            teamName: team.name,
+            count: assignments.length,
+            data: assignments
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
 module.exports = {
     getRescueTeams,
     createRescueTeam,
@@ -360,6 +446,7 @@ module.exports = {
     updateTeamLocation,
     getTeamLocation,
     acknowledgeDispatch,
-    getSuitableTeams
+    getSuitableTeams,
+    getTeamAssignments
 };
 

@@ -2344,10 +2344,19 @@ async function renderRescueTeamsFleet() {
 
         allRescueTeams.forEach(t => {
             const isAvail = t.status === 'AVAILABLE';
-            const isBusy = t.status === 'BUSY';
+            const isBusy = t.status === 'BUSY' || t.status === 'DISPATCHED';
             const statusClass = isAvail 
                 ? 'bg-emerald-950 text-emerald-300 border-emerald-700' 
                 : (isBusy ? 'bg-amber-950 text-amber-300 border-amber-700' : 'bg-slate-800 text-slate-400 border-slate-700');
+
+            const hasCoords = t.current_lat !== null && t.current_lng !== null;
+            const coordStr = hasCoords ? `[${Number(t.current_lat).toFixed(4)}, ${Number(t.current_lng).toFixed(4)}]` : 'No GPS Fix';
+            const isVerified = t.is_verified_location !== 0 && t.is_verified_location !== false;
+            const zone = t.operational_zone || 'ZONE_LUCKNOW';
+            const maxCap = t.max_capacity || 2;
+            const activeCount = t.active_incident_count || 0;
+            const lastUpdate = t.last_location_update || t.updated_at;
+            const lastUpdateStr = lastUpdate ? new Date(lastUpdate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live';
 
             const card = document.createElement('div');
             card.className = "bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-3";
@@ -2355,9 +2364,12 @@ async function renderRescueTeamsFleet() {
                 <div>
                     <div class="flex items-start justify-between">
                         <div>
-                            <span class="text-[10px] font-mono text-purple-400 font-bold block">${t.id}</span>
-                            <h3 class="font-bold text-white text-base">${t.name}</h3>
-                            <p class="text-xs text-purple-300 font-semibold">${t.type || 'Rescue Squad'}</p>
+                            <div class="flex items-center space-x-1.5 mb-0.5">
+                                <span class="text-[10px] font-mono text-purple-400 font-bold">${t.id}</span>
+                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">${zone}</span>
+                            </div>
+                            <h3 class="font-bold text-white text-base leading-tight">${t.name}</h3>
+                            <p class="text-xs text-purple-300 font-semibold">${t.type || 'Rapid Response Squad'}</p>
                         </div>
                         <span class="text-[10px] font-black uppercase px-2 py-0.5 rounded border ${statusClass}">
                             ${t.status}
@@ -2366,32 +2378,64 @@ async function renderRescueTeamsFleet() {
 
                     <div class="space-y-1.5 text-xs text-slate-300 mt-3 pt-3 border-t border-slate-800">
                         <div class="flex justify-between">
+                            <span class="text-slate-400">Commander:</span>
+                            <strong class="text-white">${t.team_leader}</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Capacity Load:</span>
+                            <strong class="${activeCount >= maxCap ? 'text-rose-400' : 'text-emerald-400'}">${activeCount} / ${maxCap} Rescues</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">GPS Coordinates:</span>
+                            <strong class="text-white font-mono text-[11px]">${coordStr}</strong>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-slate-400">Location Telemetry:</span>
+                            <span class="text-[11px] font-bold ${isVerified ? 'text-emerald-400' : 'text-amber-400'}">
+                                ${isVerified ? '✓ Verified GPS' : '⚠️ Unverified'} (${lastUpdateStr})
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
                             <span class="text-slate-400">Squad Members:</span>
                             <strong class="text-white">${t.members || 6} personnel</strong>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-slate-400">Assigned Vehicle:</span>
-                            <strong class="text-white">${t.vehicle || 'Standard Emergency Transit'}</strong>
+                            <span class="text-slate-400">Vehicle:</span>
+                            <strong class="text-white text-[11px]">${t.vehicle || 'Standard Emergency Transit'}</strong>
                         </div>
                         <div>
-                            <span class="text-slate-400 block mb-0.5">Tactical Gear:</span>
-                            <span class="text-slate-200 text-[11px]">${t.equipment || 'Trauma medical kits, satellite radio, cutting gear'}</span>
+                            <span class="text-slate-400 block mb-0.5">Skills & Capabilities:</span>
+                            <span class="text-slate-200 text-[11px] block">${t.skills || t.equipment || 'General First-Aid, Collapse Extrication'}</span>
                         </div>
-                        ${t.current_incident ? `
-                            <div class="p-2 bg-red-950/40 border border-red-800/40 rounded-lg text-red-300 font-bold text-[11px]">
-                                Current Target: ${t.current_incident}
+                        ${t.assigned_incident_id ? `
+                            <div class="p-2 bg-red-950/40 border border-red-800/40 rounded-lg text-red-300 font-bold text-[11px] flex justify-between items-center">
+                                <span>Active: ${t.assigned_incident_id}</span>
+                                <span class="text-[9px] uppercase px-1.5 py-0.5 bg-red-900 rounded text-red-200">Engaged</span>
                             </div>
                         ` : ''}
                     </div>
                 </div>
 
-                <!-- Status Update Control -->
-                <div class="pt-3 border-t border-slate-800 space-y-1.5">
-                    <label class="block text-[10px] text-slate-400 font-bold uppercase">Change Team Status</label>
-                    <div class="grid grid-cols-3 gap-1 text-[10px] font-bold">
-                        <button onclick="updateRescueTeamStatus('${t.id}', 'AVAILABLE')" class="py-1 px-1.5 rounded transition ${isAvail ? 'bg-emerald-700 text-white font-extrabold' : 'bg-slate-950 text-slate-400 hover:text-white'}">Available</button>
-                        <button onclick="updateRescueTeamStatus('${t.id}', 'BUSY')" class="py-1 px-1.5 rounded transition ${isBusy ? 'bg-amber-700 text-white font-extrabold' : 'bg-slate-950 text-slate-400 hover:text-white'}">Busy</button>
-                        <button onclick="updateRescueTeamStatus('${t.id}', 'OFFLINE')" class="py-1 px-1.5 rounded transition ${t.status === 'OFFLINE' ? 'bg-slate-700 text-white font-extrabold' : 'bg-slate-950 text-slate-400 hover:text-white'}">Offline</button>
+                <!-- Squad Controls -->
+                <div class="pt-3 border-t border-slate-800 space-y-2">
+                    <div class="flex space-x-1.5">
+                        <button onclick="viewTeamAssignmentHistory('${t.id}')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 py-1 px-2 rounded-xl text-[10px] font-bold flex items-center justify-center space-x-1 transition">
+                            <i data-lucide="history" class="w-3 h-3"></i>
+                            <span>Mission History</span>
+                        </button>
+                        <button onclick="promptUpdateTeamLocation('${t.id}')" class="flex-1 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 py-1 px-2 rounded-xl text-[10px] font-bold flex items-center justify-center space-x-1 transition">
+                            <i data-lucide="map-pin" class="w-3 h-3"></i>
+                            <span>Update GPS</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-1">
+                        <label class="block text-[10px] text-slate-400 font-bold uppercase">Operational State</label>
+                        <div class="grid grid-cols-3 gap-1 text-[10px] font-bold">
+                            <button onclick="updateRescueTeamStatus('${t.id}', 'AVAILABLE')" class="py-1 px-1.5 rounded transition ${isAvail ? 'bg-emerald-700 text-white font-extrabold' : 'bg-slate-950 text-slate-400 hover:text-white'}">Available</button>
+                            <button onclick="updateRescueTeamStatus('${t.id}', 'BUSY')" class="py-1 px-1.5 rounded transition ${isBusy ? 'bg-amber-700 text-white font-extrabold' : 'bg-slate-950 text-slate-400 hover:text-white'}">Busy</button>
+                            <button onclick="updateRescueTeamStatus('${t.id}', 'OFFLINE')" class="py-1 px-1.5 rounded transition ${t.status === 'OFFLINE' ? 'bg-slate-700 text-white font-extrabold' : 'bg-slate-950 text-slate-400 hover:text-white'}">Offline</button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -2414,6 +2458,145 @@ async function updateRescueTeamStatus(teamId, status) {
     } catch (e) {
         showToast(e.message || 'Failed to update team status', 'error');
     }
+}
+
+function openRegisterTeamModal() {
+    document.getElementById('modal-register-team')?.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeRegisterTeamModal() {
+    document.getElementById('modal-register-team')?.classList.add('hidden');
+}
+
+async function submitRegisterTeam(e) {
+    e.preventDefault();
+    const name = document.getElementById('new-team-name')?.value?.trim();
+    const unitCode = document.getElementById('new-team-code')?.value?.trim();
+    const teamLeader = document.getElementById('new-team-leader')?.value?.trim();
+    const contactPhone = document.getElementById('new-team-phone')?.value?.trim();
+    const operationalZone = document.getElementById('new-team-zone')?.value;
+    const maxCapacity = parseInt(document.getElementById('new-team-capacity')?.value, 10) || 2;
+    const members = parseInt(document.getElementById('new-team-members')?.value, 10) || 6;
+    const currentLat = parseFloat(document.getElementById('new-team-lat')?.value);
+    const currentLng = parseFloat(document.getElementById('new-team-lng')?.value);
+    const skills = document.getElementById('new-team-skills')?.value?.trim();
+    const type = document.getElementById('new-team-type')?.value?.trim();
+    const vehicle = document.getElementById('new-team-vehicle')?.value?.trim();
+    const equipment = document.getElementById('new-team-equipment')?.value?.trim();
+
+    try {
+        const res = await api.post('/api/rescue-teams', {
+            name,
+            unitCode,
+            teamLeader,
+            contactPhone,
+            operationalZone,
+            maxCapacity,
+            members,
+            currentLat,
+            currentLng,
+            skills,
+            type,
+            vehicle,
+            equipment
+        });
+
+        if (!res.success) throw new Error(res.message || 'Failed to register rescue squad');
+        showToast(`Squad '${name}' (${unitCode}) registered successfully.`, 'success');
+        closeRegisterTeamModal();
+        await renderRescueTeamsFleet();
+    } catch (err) {
+        showToast(err.message || 'Error registering rescue team', 'error');
+    }
+}
+
+async function promptUpdateTeamLocation(teamId) {
+    const latStr = prompt(`Enter new Latitude for squad [${teamId}]:`, "26.8500");
+    if (!latStr) return;
+    const lngStr = prompt(`Enter new Longitude for squad [${teamId}]:`, "80.9400");
+    if (!lngStr) return;
+
+    const lat = parseFloat(latStr);
+    const lng = parseFloat(lngStr);
+    if (isNaN(lat) || isNaN(lng)) {
+        showToast('Invalid numeric coordinates entered.', 'error');
+        return;
+    }
+
+    try {
+        const res = await api.post(`/api/rescue-teams/${teamId}/location`, {
+            latitude: lat,
+            longitude: lng,
+            accuracy: 5.0
+        });
+        if (!res.success) throw new Error(res.message || 'Location update failed');
+        showToast(`Squad [${teamId}] location updated to [${lat.toFixed(4)}, ${lng.toFixed(4)}].`, 'success');
+        await renderRescueTeamsFleet();
+    } catch (err) {
+        showToast(err.message || 'Failed to update squad location', 'error');
+    }
+}
+
+async function viewTeamAssignmentHistory(teamId) {
+    const modal = document.getElementById('modal-team-history');
+    if (!modal) return;
+
+    modal.classList.remove('hidden');
+    document.getElementById('team-history-title').innerText = `Mission History: ${teamId}`;
+    document.getElementById('team-history-subtitle').innerText = `Loading verified deployment history...`;
+    const container = document.getElementById('team-history-content');
+    container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs"><div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>Loading mission assignments...</div>`;
+
+    try {
+        const res = await api.get(`/api/rescue-teams/${teamId}/assignments`);
+        if (!res.success) throw new Error(res.message || 'Failed to fetch assignments');
+
+        document.getElementById('team-history-title').innerText = `Mission History: ${res.teamName || teamId}`;
+        document.getElementById('team-history-subtitle').innerText = `${res.count || 0} Total Emergency Assignments Recorded`;
+
+        if (!res.data || res.data.length === 0) {
+            container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">No active or prior incident assignments recorded for this squad. Squad is ready for tactical deployment.</div>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        res.data.forEach(inc => {
+            const isResolved = inc.status === 'RESOLVED' || inc.status === 'COMPLETED';
+            const row = document.createElement('div');
+            row.className = "p-3 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs";
+            row.innerHTML = `
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-mono font-bold text-purple-400">${inc.id}</span>
+                        <span class="px-1.5 py-0.2 rounded text-[10px] font-bold ${isResolved ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-amber-950 text-amber-300 border border-amber-800'}">
+                            ${inc.status}
+                        </span>
+                        <span class="text-slate-400 font-bold">•</span>
+                        <span class="text-white font-bold">${inc.category}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">${inc.readable_address || 'Casualty Scene'}</p>
+                    <div class="flex items-center space-x-3 text-[10px] text-slate-400 mt-1">
+                        <span>Assigned: ${inc.assignment_time ? new Date(inc.assignment_time).toLocaleString() : 'N/A'}</span>
+                        ${inc.dispatch_distance_km ? `<span>• Dist: ~${Number(inc.dispatch_distance_km).toFixed(1)} km</span>` : ''}
+                        ${inc.dispatch_eta_minutes ? `<span>• ETA: ~${inc.dispatch_eta_minutes}m</span>` : ''}
+                    </div>
+                </div>
+                <button onclick="openIncidentDetails('${inc.id}')" class="bg-purple-900/60 hover:bg-purple-800 text-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition self-start sm:self-center shrink-0">
+                    Inspect Report →
+                </button>
+            `;
+            container.appendChild(row);
+        });
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (err) {
+        container.innerHTML = `<div class="text-center py-8 text-rose-400 text-xs">Failed to load assignment history: ${err.message}</div>`;
+    }
+}
+
+function closeTeamHistoryModal() {
+    document.getElementById('modal-team-history')?.classList.add('hidden');
 }
 
 // -------------------------------------------------------------

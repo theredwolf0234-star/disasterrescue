@@ -523,10 +523,16 @@
                     </h2>
                     <p class="text-xs text-slate-400 mt-1">Monitor specialized response squads (NDRF, SDRF, Fire, Medical), equipment, and availability.</p>
                 </div>
-                <button onclick="fetchRescueTeamsList()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
-                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-                    <span>Refresh Fleet</span>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <button onclick="openRegisterTeamModal()" class="bg-emerald-700 hover:bg-emerald-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition shadow">
+                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                        <span>Register New Squad</span>
+                    </button>
+                    <button onclick="fetchRescueTeamsList()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                        <span>Refresh Fleet</span>
+                    </button>
+                </div>
             </div>
 
             <div id="rescue-teams-list-grid" class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1155,6 +1161,138 @@
                     <button type="submit" class="bg-pink-700 hover:bg-pink-600 text-white font-bold px-5 py-2 rounded-xl text-xs shadow">Dispatch Task to NGO</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- REGISTER RESCUE SQUAD MODAL (Requirement 5) -->
+    <div id="modal-register-team" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-emerald-600/60 rounded-3xl w-full max-w-xl max-h-[92vh] overflow-y-auto p-5 sm:p-7 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-950 border border-emerald-700 text-emerald-400 flex items-center justify-center font-bold">
+                        <i data-lucide="shield" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-white text-base">Register Operational Rescue Squad</h3>
+                        <p class="text-xs text-slate-400">Add verified response unit into real-time dispatch database.</p>
+                    </div>
+                </div>
+                <button onclick="closeRegisterTeamModal()" class="text-slate-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form onsubmit="submitRegisterTeam(event)" class="space-y-3.5 text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Squad Name *</label>
+                        <input id="new-team-name" type="text" required placeholder="e.g. NDRF Unit Echo Rapid Extrication" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Unit Code *</label>
+                        <input id="new-team-code" type="text" required placeholder="e.g. NDRF-ECHO-05" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white uppercase focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Commander / Team Leader *</label>
+                        <input id="new-team-leader" type="text" required placeholder="e.g. Insp. Arvind Mishra" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Emergency Dispatch Phone</label>
+                        <input id="new-team-phone" type="text" placeholder="+91 94150 XXXXX" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Operational Zone</label>
+                        <select id="new-team-zone" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none">
+                            <option value="ZONE_LUCKNOW">Lucknow Metropolitan</option>
+                            <option value="ZONE_NCR_DELHI">Delhi / NCR Sector</option>
+                            <option value="ZONE_VARANASI">Varanasi Eastern UP</option>
+                            <option value="ZONE_REGIONAL">Regional Mutual-Aid</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Max Concurrent Rescues</label>
+                        <input id="new-team-capacity" type="number" min="1" max="10" value="2" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Squad Personnel</label>
+                        <input id="new-team-members" type="number" min="1" max="50" value="8" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Base Latitude *</label>
+                        <input id="new-team-lat" type="number" step="0.0001" required placeholder="e.g. 26.8500" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Base Longitude *</label>
+                        <input id="new-team-lng" type="number" step="0.0001" required placeholder="e.g. 80.9400" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white font-mono focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Capabilities & Skills</label>
+                    <input id="new-team-skills" type="text" placeholder="e.g. Urban Search & Extrication, First-Aid, Collapse Rescue" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Unit Type</label>
+                        <input id="new-team-type" type="text" placeholder="e.g. Rapid Response / Water Rescue" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Assigned Vehicle</label>
+                        <input id="new-team-vehicle" type="text" placeholder="e.g. Heavy Rescue ARV-3" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 uppercase mb-1">Equipment Inventory</label>
+                    <input id="new-team-equipment" type="text" placeholder="e.g. Hydraulic spreaders, inflatable rafts, gas monitors" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:border-emerald-500 focus:outline-none" />
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+                    <button type="button" onclick="closeRegisterTeamModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs">Cancel</button>
+                    <button type="submit" class="bg-emerald-700 hover:bg-emerald-600 text-white font-bold px-5 py-2 rounded-xl text-xs shadow flex items-center space-x-1.5">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Register Squad</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SQUAD ASSIGNMENT HISTORY MODAL (Requirement 5) -->
+    <div id="modal-team-history" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-5 sm:p-7 space-y-4 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-8 h-8 rounded-xl bg-purple-950 border border-purple-700 text-purple-400 flex items-center justify-center font-bold">
+                        <i data-lucide="history" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h3 id="team-history-title" class="font-black text-white text-base">Squad Mission History</h3>
+                        <p id="team-history-subtitle" class="text-xs text-slate-400 font-mono">Team ID: ...</p>
+                    </div>
+                </div>
+                <button onclick="closeTeamHistoryModal()" class="text-slate-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div id="team-history-content" class="space-y-3">
+                <div class="text-center py-8 text-slate-400 text-xs">Loading mission assignments...</div>
+            </div>
+
+            <div class="flex justify-end pt-3 border-t border-slate-800">
+                <button onclick="closeTeamHistoryModal()" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl text-xs">Close</button>
+            </div>
         </div>
     </div>
 

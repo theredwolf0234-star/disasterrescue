@@ -842,16 +842,91 @@ function renderActiveSosCockpit(inc, coords, gpsTelemetry) {
     const cockpit = document.getElementById('active-sos-cockpit');
     if (!cockpit) return;
 
-    document.getElementById('cockpit-incident-id').innerText = inc.id;
-    document.getElementById('cockpit-incident-priority').innerText = `${inc.emergency_level || 'HIGH'} PRIORITY`;
+    // Header ID, priority & last updated
+    const idEl = document.getElementById('cockpit-incident-id');
+    if (idEl) idEl.innerText = inc.id || 'PENDING...';
+    
+    const prioEl = document.getElementById('cockpit-incident-priority');
+    if (prioEl) prioEl.innerText = `${inc.emergency_level || 'HIGH'} PRIORITY`;
+
+    const updatedEl = document.getElementById('cockpit-last-updated');
+    if (updatedEl) {
+        const updateTs = inc.last_status_update || inc.updated_at || inc.created_at;
+        if (updateTs) {
+            const d = new Date(updateTs);
+            const timeStr = !isNaN(d.getTime()) ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Live';
+            updatedEl.innerText = `Updated: ${timeStr}`;
+        } else {
+            updatedEl.innerText = 'Updated: Live';
+        }
+    }
 
     // Lifecycle steps
+    const stepBeacon = document.getElementById('step-beacon');
+    const stepAi = document.getElementById('step-ai');
     const stepDispatch = document.getElementById('step-dispatch');
+    const stepDispatchText = document.getElementById('step-dispatch-text');
     const stepEnroute = document.getElementById('step-enroute');
+    const stepEnrouteText = document.getElementById('step-enroute-text');
 
-    if (inc.status === 'TEAM_ASSIGNED' || inc.status === 'TEAM_EN_ROUTE') {
-        if (stepDispatch) stepDispatch.className = 'p-2 rounded-xl bg-blue-950 text-blue-300 border border-blue-800 font-bold';
-        if (stepEnroute) stepEnroute.className = 'p-2 rounded-xl bg-purple-950 text-purple-300 border border-purple-800 font-bold';
+    // 1. Beacon Sent (always completed once incident exists)
+    if (stepBeacon) stepBeacon.className = 'p-2 rounded-xl bg-emerald-950 text-emerald-300 border border-emerald-800 font-bold';
+
+    // 2. AI Evaluated
+    const isAiDone = Boolean(inc.risk_score || inc.ai_verification_summary || (inc.status && inc.status !== 'BEACON_SENT'));
+    if (stepAi) {
+        stepAi.className = isAiDone
+            ? 'p-2 rounded-xl bg-purple-950 text-purple-300 border border-purple-800 font-bold'
+            : 'p-2 rounded-xl bg-slate-900 text-slate-400 border border-slate-800 font-bold';
+    }
+
+    // 3. Team Dispatched: ONLY after dispatch operation succeeds and team is assigned
+    const hasAssignedTeam = Boolean(inc.assigned_rescue_team && inc.assigned_rescue_team !== 'null');
+    const isDispatched = hasAssignedTeam && (
+        inc.status === 'TEAM_ASSIGNED' || 
+        inc.status === 'TEAM_NOTIFIED' || 
+        inc.status === 'TEAM_DISPATCHED' || 
+        inc.status === 'DISPATCHED' || 
+        inc.status === 'EN_ROUTE' || 
+        inc.status === 'TEAM_EN_ROUTE' || 
+        inc.status === 'ON_SCENE' || 
+        inc.status === 'ARRIVED' || 
+        inc.status === 'RESOLVED' || 
+        inc.status === 'COMPLETED'
+    );
+
+    if (stepDispatch) {
+        if (isDispatched) {
+            stepDispatch.className = 'p-2 rounded-xl bg-blue-950 text-blue-300 border border-blue-800 font-bold';
+            if (stepDispatchText) stepDispatchText.innerText = '3. Team Dispatched';
+        } else if (inc.status === 'AWAITING_SQUAD') {
+            stepDispatch.className = 'p-2 rounded-xl bg-amber-950 text-amber-300 border border-amber-800 font-bold';
+            if (stepDispatchText) stepDispatchText.innerText = '3. Awaiting Squad';
+        } else {
+            stepDispatch.className = 'p-2 rounded-xl bg-slate-900 text-slate-400 border border-slate-800 font-bold';
+            if (stepDispatchText) stepDispatchText.innerText = '3. Team Dispatch';
+        }
+    }
+
+    // 4. En Route: ONLY after the team confirms departure (acknowledged / status EN_ROUTE / ARRIVED)
+    const isEnRoute = hasAssignedTeam && (
+        inc.status === 'EN_ROUTE' || 
+        inc.status === 'TEAM_EN_ROUTE' || 
+        inc.status === 'ON_SCENE' || 
+        inc.status === 'ARRIVED' || 
+        inc.status === 'RESOLVED' || 
+        inc.status === 'COMPLETED' ||
+        Boolean(inc.acknowledged_at)
+    );
+
+    if (stepEnroute) {
+        if (isEnRoute) {
+            stepEnroute.className = 'p-2 rounded-xl bg-purple-950 text-purple-300 border border-purple-800 font-bold';
+            if (stepEnrouteText) stepEnrouteText.innerText = (inc.status === 'ARRIVED' || inc.status === 'ON_SCENE') ? '4. On Scene' : '4. En Route';
+        } else {
+            stepEnroute.className = 'p-2 rounded-xl bg-slate-900 text-slate-400 border border-slate-800 font-bold';
+            if (stepEnrouteText) stepEnrouteText.innerText = '4. En Route';
+        }
     }
 
     // Team Card
@@ -861,12 +936,36 @@ function renderActiveSosCockpit(inc, coords, gpsTelemetry) {
     const teamDistEl = document.getElementById('cockpit-team-dist');
     const ackBadgeEl = document.getElementById('cockpit-ack-badge');
 
-    if (inc.assigned_rescue_team) {
+    if (hasAssignedTeam) {
         teamNameEl.innerText = inc.assigned_rescue_team;
-        teamDetailsEl.innerHTML = `Dispatched Unit: <strong>${inc.dispatch_team_id || 'FIRST RESPONDER SQUAD'}</strong> • Status: <span class="text-emerald-400 font-bold">${inc.status}</span>`;
-        teamEtaEl.innerText = `~${inc.dispatch_eta_minutes || 10} Mins`;
-        teamDistEl.innerText = `~${inc.dispatch_distance_km ? Number(inc.dispatch_distance_km).toFixed(1) : '3.5'} km`;
-        if (inc.acknowledged_at) {
+        const statusLabel = (inc.status || 'TEAM_ASSIGNED').replace(/_/g, ' ');
+        const unitId = inc.dispatch_team_id || 'FIRST RESPONDER UNIT';
+        teamDetailsEl.innerHTML = `Dispatched Unit: <strong>${unitId}</strong> • Operational State: <span class="text-emerald-400 font-bold">${statusLabel}</span>`;
+        
+        // Real ETA
+        if (inc.dispatch_eta_minutes) {
+            teamEtaEl.innerText = `~${inc.dispatch_eta_minutes} Mins`;
+        } else if (inc.dispatch_eta_text) {
+            teamEtaEl.innerText = inc.dispatch_eta_text;
+        } else {
+            teamEtaEl.innerText = 'Calculating route...';
+        }
+
+        // Real Distance (Distinguish road vs straight-line)
+        if (inc.dispatch_distance_km !== null && inc.dispatch_distance_km !== undefined) {
+            const distVal = Number(inc.dispatch_distance_km).toFixed(1);
+            const distType = (inc.dispatch_distance_type === 'road' || inc.road_distance_km) ? 'Road Network' : 'Straight-Line';
+            teamDistEl.innerText = `~${distVal} km (${distType})`;
+        } else if (inc.road_distance_km) {
+            teamDistEl.innerText = `~${Number(inc.road_distance_km).toFixed(1)} km (Road Network)`;
+        } else if (inc.straight_line_distance_km) {
+            teamDistEl.innerText = `~${Number(inc.straight_line_distance_km).toFixed(1)} km (Straight-Line)`;
+        } else {
+            teamDistEl.innerText = 'Calculating distance...';
+        }
+
+        // Acknowledgement status badge
+        if (inc.acknowledged_at || inc.status === 'EN_ROUTE' || inc.status === 'TEAM_EN_ROUTE') {
             ackBadgeEl.innerText = '✓ Squad Acknowledged & Rolling';
             ackBadgeEl.className = 'px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-950 text-emerald-300 border border-emerald-800';
         } else {
@@ -874,10 +973,27 @@ function renderActiveSosCockpit(inc, coords, gpsTelemetry) {
             ackBadgeEl.className = 'px-2 py-0.5 rounded text-[10px] font-black uppercase bg-blue-950 text-blue-300 border border-blue-800 animate-pulse';
         }
     } else {
+        // Truthful Unassigned / Awaiting Squad State
         teamNameEl.innerText = '⏳ Awaiting Available Field Squad';
-        teamDetailsEl.innerHTML = `No squad currently available within immediate radius. Emergency escalated to <strong>Regional Command Center (Level ${inc.escalation_level || 1})</strong>.`;
-        teamEtaEl.innerText = 'Coordinating';
-        teamDistEl.innerText = 'Regional Grid';
+        const escLevel = inc.escalation_level || 1;
+        const escReason = inc.escalation_reason || 'Scanning neighboring sectors for suitable available squad.';
+        teamDetailsEl.innerHTML = `Escalated to <strong>Regional Command Center (Level ${escLevel})</strong>: <span class="text-amber-300">${escReason}</span>`;
+        
+        teamEtaEl.innerText = 'Pending Squad Allocation';
+        
+        // Display real distance or deterministic Tactical Grid ID
+        let tacticalGrid = inc.tactical_grid_id;
+        if (!tacticalGrid && coords && typeof computeTacticalGridId === 'function') {
+            tacticalGrid = computeTacticalGridId(coords[0], coords[1]);
+        }
+        if (inc.nearest_distance_km !== null && inc.nearest_distance_km !== undefined) {
+            teamDistEl.innerText = `Nearest Base: ~${Number(inc.nearest_distance_km).toFixed(1)} km`;
+        } else if (tacticalGrid) {
+            teamDistEl.innerText = `Grid: ${tacticalGrid}`;
+        } else {
+            teamDistEl.innerText = 'Pending GPS Grid Fix';
+        }
+
         ackBadgeEl.innerText = 'Awaiting Squad';
         ackBadgeEl.className = 'px-2 py-0.5 rounded text-[10px] font-black uppercase bg-amber-950 text-amber-300 border border-amber-800';
     }

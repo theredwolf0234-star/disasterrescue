@@ -11,6 +11,7 @@ router.patch('/:id/status', verifyToken, requireRoles(['AUTHORITY', 'ADMIN', 'RE
 router.post('/:id/acknowledge', verifyToken, rescueTeamController.acknowledgeDispatch);
 router.post('/:id/location', verifyToken, requireRoles(['AUTHORITY', 'ADMIN', 'RESPONDER']), rescueTeamController.updateTeamLocation);
 router.get('/:id/location', verifyToken, rescueTeamController.getTeamLocation);
+router.get('/:id/assignments', verifyToken, rescueTeamController.getTeamAssignments);
 
 module.exports = router;
 

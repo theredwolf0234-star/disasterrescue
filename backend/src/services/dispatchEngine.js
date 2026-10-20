@@ -2,9 +2,39 @@ const db = require('../config/database');
 const { generateUUID } = require('../utils/idGenerator');
 const { logAction } = require('../services/auditService');
 
-// Maximum operational dispatch radii in kilometers
-const SEARCH_RADII = [15, 30, 50]; // Tier 1: 15km, Tier 2: 30km, Tier 3: 50km
-const MAX_DISPATCH_RADIUS_KM = 50;
+// Progressive Operational Dispatch Radii in kilometers (Configurable via Environment)
+const DEFAULT_INITIAL_RADIUS_KM = parseFloat(process.env.INITIAL_DISPATCH_RADIUS_KM) || 25; // Tier 1: Local Immediate
+const DEFAULT_DISTRICT_RADIUS_KM = parseFloat(process.env.DISTRICT_DISPATCH_RADIUS_KM) || 60; // Tier 2: District
+const DEFAULT_REGIONAL_RADIUS_KM = parseFloat(process.env.REGIONAL_DISPATCH_RADIUS_KM) || 150; // Tier 3: Neighboring Operational Zone
+const DEFAULT_STATE_RADIUS_KM = parseFloat(process.env.STATE_DISPATCH_RADIUS_KM) || 350; // Tier 4: State Sector
+const DEFAULT_MAX_RADIUS_KM = parseFloat(process.env.MAX_DISPATCH_RADIUS_KM) || 800; // Tier 5: Regional Mutual-Aid
+
+const SEARCH_RADII = [DEFAULT_INITIAL_RADIUS_KM, DEFAULT_DISTRICT_RADIUS_KM, DEFAULT_REGIONAL_RADIUS_KM, DEFAULT_STATE_RADIUS_KM, DEFAULT_MAX_RADIUS_KM];
+const MAX_DISPATCH_RADIUS_KM = DEFAULT_MAX_RADIUS_KM;
+
+/**
+ * Returns progressive search radius tiers up to an optional maximum radius
+ */
+function getSearchTiers(maxRadius = null) {
+    const max = maxRadius ? parseFloat(maxRadius) : DEFAULT_MAX_RADIUS_KM;
+    const tiers = [
+        { tier: 1, name: 'Local Immediate Sector', radiusKm: Math.min(DEFAULT_INITIAL_RADIUS_KM, max) },
+        { tier: 2, name: 'District Response Zone', radiusKm: Math.min(DEFAULT_DISTRICT_RADIUS_KM, max) },
+        { tier: 3, name: 'Neighboring Operational Zone', radiusKm: Math.min(DEFAULT_REGIONAL_RADIUS_KM, max) },
+        { tier: 4, name: 'State Tactical Grid', radiusKm: Math.min(DEFAULT_STATE_RADIUS_KM, max) },
+        { tier: 5, name: 'Regional Mutual-Aid Grid', radiusKm: max }
+    ];
+    // Filter out duplicates if max cap is small
+    const seen = new Set();
+    const result = [];
+    for (const t of tiers) {
+        if (!seen.has(t.radiusKm) && t.radiusKm > 0) {
+            seen.add(t.radiusKm);
+            result.push(t);
+        }
+    }
+    return result;
+}
 
 /**
  * Calculates Haversine distance in kilometers between two GPS coordinates.
@@ -43,7 +73,7 @@ function calculateEtaMinutes(distanceKm) {
  */
 function evaluateCapabilityMatch(team, disasterType = '', details = '') {
     const typeStr = `${disasterType || ''} ${details || ''}`.toLowerCase();
-    const teamProfile = `${team.name || ''} ${team.type || ''} ${team.vehicle || ''} ${team.equipment || ''} ${team.capabilities || ''}`.toLowerCase();
+    const teamProfile = `${team.name || ''} ${team.type || ''} ${team.vehicle || ''} ${team.equipment || ''} ${team.capabilities || ''} ${team.skills || ''}`.toLowerCase();
 
     let suitabilityTier = 'STANDARD'; // 'SPECIALIZED', 'STANDARD', 'UNSUITABLE'
     let capabilityScore = 60; // Base score for certified first-response teams
@@ -54,9 +84,21 @@ function evaluateCapabilityMatch(team, disasterType = '', details = '') {
     const isMedical = typeStr.includes('medical') || typeStr.includes('injury') || typeStr.includes('trauma') || typeStr.includes('cardiac') || typeStr.includes('unconscious') || typeStr.includes('bleeding');
     const isCollapse = typeStr.includes('collapse') || typeStr.includes('earthquake') || typeStr.includes('rubble') || typeStr.includes('debris') || typeStr.includes('landslide') || typeStr.includes('trapped');
     const isFire = typeStr.includes('fire') || typeStr.includes('burn') || typeStr.includes('smoke') || typeStr.includes('gas') || typeStr.includes('chemical') || typeStr.includes('hazmat');
+    const isAvalanche = typeStr.includes('avalanche') || typeStr.includes('snow') || typeStr.includes('blizzard') || typeStr.includes('mountain');
 
-    if (isFlood) {
-        const hasWatercraft = teamProfile.includes('boat') || teamProfile.includes('water') || teamProfile.includes('raft') || teamProfile.includes('amphibious') || teamProfile.includes('aquatic') || teamProfile.includes('watercraft');
+    if (isAvalanche) {
+        const hasMountainAvalanche = teamProfile.includes('avalanche') || teamProfile.includes('mountain') || teamProfile.includes('glacier') || teamProfile.includes('high altitude');
+        if (hasMountainAvalanche) {
+            suitabilityTier = 'SPECIALIZED';
+            capabilityScore = 95;
+            matchedTags.push('High-Altitude Mountain Rescue / Avalanche Transceiver');
+        } else {
+            suitabilityTier = 'UNSUITABLE';
+            capabilityScore = 15;
+            missingCritical.push('High-Altitude Mountain & Avalanche Extrication Gear');
+        }
+    } else if (isFlood) {
+        const hasWatercraft = teamProfile.includes('boat') || teamProfile.includes('water') || teamProfile.includes('raft') || teamProfile.includes('amphibious') || teamProfile.includes('aquatic') || teamProfile.includes('watercraft') || teamProfile.includes('flood');
         if (hasWatercraft) {
             suitabilityTier = 'SPECIALIZED';
             capabilityScore = 95;
@@ -155,27 +197,36 @@ async function findEligibleRescueTeams({ disasterType, latitude, longitude, vict
         // Validate coordinates
         const hasValidCoords = team.current_lat !== null && team.current_lat !== undefined &&
                                team.current_lng !== null && team.current_lng !== undefined &&
-                               !isNaN(parseFloat(team.current_lat)) && !isNaN(parseFloat(team.current_lng));
+                               !isNaN(parseFloat(team.current_lat)) && !isNaN(parseFloat(team.current_lng)) &&
+                               parseFloat(team.current_lat) >= -90 && parseFloat(team.current_lat) <= 90 &&
+                               parseFloat(team.current_lng) >= -180 && parseFloat(team.current_lng) <= 180;
 
         const teamLat = hasValidCoords ? parseFloat(team.current_lat) : null;
         const teamLng = hasValidCoords ? parseFloat(team.current_lng) : null;
 
         // Check telemetry freshness (stale if updated > 24 hours ago)
         let isStaleLocation = false;
-        if (team.updated_at) {
-            const lastUpdate = new Date(team.updated_at).getTime();
+        const lastLocationTime = team.last_location_update || team.updated_at;
+        if (lastLocationTime) {
+            const lastUpdate = new Date(lastLocationTime).getTime();
             if (Date.now() - lastUpdate > 24 * 60 * 60 * 1000) {
                 isStaleLocation = true;
             }
         }
 
+        // Check verified location flag
+        const isVerifiedLocation = team.is_verified_location !== 0 && team.is_verified_location !== false;
+
         // Calculate actual Haversine distance
         const distanceKm = hasValidCoords ? haversineDistanceKm(lat, lng, teamLat, teamLng) : Infinity;
         const etaMinutes = calculateEtaMinutes(distanceKm);
 
-        // Check availability: team status must be AVAILABLE/STANDBY and not actively assigned to an ongoing incident
+        // Check availability: team status must be AVAILABLE/STANDBY and not beyond operational capacity
         const isAssignedToActive = Boolean(team.assigned_incident_id && activeBusyIncidentIds.has(team.assigned_incident_id));
-        const isStatusAvailable = (team.status === 'AVAILABLE' || team.status === 'STANDBY') && !isAssignedToActive;
+        const maxCapacity = team.max_capacity ? parseInt(team.max_capacity, 10) : 2;
+        const activeCount = team.active_incident_count ? parseInt(team.active_incident_count, 10) : (isAssignedToActive ? 1 : 0);
+        const hasAvailableSlot = activeCount < maxCapacity;
+        const isStatusAvailable = (team.status === 'AVAILABLE' || team.status === 'STANDBY') && hasAvailableSlot;
 
         // Evaluate capability & suitability
         const capability = evaluateCapabilityMatch(team, disasterType, details);
@@ -185,21 +236,22 @@ async function findEligibleRescueTeams({ disasterType, latitude, longitude, vict
 
         // Team is strictly eligible ONLY if:
         // 1. Has real, valid coordinates
-        // 2. Is available (not deployed or busy)
-        // 3. Is operationally suitable for the disaster
-        // 4. Is within the operational search radius
-        const isEligible = hasValidCoords && isStatusAvailable && capability.isEligible && isWithinRadius;
+        // 2. Verified location and non-stale coordinates
+        // 3. Is available (not deployed beyond capacity)
+        // 4. Is operationally suitable for the disaster
+        // 5. Is within the operational search radius
+        const isEligible = hasValidCoords && isVerifiedLocation && !isStaleLocation && isStatusAvailable && capability.isEligible && isWithinRadius;
 
         // Combined Ranking Score (Nearest eligible team ranked top by default):
         // Primary driver: Distance (shorter distance = higher score, 100 at 0km, decreasing linearly)
         // Secondary driver: Capability suitability bonus for specialized units
-        // Heavy penalty for unavailability or missing coords
+        // Availability bonus for squads with more spare capacity
         let rankingScore = 0;
         if (isEligible) {
-            const proximityScore = Math.max(0, 100 - (distanceKm * 1.5)); // 100 at 0km, 70 at 20km, 25 at 50km
-            const tierBonus = capability.suitabilityTier === 'SPECIALIZED' ? 15 : 0;
-            const stalenessPenalty = isStaleLocation ? 10 : 0;
-            rankingScore = Number((proximityScore + tierBonus - stalenessPenalty).toFixed(1));
+            const proximityScore = Math.max(0, 100 - (distanceKm * 0.5)); // Proximity score
+            const tierBonus = capability.suitabilityTier === 'SPECIALIZED' ? 20 : 0;
+            const capacityBonus = Math.max(0, (maxCapacity - activeCount) * 5);
+            rankingScore = Number((proximityScore + tierBonus + capacityBonus).toFixed(1));
         } else {
             rankingScore = -1; // Ineligible
         }
@@ -212,9 +264,13 @@ async function findEligibleRescueTeams({ disasterType, latitude, longitude, vict
             teamLeader: team.team_leader,
             contactPhone: team.contact_phone,
             status: team.status,
+            operationalZone: team.operational_zone || 'ZONE_LUCKNOW',
+            maxCapacity,
+            activeCount,
             currentLat: teamLat,
             currentLng: teamLng,
             hasValidLocation: hasValidCoords,
+            isVerifiedLocation,
             isStaleLocation,
             isAvailable: isStatusAvailable,
             isCurrentlyDeployed: isAssignedToActive,
@@ -241,12 +297,12 @@ async function findEligibleRescueTeams({ disasterType, latitude, longitude, vict
             if (a.suitabilityTier === b.suitabilityTier) {
                 return a.distanceKm - b.distanceKm;
             }
-            // A specialized team wins over standard team only if within 10km difference
+            // A specialized team wins over standard team only if within 15km difference
             if (a.suitabilityTier === 'SPECIALIZED' && b.suitabilityTier !== 'SPECIALIZED') {
-                return (a.distanceKm - b.distanceKm) > 10 ? 1 : -1;
+                return (a.distanceKm - b.distanceKm) > 15 ? 1 : -1;
             }
             if (b.suitabilityTier === 'SPECIALIZED' && a.suitabilityTier !== 'SPECIALIZED') {
-                return (b.distanceKm - a.distanceKm) > 10 ? -1 : 1;
+                return (b.distanceKm - a.distanceKm) > 15 ? -1 : 1;
             }
             return a.distanceKm - b.distanceKm;
         }
@@ -260,7 +316,8 @@ async function findEligibleRescueTeams({ disasterType, latitude, longitude, vict
 
 /**
  * Automatically assigns and dispatches the nearest suitable available rescue team.
- * Follows progressive search radius expansion (15km -> 30km -> 50km).
+ * Follows progressive search radius expansion:
+ * Tier 1: Local Immediate (25km) -> Tier 2: District (60km) -> Tier 3: Neighboring Zone (150km) -> Tier 4: State Sector (350km) -> Tier 5: Mutual-Aid (800km)
  * Prevents concurrent double-booking via atomic status updates.
  */
 async function autoDispatchIncident(incidentId, options = {}) {
@@ -280,7 +337,7 @@ async function autoDispatchIncident(incidentId, options = {}) {
     }
 
     // Check if incident already has an assigned team to prevent duplicate assignments
-    if (incident.assigned_rescue_team && incident.status !== 'RECEIVED' && incident.status !== 'REQUESTED') {
+    if (incident.assigned_rescue_team && incident.status !== 'RECEIVED' && incident.status !== 'REQUESTED' && incident.status !== 'AWAITING_SQUAD') {
         return {
             success: true,
             dispatched: false,
@@ -296,24 +353,27 @@ async function autoDispatchIncident(incidentId, options = {}) {
     const lat = incident.latitude;
     const lng = incident.longitude;
 
-    // Progressive Search Radius expansion: 15km -> 30km -> 50km
+    // Progressive Search Radius expansion
+    const searchTiers = getSearchTiers(options.searchRadiusKm || null);
     let candidates = [];
     let selectedCandidate = null;
+    let assignedTier = searchTiers[0];
 
-    for (const radius of SEARCH_RADII) {
+    for (const tier of searchTiers) {
         candidates = await findEligibleRescueTeams({
             disasterType,
             latitude: lat,
             longitude: lng,
             victimCount: incident.count || 1,
             details,
-            searchRadiusKm: radius
+            searchRadiusKm: tier.radiusKm
         });
 
         // Find the top eligible candidate within this radius tier
         const topEligible = candidates.find(c => c.isEligible);
         if (topEligible) {
             selectedCandidate = topEligible;
+            assignedTier = tier;
             break; // Found nearest suitable team within this tier!
         }
     }
@@ -322,13 +382,16 @@ async function autoDispatchIncident(incidentId, options = {}) {
         const teamObj = selectedCandidate.team;
         const ackDeadlineIso = new Date(Date.now() + 3 * 60 * 1000).toISOString(); // 3-minute acknowledgement window
 
-        // Atomic lock to prevent concurrent double-booking of the same team
+        // Atomic lock to prevent concurrent double-booking of the same team beyond max capacity
         const lockResult = await db.run(
             `UPDATE rescue_teams
              SET status = 'DISPATCHED',
                  assigned_incident_id = ?,
+                 active_incident_count = COALESCE(active_incident_count, 0) + 1,
+                 notification_status = 'NOTIFIED',
+                 last_location_update = datetime('now'),
                  updated_at = datetime('now')
-             WHERE id = ? AND status IN ('AVAILABLE', 'STANDBY')`,
+             WHERE id = ? AND status IN ('AVAILABLE', 'STANDBY') AND COALESCE(active_incident_count, 0) < COALESCE(max_capacity, 2)`,
             [incidentId, teamObj.id]
         );
 
@@ -342,17 +405,48 @@ async function autoDispatchIncident(incidentId, options = {}) {
                 longitude: lng,
                 victimCount: incident.count || 1,
                 details,
-                searchRadiusKm: MAX_DISPATCH_RADIUS_KM
+                searchRadiusKm: options.searchRadiusKm || MAX_DISPATCH_RADIUS_KM
             });
             const fallback = fallbackCandidates.find(c => c.isEligible && c.teamId !== teamObj.id);
             if (!fallback) {
-                return recordNoTeamAvailable(incident, disasterType, fallbackCandidates);
+                return recordNoTeamAvailable(incident, disasterType, fallbackCandidates, options.searchRadiusKm || MAX_DISPATCH_RADIUS_KM);
             }
             return autoDispatchIncident(incidentId, options);
         }
 
+        // Calculate real road route vs straight-line distance
+        let roadDistKm = null;
+        let straightLineDistKm = selectedCandidate.distanceKm;
+        let finalDistanceKm = selectedCandidate.distanceKm;
+        let finalEtaMinutes = selectedCandidate.etaMinutes;
+        let distanceType = 'straight_line';
+        let routingEngine = 'Straight-Line Geodesic';
+        let etaText = `~${finalEtaMinutes} mins (Direct: ${finalDistanceKm} km)`;
+
+        try {
+            const { calculateSafeRoute } = require('./safeRouteService');
+            const route = await calculateSafeRoute({
+                originLat: selectedCandidate.currentLat,
+                originLng: selectedCandidate.currentLng,
+                destLat: lat,
+                destLng: lng,
+                teamId: teamObj.id,
+                incidentId: incidentId
+            });
+            if (route && route.routeDistanceKm > 0) {
+                roadDistKm = route.routeDistanceKm;
+                finalDistanceKm = route.routeDistanceKm;
+                finalEtaMinutes = route.etaMinutes || calculateEtaMinutes(finalDistanceKm);
+                distanceType = 'road';
+                routingEngine = route.routingEngine || 'OSRM Real-World Road Network';
+                etaText = `~${finalEtaMinutes} mins (Road: ${finalDistanceKm} km)`;
+            }
+        } catch (routeErr) {
+            console.warn('[DispatchEngine] Road routing fallback to straight-line:', routeErr.message);
+        }
+
         // 1. Update incident with nearest assigned team details
-        const dispatchNote = `[AUTO-DISPATCH] Nearest eligible squad '${teamObj.name}' (${teamObj.unit_code}) assigned. Distance: ${selectedCandidate.distanceKm} km, ETA: ~${selectedCandidate.etaMinutes} mins. Capability Match: ${selectedCandidate.suitabilityTier} (${selectedCandidate.matchedTags.join('; ')}).`;
+        const dispatchNote = `[AUTO-DISPATCH] Nearest eligible squad '${teamObj.name}' (${teamObj.unit_code}) assigned from Tier ${assignedTier.tier} (${assignedTier.name}). Distance: ${finalDistanceKm} km (${distanceType}), ETA: ~${finalEtaMinutes} mins. Capability Match: ${selectedCandidate.suitabilityTier} (${selectedCandidate.matchedTags.join('; ')}).`;
 
         await db.run(
             `UPDATE incidents
@@ -361,18 +455,33 @@ async function autoDispatchIncident(incidentId, options = {}) {
                  status = 'TEAM_ASSIGNED',
                  dispatch_team_id = ?,
                  dispatch_eta_minutes = ?,
+                 dispatch_eta_text = ?,
                  dispatch_distance_km = ?,
+                 dispatch_distance_type = ?,
+                 road_distance_km = ?,
+                 straight_line_distance_km = ?,
+                 routing_engine = ?,
+                 assignment_time = datetime('now'),
+                 last_status_update = datetime('now'),
                  ack_deadline = ?,
                  dispatch_notes = ?,
+                 escalation_level = ?,
+                 escalation_reason = NULL,
                  updated_at = datetime('now')
              WHERE id = ?`,
             [
                 teamObj.name,
                 teamObj.id,
-                selectedCandidate.etaMinutes,
-                selectedCandidate.distanceKm,
+                finalEtaMinutes,
+                etaText,
+                finalDistanceKm,
+                distanceType,
+                roadDistKm,
+                straightLineDistKm,
+                routingEngine,
                 ackDeadlineIso,
                 dispatchNote,
+                assignedTier.tier > 1 ? assignedTier.tier - 1 : 0,
                 incidentId
             ]
         );
@@ -396,7 +505,7 @@ async function autoDispatchIncident(incidentId, options = {}) {
             [
                 generateUUID('NOTIF'),
                 `DISPATCH ALERT: ${teamObj.unit_code} -> ${incidentId}`,
-                `Nearest suitable squad ${teamObj.name} deployed to ${disasterType} at [${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}]. Distance: ${selectedCandidate.distanceKm}km, ETA: ~${selectedCandidate.etaMinutes}m.`,
+                `Nearest suitable squad ${teamObj.name} deployed to ${disasterType} at [${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}]. Distance: ${finalDistanceKm}km (${distanceType}), ETA: ~${finalEtaMinutes}m.`,
                 incidentId
             ]
         );
@@ -411,10 +520,14 @@ async function autoDispatchIncident(incidentId, options = {}) {
             details: {
                 teamId: teamObj.id,
                 teamName: teamObj.name,
-                distanceKm: selectedCandidate.distanceKm,
-                etaMinutes: selectedCandidate.etaMinutes,
+                distanceKm: finalDistanceKm,
+                distanceType,
+                roadDistanceKm: roadDistKm,
+                straightLineDistanceKm: straightLineDistKm,
+                etaMinutes: finalEtaMinutes,
                 suitabilityTier: selectedCandidate.suitabilityTier,
-                isStaleLocation: selectedCandidate.isStaleLocation
+                isStaleLocation: selectedCandidate.isStaleLocation,
+                tier: assignedTier.name
             }
         });
 
@@ -434,8 +547,9 @@ async function autoDispatchIncident(incidentId, options = {}) {
                         unitCode: teamObj.unit_code,
                         leader: teamObj.team_leader,
                         phone: teamObj.contact_phone,
-                        distanceKm: selectedCandidate.distanceKm,
-                        etaMinutes: selectedCandidate.etaMinutes
+                        distanceKm: finalDistanceKm,
+                        distanceType,
+                        etaMinutes: finalEtaMinutes
                     },
                     location: { latitude: lat, longitude: lng },
                     priority: incident.emergency_level,
@@ -458,43 +572,79 @@ async function autoDispatchIncident(incidentId, options = {}) {
                 phone: teamObj.contact_phone,
                 vehicle: teamObj.vehicle,
                 equipment: teamObj.equipment,
-                distanceKm: selectedCandidate.distanceKm,
-                etaMinutes: selectedCandidate.etaMinutes,
+                distanceKm: finalDistanceKm,
+                distanceType,
+                roadDistanceKm: roadDistKm,
+                straightLineDistanceKm: straightLineDistKm,
+                etaMinutes: finalEtaMinutes,
+                etaText,
                 suitabilityTier: selectedCandidate.suitabilityTier,
                 matchedCapabilities: selectedCandidate.matchedTags
             },
-            distanceKm: selectedCandidate.distanceKm,
-            etaMinutes: selectedCandidate.etaMinutes,
+            distanceKm: finalDistanceKm,
+            distanceType,
+            roadDistanceKm: roadDistKm,
+            straightLineDistanceKm: straightLineDistKm,
+            etaMinutes: finalEtaMinutes,
+            etaText,
+            routingEngine,
             ackDeadline: ackDeadlineIso
         };
     } else {
-        // No suitable team available within 50km radius
-        return recordNoTeamAvailable(incident, disasterType, candidates);
+        // No suitable team available within configured maximum radius
+        return recordNoTeamAvailable(incident, disasterType, candidates, options.searchRadiusKm || MAX_DISPATCH_RADIUS_KM);
     }
 }
 
 /**
  * Handles explicit "No suitable nearby team available" state with auditable fallback.
+ * Retains the incident as AWAITING_SQUAD and records transparent reasons and nearest alternatives.
  */
-async function recordNoTeamAvailable(incident, disasterType, candidates = []) {
-    const fallbackNote = `[DISPATCH ADVISORY] No suitable nearby team available within operational radius (${MAX_DISPATCH_RADIUS_KM}km). Incident placed in Priority Dispatch Queue awaiting regional mutual-aid or manual assignment.`;
+async function recordNoTeamAvailable(incident, disasterType, candidates = [], searchRadiusKm = MAX_DISPATCH_RADIUS_KM) {
+    // Provide nearest alternatives for manual authority inspection and transparent citizen reporting
+    const nearestAlternatives = (candidates || []).slice(0, 5).map(c => ({
+        teamId: c.teamId,
+        teamName: c.teamName,
+        distanceKm: c.distanceKm,
+        status: c.status,
+        operationalZone: c.team?.operational_zone || 'ZONE_REGIONAL',
+        reasonIneligible: !c.hasValidLocation ? 'Missing GPS telemetry' :
+                         c.isStaleLocation ? 'Stale telemetry (>24h without fix)' :
+                         !c.isAvailable ? 'Currently deployed at capacity' :
+                         !c.isWithinRadius ? `Beyond ${searchRadiusKm}km boundary` :
+                         'Unsuitable equipment for disaster'
+    }));
+
+    const nearestAlternative = nearestAlternatives.length > 0 ? nearestAlternatives[0] : null;
+    const nearestDistKm = nearestAlternative ? nearestAlternative.distanceKm : null;
+    const escalationReason = `No qualified rescue squad available within ${searchRadiusKm} km operational perimeter. All units are either deployed, beyond operational radius, or lack specialized gear. Escalated to Regional Command Center (Level 1).`;
+    const fallbackNote = `[DISPATCH ADVISORY] No suitable nearby team available within operational radius (${searchRadiusKm}km). Incident placed in Priority Dispatch Queue awaiting regional mutual-aid or manual assignment.`;
 
     await db.run(
         `UPDATE incidents
-         SET dispatch_notes = ?,
+         SET status = 'AWAITING_SQUAD',
+             assigned_rescue_team = NULL,
+             dispatch_team_id = NULL,
+             dispatch_notes = ?,
              escalation_level = 1,
+             escalation_reason = ?,
+             nearest_distance_km = ?,
+             dispatch_distance_km = ?,
+             dispatch_distance_type = 'nearest_candidate',
+             dispatch_eta_minutes = NULL,
+             dispatch_eta_text = 'Pending Squad Allocation',
+             last_status_update = datetime('now'),
              updated_at = datetime('now')
          WHERE id = ?`,
-        [fallbackNote, incident.id]
+        [fallbackNote, escalationReason, nearestDistKm, nearestDistKm, incident.id]
     );
 
     await db.run(
         `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
-         VALUES (?, ?, 'SYSTEM_DISPATCH_ENGINE', 'AUTHORITY', ?, ?, ?, datetime('now'))`,
+         VALUES (?, ?, 'SYSTEM_DISPATCH_ENGINE', 'AUTHORITY', ?, 'AWAITING_SQUAD', ?, datetime('now'))`,
         [
             generateUUID('INCU'),
             incident.id,
-            incident.status,
             incident.status,
             fallbackNote
         ]
@@ -506,30 +656,21 @@ async function recordNoTeamAvailable(incident, disasterType, candidates = []) {
         [
             generateUUID('NOTIF'),
             `NO NEARBY SQUAD: ${incident.id}`,
-            `No available rescue squads within ${MAX_DISPATCH_RADIUS_KM}km for ${incident.id} (${disasterType}). Commander review required.`,
+            `No available rescue squads within ${searchRadiusKm}km for ${incident.id} (${disasterType}). Commander review required.`,
             incident.id
         ]
     );
-
-    // Provide nearest alternatives for manual authority inspection
-    const nearestAlternatives = (candidates || []).slice(0, 3).map(c => ({
-        teamId: c.teamId,
-        teamName: c.teamName,
-        distanceKm: c.distanceKm,
-        status: c.status,
-        reasonIneligible: !c.hasValidLocation ? 'Missing GPS telemetry' :
-                         !c.isAvailable ? 'Currently deployed' :
-                         !c.isWithinRadius ? `Beyond ${MAX_DISPATCH_RADIUS_KM}km boundary` :
-                         'Unsuitable equipment for disaster'
-    }));
 
     return {
         success: true,
         dispatched: false,
         noSuitableNearbyTeam: true,
-        status: incident.status,
-        message: `No suitable nearby team available within ${MAX_DISPATCH_RADIUS_KM}km operational radius.`,
+        status: 'AWAITING_SQUAD',
+        message: `No suitable nearby team available within ${searchRadiusKm}km operational radius.`,
         nearestAlternatives,
+        nearestDistanceKm: nearestDistKm,
+        escalationLevel: 1,
+        escalationReason,
         candidatesEvaluated: candidates.length
     };
 }
@@ -760,7 +901,39 @@ async function checkAndEscalateUnacknowledgedIncidents() {
     }
 }
 
+/**
+ * Periodically rescans and safely retries dispatch for incidents awaiting squad allocation.
+ */
+async function retryUnassignedDispatches() {
+    try {
+        const awaitingIncidents = await db.query(
+            `SELECT id, category, details, latitude, longitude, count, escalation_level
+             FROM incidents
+             WHERE status = 'AWAITING_SQUAD'
+               AND created_at >= datetime('now', '-24 hours')
+             ORDER BY emergency_level DESC, created_at ASC
+             LIMIT 10`
+        );
+        const results = [];
+        for (const inc of awaitingIncidents) {
+            const res = await autoDispatchIncident(inc.id, {
+                category: inc.category,
+                details: inc.details,
+                dispatchedBy: 'AUTO_RETRY_ENGINE'
+            });
+            results.push({ incidentId: inc.id, ...res });
+        }
+        return results;
+    } catch (err) {
+        console.error('[DispatchEngine] Retry unassigned dispatches error:', err.message);
+        return [];
+    }
+}
+
 module.exports = {
+    SEARCH_RADII,
+    MAX_DISPATCH_RADIUS_KM,
+    getSearchTiers,
     haversineDistanceKm,
     calculateEtaMinutes,
     evaluateCapabilityMatch,
@@ -768,5 +941,7 @@ module.exports = {
     autoDispatchIncident,
     acknowledgeTeamDispatch,
     escalateIncident,
-    checkAndEscalateUnacknowledgedIncidents
+    checkAndEscalateUnacknowledgedIncidents,
+    retryUnassignedDispatches
 };
+
