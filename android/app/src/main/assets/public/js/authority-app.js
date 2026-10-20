@@ -1654,9 +1654,10 @@ function renderIncidentInspectModal(inc) {
                     attributionControl: false
                 }).setView([inc.latitude, inc.longitude], 15);
 
-                L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                    maxZoom: 19
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                    subdomains: ['a', 'b', 'c', 'd'],
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                    maxZoom: 20
                 }).addTo(miniMap);
 
                 const icon = L.divIcon({
@@ -2257,18 +2258,14 @@ function switchAuthorityView(viewName, subTable = null) {
         el.classList.add('bg-purple-700', 'text-white', 'font-bold', 'shadow');
     });
 
+    // Keep backward-compatible check if any custom nav button exists
     const viewNames = ['tactical', 'teams', 'resources', 'clusters', 'analytics', 'database', 'audit', 'ndrf', 'ngos', 'alerts'];
     viewNames.forEach(v => {
         const btn = document.getElementById(`nav-btn-${v}`);
-        if (btn) {
-            btn.className = "px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5";
-        }
+        if (btn) btn.className = "px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5";
     });
-
     const activeBtn = document.getElementById(`nav-btn-${viewName}`);
-    if (activeBtn) {
-        activeBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 bg-purple-700 text-white shadow";
-    }
+    if (activeBtn) activeBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 bg-purple-700 text-white shadow";
 
     if (viewName === 'database') {
         if (subTable) {
