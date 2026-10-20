@@ -2261,13 +2261,13 @@ function switchAuthorityView(viewName, subTable = null) {
     viewNames.forEach(v => {
         const btn = document.getElementById(`nav-btn-${v}`);
         if (btn) {
-            btn.className = "px-2.5 py-1.5 rounded-lg font-bold flex items-center space-x-1 transition text-slate-400 hover:text-slate-200 text-xs";
+            btn.className = "px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center space-x-1.5";
         }
     });
 
     const activeBtn = document.getElementById(`nav-btn-${viewName}`);
     if (activeBtn) {
-        activeBtn.className = "px-2.5 py-1.5 rounded-lg font-bold flex items-center space-x-1 transition bg-purple-700 text-white shadow text-xs";
+        activeBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 bg-purple-700 text-white shadow";
     }
 
     if (viewName === 'database') {
@@ -2719,9 +2719,9 @@ async function loadDatabaseOverview(autoLoadFirstTable = true) {
         if (tablesCountBadge) tablesCountBadge.innerText = `${dbOverviewData.totalTables} Tables`;
 
         const navBadge = document.getElementById('nav-db-badge');
-        if (navBadge) navBadge.innerText = `${dbOverviewData.totalRecords.toLocaleString()} rows`;
+        if (navBadge) navBadge.innerText = `${dbOverviewData.totalTables} Tables`;
 
-        // Update primary directory cards
+        // Update primary directory cards & quick tactical banner
         const usersTbl = dbOverviewData.tables?.find(t => t.name === 'users');
         const incidentsTbl = dbOverviewData.tables?.find(t => t.name === 'incidents');
         const quickUserBadge = document.getElementById('quick-user-count');
@@ -2731,6 +2731,14 @@ async function loadDatabaseOverview(autoLoadFirstTable = true) {
         const quickIncBadge = document.getElementById('quick-incident-count');
         if (quickIncBadge && incidentsTbl) {
             quickIncBadge.innerText = `${incidentsTbl.rowCount} Stored Reports`;
+        }
+        const quickBannerUser = document.getElementById('quick-banner-user-count');
+        if (quickBannerUser && usersTbl) {
+            quickBannerUser.innerText = `${usersTbl.rowCount} Citizens`;
+        }
+        const quickBannerInc = document.getElementById('quick-banner-incident-count');
+        if (quickBannerInc && incidentsTbl) {
+            quickBannerInc.innerText = `${incidentsTbl.rowCount} SOS Reports`;
         }
 
         // Render table selector pills
