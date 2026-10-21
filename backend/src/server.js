@@ -11,7 +11,7 @@ const { Server } = require('socket.io');
 const db = require('./config/database');
 const { initSocket } = require('./sockets/socketHandler');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
-const { generalLimiter, strictLimiter } = require('./middleware/rateLimiter');
+const { generalLimiter } = require('./middleware/rateLimiter');
 
 // Import Route Handlers
 const authRoutes = require('./routes/authRoutes');
@@ -39,6 +39,12 @@ const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const FRONTEND_URL = process.env.FRONTEND_URL || '*';
 const SOCKET_ORIGIN = process.env.SOCKET_ORIGIN || '*';
+
+// 0. Trusted Reverse Proxy Configuration for Render Deployment Topology
+// Render uses 1 reverse proxy hop in front of the web service.
+// Trusting 1 hop ensures req.ip correctly resolves to the genuine client's public IP address
+// from the X-Forwarded-For header, preventing false "Too many attempts" across all users.
+app.set('trust proxy', 1);
 
 // 1. Security Headers via Helmet (configured to allow Leaflet & tile sources)
 app.use(helmet({
@@ -77,9 +83,8 @@ if (NODE_ENV !== 'test') {
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-// 5. Rate Limiting
+// 5. Rate Limiting (Applied to /api with health check bypass; sensitive auth endpoints protected specifically in authRoutes)
 app.use('/api', generalLimiter);
-app.use('/api/auth', strictLimiter);
 
 // 6. Serve Uploaded Static Assets Safely
 const uploadsPath = path.resolve(__dirname, '../uploads');

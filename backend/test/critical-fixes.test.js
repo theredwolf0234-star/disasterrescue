@@ -385,8 +385,8 @@ async function runCriticalTests() {
     // 6. DISTANCE-AWARE AI RESCUE TEAM ASSIGNMENT
     // ==========================================
     await test('Req 6.1: Nearest eligible team is selected based on proximity', async () => {
-        // Reset all teams to AVAILABLE
-        await db.run(`UPDATE rescue_teams SET status = 'AVAILABLE', assigned_incident_id = NULL, active_incident_count = 0`);
+        // Reset all teams to AVAILABLE with fresh telemetry timestamps
+        await db.run(`UPDATE rescue_teams SET status = 'AVAILABLE', assigned_incident_id = NULL, active_incident_count = 0, last_location_update = datetime('now'), updated_at = datetime('now')`);
 
         // Incident at 26.8610, 80.9550
         // TEAM_NDRF_01 is at 26.852, 80.945 (~1.41km away)

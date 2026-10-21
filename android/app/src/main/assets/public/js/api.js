@@ -153,7 +153,11 @@ const api = {
 
                     let friendlyMsg = data.message || `Request failed with status ${response.status}`;
                     if (response.status === 401) {
-                        friendlyMsg = data.message || 'Session expired or unauthorized. Please log in again.';
+                        friendlyMsg = data.message || 'Session expired or invalid credentials.';
+                    } else if (response.status === 423) {
+                        friendlyMsg = data.message || 'Account is temporarily locked due to failed login attempts.';
+                    } else if (response.status === 429) {
+                        friendlyMsg = data.message || 'Too many requests from this network. Please wait before retrying.';
                     } else if (response.status === 403) {
                         friendlyMsg = data.message || 'Permission denied: Role lacks authorization.';
                     } else if (response.status === 404) {
@@ -164,7 +168,7 @@ const api = {
 
                     const err = new Error(friendlyMsg);
                     err.status = response.status;
-                    err.errorCode = data.errorCode || (response.status === 401 ? 'UNAUTHORIZED' : response.status === 403 ? 'FORBIDDEN' : 'API_ERROR');
+                    err.errorCode = data.errorCode || (response.status === 401 ? 'UNAUTHORIZED' : response.status === 423 ? 'ACCOUNT_LOCKED' : response.status === 429 ? 'RATE_LIMIT_EXCEEDED' : response.status === 403 ? 'FORBIDDEN' : 'API_ERROR');
                     err.data = data;
                     throw err;
                 }

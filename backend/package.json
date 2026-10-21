@@ -7,7 +7,8 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "seed": "node scripts/seed.js",
-    "test": "node test/api.test.js && node test/ndrf.test.js && node test/critical-fixes.test.js",
+    "test": "node test/api.test.js && node test/ndrf.test.js && node test/critical-fixes.test.js && node test/auth-lockout.test.js",
+    "test:auth": "node test/auth-lockout.test.js",
     "test:critical": "node test/critical-fixes.test.js",
     "test:ndrf": "node test/ndrf.test.js",
     "test:e2e": "node test/e2e-flow.test.js"

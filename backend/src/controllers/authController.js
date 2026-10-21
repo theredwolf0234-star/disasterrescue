@@ -143,6 +143,14 @@ async function loginCitizen(req, res, next) {
         const user = await db.get(`SELECT * FROM users WHERE LOWER(email) = LOWER(?)`, [normalizedEmail]);
 
         if (!user) {
+            try {
+                await db.run(
+                    `INSERT INTO login_attempt_logs (id, ip_address, identifier, user_type, success, attempted_at)
+                     VALUES (?, ?, ?, 'CITIZEN', 0, datetime('now'))`,
+                    [generateUUID('ATT'), req.ip, normalizedEmail]
+                );
+            } catch (e) {}
+
             return res.status(401).json({
                 success: false,
                 message: 'Invalid email or password credentials.',
@@ -150,14 +158,99 @@ async function loginCitizen(req, res, next) {
             });
         }
 
+        const MAX_FAILED_ATTEMPTS = 5;
+        const LOCKOUT_MINUTES = 15;
+        const LOCKOUT_MS = LOCKOUT_MINUTES * 60 * 1000;
+
+        // Check if citizen account is currently locked
+        if (user.locked_until) {
+            const lockedUntilMs = new Date(user.locked_until).getTime();
+            const nowMs = Date.now();
+            if (lockedUntilMs > nowMs) {
+                const remainingMs = lockedUntilMs - nowMs;
+                const remainingMinutes = Math.max(1, Math.ceil(remainingMs / 60000));
+                const remainingSeconds = Math.ceil(remainingMs / 1000);
+
+                return res.status(423).json({
+                    success: false,
+                    message: `Too many login attempts. Account is temporarily locked. Try again in ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}.`,
+                    errorCode: 'ACCOUNT_LOCKED',
+                    lockedUntil: user.locked_until,
+                    remainingMinutes,
+                    remainingSeconds
+                });
+            } else {
+                // Lockout has expired: reset counter
+                await db.run(
+                    `UPDATE users SET failed_login_attempts = 0, locked_until = NULL, updated_at = datetime('now') WHERE id = ?`,
+                    [user.id]
+                );
+                user.failed_login_attempts = 0;
+                user.locked_until = null;
+            }
+        }
+
         const match = await bcrypt.compare(password, user.password_hash);
         if (!match) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid email or password credentials.',
-                errorCode: 'INVALID_CREDENTIALS'
-            });
+            const currentFailed = (user.failed_login_attempts || 0) + 1;
+            try {
+                await db.run(
+                    `INSERT INTO login_attempt_logs (id, ip_address, identifier, user_type, success, attempted_at)
+                     VALUES (?, ?, ?, 'CITIZEN', 0, datetime('now'))`,
+                    [generateUUID('ATT'), req.ip, normalizedEmail]
+                );
+            } catch (e) {}
+
+            if (currentFailed >= MAX_FAILED_ATTEMPTS) {
+                const lockUntilIso = new Date(Date.now() + LOCKOUT_MS).toISOString();
+                await db.run(
+                    `UPDATE users 
+                     SET failed_login_attempts = ?, locked_until = ?, last_failed_login = datetime('now'), updated_at = datetime('now')
+                     WHERE id = ?`,
+                    [currentFailed, lockUntilIso, user.id]
+                );
+
+                return res.status(423).json({
+                    success: false,
+                    message: `Too many login attempts. Account is temporarily locked. Try again in ${LOCKOUT_MINUTES} minutes.`,
+                    errorCode: 'ACCOUNT_LOCKED',
+                    lockedUntil: lockUntilIso,
+                    remainingMinutes: LOCKOUT_MINUTES,
+                    remainingSeconds: LOCKOUT_MINUTES * 60
+                });
+            } else {
+                await db.run(
+                    `UPDATE users 
+                     SET failed_login_attempts = ?, last_failed_login = datetime('now'), updated_at = datetime('now')
+                     WHERE id = ?`,
+                    [currentFailed, user.id]
+                );
+
+                const attemptsRemaining = MAX_FAILED_ATTEMPTS - currentFailed;
+                return res.status(401).json({
+                    success: false,
+                    message: `Invalid email or password credentials. ${attemptsRemaining} attempt${attemptsRemaining > 1 ? 's' : ''} remaining before account lockout.`,
+                    errorCode: 'INVALID_CREDENTIALS',
+                    attemptsRemaining
+                });
+            }
         }
+
+        // Authentication success: Reset failed attempts counter and clear lockout
+        await db.run(
+            `UPDATE users 
+             SET failed_login_attempts = 0, locked_until = NULL, updated_at = datetime('now') 
+             WHERE id = ?`,
+            [user.id]
+        );
+
+        try {
+            await db.run(
+                `INSERT INTO login_attempt_logs (id, ip_address, identifier, user_type, success, attempted_at)
+                 VALUES (?, ?, ?, 'CITIZEN', 1, datetime('now'))`,
+                [generateUUID('ATT'), req.ip, normalizedEmail]
+            );
+        } catch (e) {}
 
         const token = jwt.sign(
             { id: user.id, email: user.email, role: user.role || 'CITIZEN', name: user.full_name },
@@ -189,12 +282,13 @@ async function loginCitizen(req, res, next) {
     }
 }
 
-// Authority Login
+// Authority Login with Per-Account Lockout and Failed Attempt Tracking
 async function loginAuthority(req, res, next) {
     try {
-        const { username, password } = req.body;
+        const rawUser = req.body.username || req.body.identifier || req.body.badgeNumber || req.body.email;
+        const password = req.body.password || req.body.passcode;
 
-        if (!username || !password) {
+        if (!rawUser || !password) {
             return res.status(400).json({
                 success: false,
                 message: 'Authority username/badge and password are required.',
@@ -202,13 +296,21 @@ async function loginAuthority(req, res, next) {
             });
         }
 
-        const cleanUser = String(username).trim();
+        const cleanUser = String(rawUser).trim();
         const authUser = await db.get(
             `SELECT * FROM authority_users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(badge_number) = LOWER(?)`,
             [cleanUser, cleanUser, cleanUser]
         );
 
         if (!authUser) {
+            try {
+                await db.run(
+                    `INSERT INTO login_attempt_logs (id, ip_address, identifier, user_type, success, attempted_at)
+                     VALUES (?, ?, ?, 'AUTHORITY', 0, datetime('now'))`,
+                    [generateUUID('ATT'), req.ip, cleanUser]
+                );
+            } catch (e) {}
+
             return res.status(401).json({
                 success: false,
                 message: 'Invalid authority credentials.',
@@ -216,14 +318,126 @@ async function loginAuthority(req, res, next) {
             });
         }
 
+        const MAX_FAILED_ATTEMPTS = 5;
+        const LOCKOUT_MINUTES = 15;
+        const LOCKOUT_MS = LOCKOUT_MINUTES * 60 * 1000;
+
+        // 1. Check if the specific admin account is currently locked
+        if (authUser.locked_until) {
+            const lockedUntilMs = new Date(authUser.locked_until).getTime();
+            const nowMs = Date.now();
+            if (lockedUntilMs > nowMs) {
+                const remainingMs = lockedUntilMs - nowMs;
+                const remainingMinutes = Math.max(1, Math.ceil(remainingMs / 60000));
+                const remainingSeconds = Math.ceil(remainingMs / 1000);
+
+                await logAction({
+                    userId: authUser.id,
+                    userRole: authUser.role || 'AUTHORITY',
+                    action: 'AUTHORITY_LOGIN_BLOCKED_ACCOUNT_LOCKED',
+                    entityType: 'AUTH',
+                    entityId: authUser.id,
+                    details: `Login attempt rejected: Account '${authUser.username}' is locked for another ${remainingMinutes} minute(s).`,
+                    ipAddress: req.ip
+                });
+
+                return res.status(423).json({
+                    success: false,
+                    isLocked: true,
+                    message: `Too many login attempts. Account is temporarily locked. Try again in ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}.`,
+                    errorCode: 'ACCOUNT_LOCKED',
+                    lockedUntil: authUser.locked_until,
+                    remainingMinutes,
+                    remainingSeconds
+                });
+            } else {
+                // Lockout has expired: reset failed attempts
+                await db.run(
+                    `UPDATE authority_users 
+                     SET failed_login_attempts = 0, locked_until = NULL, updated_at = datetime('now')
+                     WHERE id = ?`,
+                    [authUser.id]
+                );
+                authUser.failed_login_attempts = 0;
+                authUser.locked_until = null;
+            }
+        }
+
+        // 2. Validate password
         const match = await bcrypt.compare(password, authUser.password_hash);
         if (!match) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid authority credentials.',
-                errorCode: 'INVALID_CREDENTIALS'
-            });
+            const currentFailed = (authUser.failed_login_attempts || 0) + 1;
+
+            try {
+                await db.run(
+                    `INSERT INTO login_attempt_logs (id, ip_address, identifier, user_type, success, attempted_at)
+                     VALUES (?, ?, ?, 'AUTHORITY', 0, datetime('now'))`,
+                    [generateUUID('ATT'), req.ip, authUser.username]
+                );
+            } catch (e) {}
+
+            if (currentFailed >= MAX_FAILED_ATTEMPTS) {
+                const lockUntilIso = new Date(Date.now() + LOCKOUT_MS).toISOString();
+                await db.run(
+                    `UPDATE authority_users 
+                     SET failed_login_attempts = ?, locked_until = ?, last_failed_login = datetime('now'), updated_at = datetime('now')
+                     WHERE id = ?`,
+                    [currentFailed, lockUntilIso, authUser.id]
+                );
+
+                await logAction({
+                    userId: authUser.id,
+                    userRole: authUser.role || 'AUTHORITY',
+                    action: 'AUTHORITY_ACCOUNT_LOCKED',
+                    entityType: 'AUTH',
+                    entityId: authUser.id,
+                    details: `Authority account '${authUser.username}' locked for ${LOCKOUT_MINUTES} minutes after ${currentFailed} consecutive failed attempts from IP ${req.ip}.`,
+                    ipAddress: req.ip
+                });
+
+                return res.status(423).json({
+                    success: false,
+                    isLocked: true,
+                    message: `Too many failed login attempts. Account is temporarily locked. Try again in ${LOCKOUT_MINUTES} minutes.`,
+                    errorCode: 'ACCOUNT_LOCKED',
+                    lockedUntil: lockUntilIso,
+                    remainingMinutes: LOCKOUT_MINUTES,
+                    remainingSeconds: LOCKOUT_MINUTES * 60
+                });
+            } else {
+                await db.run(
+                    `UPDATE authority_users 
+                     SET failed_login_attempts = ?, last_failed_login = datetime('now'), updated_at = datetime('now')
+                     WHERE id = ?`,
+                    [currentFailed, authUser.id]
+                );
+
+                const attemptsRemaining = MAX_FAILED_ATTEMPTS - currentFailed;
+                return res.status(401).json({
+                    success: false,
+                    message: `Invalid authority credentials. ${attemptsRemaining} attempt${attemptsRemaining > 1 ? 's' : ''} remaining before account lockout.`,
+                    errorCode: 'INVALID_CREDENTIALS',
+                    attemptsRemaining,
+                    failedAttempts: currentFailed
+                });
+            }
         }
+
+        // 3. Successful authentication: Reset failed attempts and clear lockout
+        await db.run(
+            `UPDATE authority_users 
+             SET failed_login_attempts = 0, locked_until = NULL, updated_at = datetime('now')
+             WHERE id = ?`,
+            [authUser.id]
+        );
+
+        try {
+            await db.run(
+                `INSERT INTO login_attempt_logs (id, ip_address, identifier, user_type, success, attempted_at)
+                 VALUES (?, ?, ?, 'AUTHORITY', 1, datetime('now'))`,
+                [generateUUID('ATT'), req.ip, authUser.username]
+            );
+        } catch (e) {}
 
         const token = jwt.sign(
             {
@@ -247,19 +461,23 @@ async function loginAuthority(req, res, next) {
             ipAddress: req.ip
         });
 
+        const userData = {
+            id: authUser.id,
+            username: authUser.username,
+            email: authUser.email,
+            badgeNumber: authUser.badge_number,
+            organization: authUser.organization,
+            role: authUser.role || 'AUTHORITY'
+        };
+
         res.json({
             success: true,
             message: 'Authority authenticated successfully.',
+            token,
+            user: userData,
             data: {
                 token,
-                user: {
-                    id: authUser.id,
-                    username: authUser.username,
-                    email: authUser.email,
-                    badgeNumber: authUser.badge_number,
-                    organization: authUser.organization,
-                    role: authUser.role || 'AUTHORITY'
-                }
+                user: userData
             }
         });
     } catch (err) {
@@ -678,12 +896,16 @@ async function resetPassword(req, res, next) {
 
         if (resetRecord.user_type === 'CITIZEN') {
             await db.run(
-                `UPDATE users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?`,
+                `UPDATE users 
+                 SET password_hash = ?, failed_login_attempts = 0, locked_until = NULL, updated_at = datetime('now') 
+                 WHERE id = ?`,
                 [newHash, resetRecord.user_id]
             );
         } else if (resetRecord.user_type === 'AUTHORITY') {
             await db.run(
-                `UPDATE authority_users SET password_hash = ?, updated_at = datetime('now') WHERE id = ?`,
+                `UPDATE authority_users 
+                 SET password_hash = ?, failed_login_attempts = 0, locked_until = NULL, updated_at = datetime('now') 
+                 WHERE id = ?`,
                 [newHash, resetRecord.user_id]
             );
         }
@@ -698,13 +920,194 @@ async function resetPassword(req, res, next) {
             action: 'PASSWORD_RESET_COMPLETED',
             entityType: 'AUTH',
             entityId: resetRecord.user_id,
-            details: `Password successfully updated via verified reset code for ${targetEmail}`,
+            details: `Password successfully updated and account unlocked via verified reset code for ${targetEmail}`,
             ipAddress: req.ip
         });
 
         res.json({
             success: true,
-            message: 'Password has been successfully updated. You may now log in.'
+            message: 'Password has been successfully updated and your account is unlocked. You may now log in.'
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// POST /api/auth/authority-recovery-request - Admin/Authority recovery code dispatch
+async function requestAuthorityRecovery(req, res, next) {
+    try {
+        const identifier = req.body.identifier || req.body.username || req.body.email || req.body.badgeNumber;
+        if (!identifier || !String(identifier).trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Officer Username, Badge ID, or registered email is required.',
+                errorCode: 'VALIDATION_ERROR'
+            });
+        }
+
+        const cleanId = String(identifier).trim();
+        const authUser = await db.get(
+            `SELECT * FROM authority_users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(badge_number) = LOWER(?)`,
+            [cleanId, cleanId, cleanId]
+        );
+
+        if (!authUser) {
+            // Consistent response to prevent user enumeration
+            return res.json({
+                success: true,
+                message: 'If the provided credentials match an active authority record, recovery verification instructions have been dispatched.',
+                data: { identifier: cleanId }
+            });
+        }
+
+        const resetCode = Math.floor(100000 + crypto.randomInt(900000)).toString();
+        const rawToken = crypto.randomBytes(32).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const codeHash = crypto.createHash('sha256').update(resetCode).digest('hex');
+        const resetId = generateUUID('RST');
+        const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+        // Invalidate older unused reset codes for this authority user
+        await db.run(`UPDATE password_resets SET used = 1 WHERE email = ? AND used = 0`, [authUser.email]);
+
+        await db.run(
+            `INSERT INTO password_resets (id, user_id, user_type, email, token, token_hash, code_hash, expires_at, used, created_at)
+             VALUES (?, ?, 'AUTHORITY', ?, ?, ?, ?, ?, 0, datetime('now'))`,
+            [resetId, authUser.id, authUser.email, resetCode, tokenHash, codeHash, expiresAt]
+        );
+
+        const isEmailSetup = emailService.isEmailConfigured();
+        if (isEmailSetup) {
+            await emailService.sendPasswordResetEmail({
+                to: authUser.email,
+                resetCode,
+                resetToken: rawToken,
+                recipientName: authUser.username,
+                userType: 'AUTHORITY'
+            });
+        }
+
+        // Log recovery event to server console and audit trail
+        console.log(`[AUTH RECOVERY KEY] Officer '${authUser.username}' (${authUser.email}): Single-use recovery code: ${resetCode} (Valid for 30 minutes)`);
+
+        await logAction({
+            userId: authUser.id,
+            userRole: authUser.role || 'AUTHORITY',
+            action: 'AUTHORITY_PASSWORD_RECOVERY_REQUESTED',
+            entityType: 'AUTH',
+            entityId: authUser.id,
+            details: `Single-use recovery verification code generated for officer '${authUser.username}'. Email configured: ${isEmailSetup}`,
+            ipAddress: req.ip
+        });
+
+        const isTestEnv = process.env.NODE_ENV === 'test' || process.env.ALLOW_DEV_RESET_CODE === 'true';
+        const responseData = {
+            email: authUser.email,
+            username: authUser.username,
+            emailConfigured: isEmailSetup,
+            expiresAt
+        };
+
+        if (isTestEnv) {
+            responseData.resetCode = resetCode;
+            responseData.resetToken = rawToken;
+        }
+
+        res.json({
+            success: true,
+            emailConfigured: isEmailSetup,
+            message: isEmailSetup
+                ? 'Single-use recovery code has been transmitted to your registered authority email address.'
+                : 'Recovery code generated. Please obtain the 6-digit verification code from your central server command log or inbox.',
+            data: responseData
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// POST /api/auth/authority-unlock - Unlock authority account using verified code or command key
+async function unlockAuthorityAccount(req, res, next) {
+    try {
+        const { identifier, token, recoveryKey } = req.body;
+        if (!identifier || (!token && !recoveryKey)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Officer identifier and verification code or recovery key are required.',
+                errorCode: 'VALIDATION_ERROR'
+            });
+        }
+
+        const cleanId = String(identifier).trim();
+        const authUser = await db.get(
+            `SELECT * FROM authority_users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) OR LOWER(badge_number) = LOWER(?)`,
+            [cleanId, cleanId, cleanId]
+        );
+
+        if (!authUser) {
+            return res.status(404).json({
+                success: false,
+                message: 'Authority account not found.',
+                errorCode: 'NOT_FOUND'
+            });
+        }
+
+        let verified = false;
+
+        // Check if server-configured ADMIN_RECOVERY_KEY was supplied
+        const envRecoveryKey = process.env.ADMIN_RECOVERY_KEY || process.env.ADMIN_BOOTSTRAP_PASSWORD;
+        if (recoveryKey && envRecoveryKey && recoveryKey === envRecoveryKey) {
+            verified = true;
+        }
+
+        // Or verify against password_resets single-use code
+        if (!verified && token) {
+            const cleanToken = String(token).trim();
+            const tokenHash = crypto.createHash('sha256').update(cleanToken).digest('hex');
+            const resetRecord = await db.get(
+                `SELECT * FROM password_resets 
+                 WHERE email = ? 
+                   AND (token = ? OR token_hash = ? OR code_hash = ?) 
+                   AND used = 0 
+                 ORDER BY created_at DESC LIMIT 1`,
+                [authUser.email, cleanToken, tokenHash, tokenHash]
+            );
+
+            if (resetRecord && new Date(resetRecord.expires_at) >= new Date()) {
+                verified = true;
+                await db.run(`UPDATE password_resets SET used = 1 WHERE id = ?`, [resetRecord.id]);
+            }
+        }
+
+        if (!verified) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid or expired recovery verification code.',
+                errorCode: 'INVALID_TOKEN'
+            });
+        }
+
+        // Reset lockout and failed attempts
+        await db.run(
+            `UPDATE authority_users 
+             SET failed_login_attempts = 0, locked_until = NULL, updated_at = datetime('now')
+             WHERE id = ?`,
+            [authUser.id]
+        );
+
+        await logAction({
+            userId: authUser.id,
+            userRole: authUser.role || 'AUTHORITY',
+            action: 'AUTHORITY_ACCOUNT_UNLOCKED',
+            entityType: 'AUTH',
+            entityId: authUser.id,
+            details: `Authority account '${authUser.username}' unlocked via verified recovery process.`,
+            ipAddress: req.ip
+        });
+
+        res.json({
+            success: true,
+            message: `Account '${authUser.username}' has been successfully unlocked. You may now log in.`
         });
     } catch (err) {
         next(err);
@@ -721,5 +1124,7 @@ module.exports = {
     logout,
     forgotPassword,
     verifyResetToken,
-    resetPassword
+    resetPassword,
+    requestAuthorityRecovery,
+    unlockAuthorityAccount
 };

@@ -548,6 +548,39 @@ async function createTables() {
         )
     `);
 
+    // 26. login_attempt_logs (Audit Trail of Authentication Attempts for Brute-Force Monitoring)
+    await run(`
+        CREATE TABLE IF NOT EXISTS login_attempt_logs (
+            id ${idType},
+            ip_address ${textType} NOT NULL,
+            identifier ${textType},
+            user_type ${textType} DEFAULT 'AUTHORITY',
+            success ${intType} NOT NULL,
+            attempted_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_login_attempts_ip ON login_attempt_logs(ip_address, attempted_at)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_login_attempts_ident ON login_attempt_logs(identifier, attempted_at)`); } catch (e) {}
+
+    // 27. rate_limit_records (Multi-instance / Server Restart Persistent Rate Limiting Store)
+    await run(`
+        CREATE TABLE IF NOT EXISTS rate_limit_records (
+            key ${textType} PRIMARY KEY,
+            total_hits ${intType} DEFAULT 1,
+            reset_time ${textType} NOT NULL
+        )
+    `);
+
+    // Migrations for authority_users login lockout & failed attempts
+    try { await run(`ALTER TABLE authority_users ADD COLUMN failed_login_attempts ${intType} DEFAULT 0`); } catch (e) {}
+    try { await run(`ALTER TABLE authority_users ADD COLUMN locked_until ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE authority_users ADD COLUMN last_failed_login ${textType}`); } catch (e) {}
+
+    // Migrations for users login lockout & failed attempts
+    try { await run(`ALTER TABLE users ADD COLUMN failed_login_attempts ${intType} DEFAULT 0`); } catch (e) {}
+    try { await run(`ALTER TABLE users ADD COLUMN locked_until ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE users ADD COLUMN last_failed_login ${textType}`); } catch (e) {}
+
     // Migrations for users table (avatar, language, notifications)
     try { await run(`ALTER TABLE users ADD COLUMN avatar_url ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE users ADD COLUMN language_pref ${textType} DEFAULT 'en'`); } catch (e) {}

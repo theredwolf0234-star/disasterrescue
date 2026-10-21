@@ -290,16 +290,86 @@ function showAuthorityLoginModal(customMessage = null) {
     }
 }
 
+let isAuthorityLoggingIn = false;
+let authLockoutInterval = null;
+
+function startAuthLockoutCountdown(secondsRemaining) {
+    if (authLockoutInterval) clearInterval(authLockoutInterval);
+    const timerEl = document.getElementById('auth-lockout-timer');
+    const submitBtn = document.getElementById('auth-login-submit');
+    let timeLeft = Math.max(1, parseInt(secondsRemaining, 10) || 900);
+
+    if (timerEl) {
+        timerEl.classList.remove('hidden');
+    }
+
+    function renderTime() {
+        const mins = Math.floor(timeLeft / 60);
+        const secs = timeLeft % 60;
+        const timeFormatted = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        if (timerEl) {
+            timerEl.innerText = `⏳ Locked: ${timeFormatted}`;
+        }
+        if (submitBtn) {
+            submitBtn.innerText = `Account Locked (${timeFormatted}) — Retry Shortly`;
+        }
+    }
+
+    renderTime();
+
+    authLockoutInterval = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+            clearInterval(authLockoutInterval);
+            authLockoutInterval = null;
+            if (timerEl) {
+                timerEl.classList.add('hidden');
+                timerEl.innerText = '';
+            }
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Authenticate & Access Command Grid →';
+            }
+            const errBox = document.getElementById('auth-login-error');
+            if (errBox) {
+                errBox.innerText = 'Lockout duration has expired. You may now attempt to log in with verified credentials.';
+                errBox.className = 'p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-300 rounded-xl text-xs font-semibold';
+            }
+        } else {
+            renderTime();
+        }
+    }, 1000);
+}
+
 async function handleAuthorityLogin(e) {
-    e.preventDefault();
-    const username = document.getElementById('auth-username').value.trim();
-    const password = document.getElementById('auth-password').value;
+    if (e && e.preventDefault) e.preventDefault();
+    if (isAuthorityLoggingIn) return; // Prevent duplicate rapid-fire submissions
+
+    const usernameInput = document.getElementById('auth-username');
+    const passwordInput = document.getElementById('auth-password');
     const errBox = document.getElementById('auth-login-error');
     const submitBtn = document.getElementById('auth-login-submit');
 
+    const username = usernameInput ? usernameInput.value.trim() : '';
+    const password = passwordInput ? passwordInput.value : '';
+
+    if (!username || !password) {
+        if (errBox) {
+            errBox.innerText = 'Please provide both Officer Username/Badge ID and Passcode.';
+            errBox.className = 'p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-xl text-xs font-semibold';
+            errBox.classList.remove('hidden');
+        }
+        return;
+    }
+
     try {
-        submitBtn.disabled = true;
-        submitBtn.innerText = 'Verifying Credentials...';
+        isAuthorityLoggingIn = true;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="inline-flex items-center justify-center space-x-2"><span>Verifying Clearance...</span></span>';
+        }
+        if (usernameInput) usernameInput.disabled = true;
+        if (passwordInput) passwordInput.disabled = true;
         if (errBox) errBox.classList.add('hidden');
 
         const res = await api.post('/api/auth/authority-login', { username, password });
@@ -313,6 +383,11 @@ async function handleAuthorityLogin(e) {
 
         api.setToken(token, user);
 
+        if (authLockoutInterval) {
+            clearInterval(authLockoutInterval);
+            authLockoutInterval = null;
+        }
+
         const modal = document.getElementById('auth-login-modal');
         if (modal) modal.remove();
 
@@ -323,14 +398,278 @@ async function handleAuthorityLogin(e) {
         await initAuthorityDashboard();
     } catch (err) {
         if (errBox) {
-            errBox.innerText = err.message || 'Login failed. Please check badge ID and passcode.';
+            errBox.className = 'p-3 bg-red-950/80 border border-red-800 text-red-300 rounded-xl text-xs font-semibold';
+            const serverMsg = err.data && err.data.message ? err.data.message : err.message;
+            errBox.innerText = serverMsg || 'Login failed. Please check badge ID and passcode.';
+            errBox.classList.remove('hidden');
+        }
+
+        // Handle temporary account or IP lockout countdown
+        if (err.data && (err.status === 423 || err.status === 429 || err.data.errorCode === 'ACCOUNT_LOCKED' || err.data.errorCode === 'RATE_LIMIT_EXCEEDED')) {
+            const secLeft = err.data.remainingSeconds || err.data.retryAfterSeconds || (err.data.remainingMinutes ? err.data.remainingMinutes * 60 : 900);
+            startAuthLockoutCountdown(secLeft);
+        }
+    } finally {
+        isAuthorityLoggingIn = false;
+        if (!authLockoutInterval && submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Authenticate & Access Command Grid →';
+        }
+        if (usernameInput) usernameInput.disabled = false;
+        if (passwordInput) passwordInput.disabled = false;
+    }
+}
+
+// Authority Recovery Modal Functions
+let currentRecoveryIdentifier = '';
+
+function openAuthorityRecoveryModal() {
+    const modal = document.getElementById('authority-recovery-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    switchAuthorityRecoveryStep(1);
+
+    const authUser = document.getElementById('auth-username');
+    const recoveryInput = document.getElementById('auth-recovery-identifier');
+    if (authUser && authUser.value && recoveryInput) {
+        recoveryInput.value = authUser.value.trim();
+    }
+    if (recoveryInput) recoveryInput.focus();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeAuthorityRecoveryModal() {
+    const modal = document.getElementById('authority-recovery-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function switchAuthorityRecoveryStep(step) {
+    const step1 = document.getElementById('auth-recovery-step1');
+    const step2 = document.getElementById('auth-recovery-step2');
+    const err1 = document.getElementById('auth-recovery-step1-error');
+    const err2 = document.getElementById('auth-recovery-step2-error');
+
+    if (err1) err1.classList.add('hidden');
+    if (err2) err2.classList.add('hidden');
+
+    if (step === 1) {
+        if (step1) step1.classList.remove('hidden');
+        if (step2) step2.classList.add('hidden');
+        const input = document.getElementById('auth-recovery-identifier');
+        if (input) input.focus();
+    } else {
+        if (step1) step1.classList.add('hidden');
+        if (step2) step2.classList.remove('hidden');
+        const codeInput = document.getElementById('auth-recovery-code');
+        if (codeInput) codeInput.focus();
+    }
+}
+
+async function handleAuthorityRecoveryRequest(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const identifierInput = document.getElementById('auth-recovery-identifier');
+    const errBox = document.getElementById('auth-recovery-step1-error');
+    const btn = document.getElementById('auth-recovery-step1-btn');
+
+    const identifier = identifierInput ? identifierInput.value.trim() : '';
+    if (!identifier) return;
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = 'Generating Recovery Token...';
+        }
+        if (errBox) errBox.classList.add('hidden');
+
+        const res = await api.post('/api/auth/authority-recovery-request', { identifier });
+        currentRecoveryIdentifier = identifier;
+
+        const displayEl = document.getElementById('auth-recovery-target-display');
+        if (displayEl) {
+            displayEl.innerText = (res.data && res.data.email) ? res.data.email : identifier;
+        }
+
+        const noticeEl = document.getElementById('auth-recovery-notice');
+        if (noticeEl) {
+            if (res.data && res.data.resetCode) {
+                // In dev/test mode: auto-populate or display test code
+                noticeEl.innerText = `Development Recovery Code: ${res.data.resetCode}`;
+                const codeInput = document.getElementById('auth-recovery-code');
+                if (codeInput) codeInput.value = res.data.resetCode;
+            } else if (res.emailConfigured) {
+                noticeEl.innerText = 'A 6-digit recovery code was transmitted to your registered authority email.';
+            } else {
+                noticeEl.innerText = 'Recovery token generated. Check central deployment command logs for your single-use code.';
+            }
+        }
+
+        showToast('Single-use recovery verification code generated.', 'info');
+        switchAuthorityRecoveryStep(2);
+    } catch (err) {
+        if (errBox) {
+            errBox.innerText = err.message || 'Unable to process recovery request. Please try again.';
             errBox.classList.remove('hidden');
         }
     } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerText = 'Authenticate & Access Command Grid →';
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Request Single-Use Verification Code →';
+        }
     }
 }
+
+async function handleAuthorityRecoveryReset(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const codeInput = document.getElementById('auth-recovery-code');
+    const newPasswordInput = document.getElementById('auth-recovery-new-password');
+    const errBox = document.getElementById('auth-recovery-step2-error');
+    const btn = document.getElementById('auth-recovery-step2-btn');
+
+    const token = codeInput ? codeInput.value.trim() : '';
+    const newPassword = newPasswordInput ? newPasswordInput.value : '';
+
+    if (!token || !newPassword) {
+        if (errBox) {
+            errBox.innerText = 'Both 6-digit code and new passcode are required.';
+            errBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        if (errBox) {
+            errBox.innerText = 'New passcode must be at least 6 characters.';
+            errBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerText = 'Updating Passcode & Unlocking...';
+        }
+        if (errBox) errBox.classList.add('hidden');
+
+        const res = await api.post('/api/auth/reset-password', {
+            email: currentRecoveryIdentifier,
+            token,
+            newPassword
+        });
+
+        if (!res.success) throw new Error(res.message || 'Passcode reset failed');
+
+        if (authLockoutInterval) {
+            clearInterval(authLockoutInterval);
+            authLockoutInterval = null;
+        }
+
+        const timerEl = document.getElementById('auth-lockout-timer');
+        if (timerEl) timerEl.classList.add('hidden');
+
+        const submitBtn = document.getElementById('auth-login-submit');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Authenticate & Access Command Grid →';
+        }
+
+        closeAuthorityRecoveryModal();
+        showToast('Passcode updated and authority account unlocked. Please sign in.', 'success');
+
+        const authUser = document.getElementById('auth-username');
+        const authPass = document.getElementById('auth-password');
+        if (authUser && currentRecoveryIdentifier) authUser.value = currentRecoveryIdentifier;
+        if (authPass) {
+            authPass.value = '';
+            authPass.focus();
+        }
+
+        const loginErr = document.getElementById('auth-login-error');
+        if (loginErr) {
+            loginErr.innerText = 'Account successfully unlocked. Enter your updated passcode to sign in.';
+            loginErr.className = 'p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-300 rounded-xl text-xs font-semibold';
+            loginErr.classList.remove('hidden');
+        }
+    } catch (err) {
+        if (errBox) {
+            errBox.innerText = err.message || 'Verification failed. Please check the 6-digit code.';
+            errBox.classList.remove('hidden');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerText = 'Verify Code & Unlock Account →';
+        }
+    }
+}
+
+async function handleAuthorityQuickUnlock(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const codeInput = document.getElementById('auth-recovery-code');
+    const errBox = document.getElementById('auth-recovery-step2-error');
+    const btn = document.getElementById('btn-quick-unlock-code');
+
+    const token = codeInput ? codeInput.value.trim() : '';
+    if (!token) {
+        if (errBox) {
+            errBox.innerText = 'Please enter the 6-digit verification code to unlock.';
+            errBox.classList.remove('hidden');
+        }
+        return;
+    }
+
+    try {
+        if (btn) btn.innerText = 'Unlocking...';
+        if (errBox) errBox.classList.add('hidden');
+
+        const res = await api.post('/api/auth/authority-unlock', {
+            identifier: currentRecoveryIdentifier,
+            token
+        });
+
+        if (!res.success) throw new Error(res.message || 'Unlock failed');
+
+        if (authLockoutInterval) {
+            clearInterval(authLockoutInterval);
+            authLockoutInterval = null;
+        }
+
+        const timerEl = document.getElementById('auth-lockout-timer');
+        if (timerEl) timerEl.classList.add('hidden');
+
+        const submitBtn = document.getElementById('auth-login-submit');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Authenticate & Access Command Grid →';
+        }
+
+        closeAuthorityRecoveryModal();
+        showToast('Account unlocked successfully. Enter your passcode to sign in.', 'success');
+
+        const loginErr = document.getElementById('auth-login-error');
+        if (loginErr) {
+            loginErr.innerText = 'Account unlocked successfully. Enter your passcode to sign in.';
+            loginErr.className = 'p-3 bg-emerald-950/80 border border-emerald-800 text-emerald-300 rounded-xl text-xs font-semibold';
+            loginErr.classList.remove('hidden');
+        }
+    } catch (err) {
+        if (errBox) {
+            errBox.innerText = err.message || 'Unable to unlock account with this code.';
+            errBox.classList.remove('hidden');
+        }
+    } finally {
+        if (btn) btn.innerText = 'Unlock Without Changing Passcode';
+    }
+}
+
+// Attach to window object for inline HTML event handlers
+window.openAuthorityRecoveryModal = openAuthorityRecoveryModal;
+window.closeAuthorityRecoveryModal = closeAuthorityRecoveryModal;
+window.switchAuthorityRecoveryStep = switchAuthorityRecoveryStep;
+window.handleAuthorityRecoveryRequest = handleAuthorityRecoveryRequest;
+window.handleAuthorityRecoveryReset = handleAuthorityRecoveryReset;
+window.handleAuthorityQuickUnlock = handleAuthorityQuickUnlock;
+window.handleAuthorityLogin = handleAuthorityLogin;
 
 function authorityLogout() {
     api.clearAuth();
