@@ -380,6 +380,26 @@ async function createIncident(req, res, next) {
             console.warn('[Incident] AI Verification triage error:', aiVerErr.message);
         }
 
+        // AISTER AI Solution Engine: Generate database-backed structured assessment
+        let aiSolutionAssessment = null;
+        try {
+            const { generateStructuredAssessment } = require('../services/aiSolutionEngine');
+            aiSolutionAssessment = await generateStructuredAssessment({
+                incidentId,
+                category: category.trim(),
+                details: details.trim(),
+                latitude: numLat,
+                longitude: numLng,
+                victimCount,
+                address: readableAddress,
+                gpsAccuracy,
+                gpsTimestamp,
+                isVerifiedGps
+            });
+        } catch (aiSolErr) {
+            console.warn('[Incident] AI Solution Engine assessment error:', aiSolErr.message);
+        }
+
         const finalIncident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [incidentId]);
         const finalUpdates = await db.query(
             `SELECT * FROM incident_updates WHERE incident_id = ? ORDER BY created_at ASC`,
@@ -392,7 +412,8 @@ async function createIncident(req, res, next) {
             incident: finalIncident,
             updates: finalUpdates,
             dispatch: dispatchResult,
-            ndrf: ndrfRelayResult
+            ndrf: ndrfRelayResult,
+            aiSolutionAssessment
         });
 
         res.status(201).json({
@@ -407,7 +428,9 @@ async function createIncident(req, res, next) {
                 dispatch: dispatchResult,
                 ndrf: ndrfRelayResult,
                 assignedTeam: dispatchResult ? dispatchResult.assignedTeam : null,
-                priorityExplanation: priorityAssessment.reasoning
+                priorityExplanation: priorityAssessment.reasoning,
+                aiSolutionAssessment,
+                tacticalGridId: finalIncident.tactical_grid_id
             }
         });
     } catch (err) {
@@ -1598,6 +1621,113 @@ async function triggerEscalationsCheck(req, res, next) {
     }
 }
 
+// GET /api/incidents/:id/assessment
+// Fetches full structured AI Solution Engine assessment for this incident
+async function getIncidentAssessment(req, res, next) {
+    try {
+        const { id } = req.params;
+        const incident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [id]);
+        if (!incident) {
+            return res.status(404).json({ success: false, message: 'Incident not found.', errorCode: 'NOT_FOUND' });
+        }
+
+        // Authorize: CITIZEN sees only own, AUTHORITY/ADMIN/RESPONDER sees all
+        if (req.user && req.user.role === 'CITIZEN' && incident.user_id && incident.user_id !== req.user.id) {
+            return res.status(403).json({ success: false, message: 'Access denied to this incident assessment.', errorCode: 'FORBIDDEN' });
+        }
+
+        const { getIncidentStructuredAssessment, generateStructuredAssessment } = require('../services/aiSolutionEngine');
+        let assessment = await getIncidentStructuredAssessment(id);
+
+        // If no prior assessment persisted, generate dynamically and save
+        if (!assessment) {
+            assessment = await generateStructuredAssessment({
+                incidentId: incident.id,
+                category: incident.category,
+                details: incident.details,
+                latitude: incident.latitude,
+                longitude: incident.longitude,
+                victimCount: incident.count || 1,
+                address: incident.readable_address,
+                gpsAccuracy: incident.gps_accuracy,
+                gpsTimestamp: incident.gps_timestamp,
+                isVerifiedGps: incident.is_verified_gps
+            });
+        }
+
+        res.json({
+            success: true,
+            data: assessment
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// POST /api/incidents/:id/decline-team
+// Allows assigned rescue team or dispatcher to decline assignment and trigger automatic re-evaluation
+async function declineIncidentTeam(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { teamId, reason } = req.body;
+        const incident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [id]);
+        if (!incident) {
+            return res.status(404).json({ success: false, message: 'Incident not found.', errorCode: 'NOT_FOUND' });
+        }
+
+        const targetTeamId = teamId || incident.dispatch_team_id || incident.assigned_rescue_team;
+        if (!targetTeamId) {
+            return res.status(400).json({ success: false, message: 'No rescue team is currently assigned to this incident.', errorCode: 'BAD_REQUEST' });
+        }
+
+        const { declineRescueTeamAssignment } = require('../services/dispatchEngine');
+        const result = await declineRescueTeamAssignment({
+            teamId: targetTeamId,
+            incidentId: id,
+            reason: reason || 'Operational constraints / Field refusal',
+            responderId: req.user ? req.user.id : null
+        });
+
+        res.json({
+            success: true,
+            message: 'Assignment declined. Escalated to next nearest eligible candidate.',
+            data: result
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
+// GET /api/incidents/:id/duplicates
+// Returns non-destructive corroborating / duplicate candidate suggestions
+async function getIncidentDuplicates(req, res, next) {
+    try {
+        const { id } = req.params;
+        const incident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [id]);
+        if (!incident) {
+            return res.status(404).json({ success: false, message: 'Incident not found.', errorCode: 'NOT_FOUND' });
+        }
+
+        const { detectDuplicateReports } = require('../services/aiVerificationService');
+        const dupes = await detectDuplicateReports({
+            category: incident.category,
+            details: incident.details,
+            latitude: incident.latitude,
+            longitude: incident.longitude,
+            excludeIncidentId: id
+        });
+
+        res.json({
+            success: true,
+            incidentId: id,
+            tacticalGridId: incident.tactical_grid_id,
+            data: dupes
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
 module.exports = {
     createIncident,
     getIncidents,
@@ -1615,6 +1745,9 @@ module.exports = {
     supplementIncident,
     triggerAutoDispatch,
     triggerEscalate,
-    triggerEscalationsCheck
+    triggerEscalationsCheck,
+    getIncidentAssessment,
+    declineIncidentTeam,
+    getIncidentDuplicates
 };
 

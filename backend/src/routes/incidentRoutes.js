@@ -23,6 +23,12 @@ router.get('/:id/report', verifyToken, incidentController.getIncidentReport);
 // Incident timeline history (Citizen for own, Authority/Admin for all)
 router.get('/:id/timeline', verifyToken, incidentController.getIncidentTimeline);
 
+// AISTER AI Solution Engine Structured Assessment
+router.get('/:id/assessment', verifyToken, incidentController.getIncidentAssessment);
+
+// Corroborating / duplicate incident candidates (non-destructive)
+router.get('/:id/duplicates', verifyToken, incidentController.getIncidentDuplicates);
+
 // Submit new emergency SOS beacon (Citizen authenticated or guest emergency dispatch)
 router.post('/', optionalToken, uploadEvidence.single('evidence'), incidentController.createIncident);
 
@@ -47,6 +53,9 @@ router.patch('/:id/location', verifyToken, incidentController.updateIncidentLoca
 
 // Assign rescue team (Restricted to AUTHORITY and ADMIN)
 router.post('/:id/assign', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), incidentController.assignRescueTeam);
+
+// Decline assigned rescue team and re-evaluate next eligible squad (AUTHORITY, ADMIN, RESPONDER)
+router.post('/:id/decline-team', verifyToken, requireRoles(['AUTHORITY', 'ADMIN', 'RESPONDER']), incidentController.declineIncidentTeam);
 
 // Append incident timeline note (Authenticated: Citizen for own incident, Authority/Admin for any)
 router.post('/:id/notes', verifyToken, incidentController.addIncidentNote);

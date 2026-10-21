@@ -389,6 +389,8 @@ async function autoDispatchIncident(incidentId, options = {}) {
                  assigned_incident_id = ?,
                  active_incident_count = COALESCE(active_incident_count, 0) + 1,
                  notification_status = 'NOTIFIED',
+                 assignment_state = 'ASSIGNED',
+                 assigned_at = datetime('now'),
                  last_location_update = datetime('now'),
                  updated_at = datetime('now')
              WHERE id = ? AND status IN ('AVAILABLE', 'STANDBY') AND COALESCE(active_incident_count, 0) < COALESCE(max_capacity, 2)`,
@@ -704,6 +706,8 @@ async function acknowledgeTeamDispatch({ teamId, incidentId, responderId = null,
     await db.run(
         `UPDATE rescue_teams
          SET last_ack_at = datetime('now'),
+             assignment_state = 'ACCEPTED',
+             accepted_at = datetime('now'),
              status = 'DISPATCHED',
              updated_at = datetime('now')
          WHERE id = ?`,
@@ -747,6 +751,78 @@ async function acknowledgeTeamDispatch({ teamId, incidentId, responderId = null,
         teamId: team.id,
         status: 'TEAM_EN_ROUTE',
         acknowledgedAt: ackTime
+    };
+}
+
+/**
+ * Handles explicit rescue-team assignment decline.
+ * Frees the declining team, records decline audit trail, and automatically escalates
+ * to recalculate the next nearest eligible candidate.
+ */
+async function declineRescueTeamAssignment({ teamId, incidentId, reason = 'Operational constraints / Squad engaged', responderId = null }) {
+    const incident = await db.get(`SELECT * FROM incidents WHERE id = ?`, [incidentId]);
+    if (!incident) {
+        throw new Error(`Incident ${incidentId} not found`);
+    }
+
+    const team = await db.get(`SELECT * FROM rescue_teams WHERE id = ? OR name = ?`, [teamId, teamId]);
+    if (!team) {
+        throw new Error(`Rescue team ${teamId} not found`);
+    }
+
+    const declineTime = new Date().toISOString();
+    const declineNote = `[TEAM DECLINED] Unit '${team.name}' (${team.unit_code}) declined dispatch assignment. Reason: ${reason}. Escalating to next eligible squad.`;
+
+    // 1. Release team back to AVAILABLE status, mark assignment_state = DECLINED
+    await db.run(
+        `UPDATE rescue_teams
+         SET status = 'AVAILABLE',
+             assignment_state = 'DECLINED',
+             declined_at = datetime('now'),
+             decline_reason = ?,
+             assigned_incident_id = NULL,
+             active_incident_count = CASE WHEN COALESCE(active_incident_count, 0) > 0 THEN active_incident_count - 1 ELSE 0 END,
+             updated_at = datetime('now')
+         WHERE id = ?`,
+        [reason, team.id]
+    );
+
+    // 2. Add decline notice to incident timeline
+    await db.run(
+        `INSERT INTO incident_updates (id, incident_id, updated_by_id, updated_by_role, status_from, status_to, note, created_at)
+         VALUES (?, ?, ?, 'RESPONDER', ?, 'ESCALATING', ?, datetime('now'))`,
+        [
+            generateUUID('INCU'),
+            incidentId,
+            responderId || team.id,
+            incident.status,
+            declineNote
+        ]
+    );
+
+    // 3. Log audit event
+    await logAction({
+        userId: responderId || team.id,
+        userRole: 'RESPONDER',
+        action: 'TEAM_DECLINE_DISPATCH',
+        entityType: 'INCIDENT',
+        entityId: incidentId,
+        details: { teamId: team.id, reason, declinedAt: declineTime }
+    });
+
+    // 4. Trigger automated escalation to recalculate and assign next eligible squad
+    const escalationResult = await escalateIncident({
+        incidentId,
+        reason: `Assignment declined by ${team.name}: ${reason}`
+    });
+
+    return {
+        success: true,
+        declined: true,
+        incidentId,
+        teamId: team.id,
+        reason,
+        escalation: escalationResult
     };
 }
 
@@ -940,6 +1016,7 @@ module.exports = {
     findEligibleRescueTeams,
     autoDispatchIncident,
     acknowledgeTeamDispatch,
+    declineRescueTeamAssignment,
     escalateIncident,
     checkAndEscalateUnacknowledgedIncidents,
     retryUnassignedDispatches

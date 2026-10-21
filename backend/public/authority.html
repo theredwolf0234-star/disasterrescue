@@ -540,9 +540,27 @@
                         <span class="text-[10px] font-mono text-purple-400 bg-purple-950 px-2 py-0.5 rounded border border-purple-800">Real-Time</span>
                     </div>
 
-                    <!-- Search Input Bar -->
-                    <div>
-                        <input type="text" id="queue-search-input" oninput="renderIncidentQueue()" placeholder="Search by ID, category, or location..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none">
+                    <!-- Search Input Bar & Tactical Filters -->
+                    <div class="space-y-2">
+                        <input type="text" id="queue-search-input" oninput="renderIncidentQueue()" placeholder="Search by ID, Tactical Grid, category, details, address..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-purple-500 focus:outline-none">
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <select id="queue-category-filter" onchange="renderIncidentQueue()" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-300 text-[11px] focus:outline-none focus:border-purple-500">
+                                <option value="all">All Disaster Categories</option>
+                                <option value="Flood">Flood & Waterlogging</option>
+                                <option value="Earthquake">Earthquake & Seismic</option>
+                                <option value="Building Collapse">Building Collapse / CSSR</option>
+                                <option value="Fire">Fire & Hazmat</option>
+                                <option value="Cyclone">Cyclone & Storm</option>
+                                <option value="Landslide">Landslide & Mudslide</option>
+                                <option value="Medical">Medical Emergency</option>
+                            </select>
+                            <select id="queue-date-filter" onchange="renderIncidentQueue()" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-slate-300 text-[11px] focus:outline-none focus:border-purple-500">
+                                <option value="all">All Date Ranges</option>
+                                <option value="today">Today (Past 24h)</option>
+                                <option value="48h">Past 48 Hours</option>
+                                <option value="7d">Past 7 Days</option>
+                            </select>
+                        </div>
                     </div>
 
                     <!-- Incident Filter Tabs -->
@@ -550,6 +568,7 @@
                         <button onclick="setQueueFilter('all')" id="qtab-all" class="q-tab bg-purple-700 text-white px-3 py-1 rounded-lg transition">All</button>
                         <button onclick="setQueueFilter('Critical')" id="qtab-critical" class="q-tab bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1 rounded-lg transition">Critical</button>
                         <button onclick="setQueueFilter('Active')" id="qtab-active" class="q-tab bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1 rounded-lg transition">Active</button>
+                        <button onclick="setQueueFilter('Unassigned')" id="qtab-unassigned" class="q-tab bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1 rounded-lg transition">Unassigned</button>
                         <button onclick="setQueueFilter('Resolved')" id="qtab-resolved" class="q-tab bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1 rounded-lg transition">Resolved</button>
                     </div>
 

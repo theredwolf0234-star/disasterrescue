@@ -993,6 +993,10 @@ function renderIncidentQueue() {
 
     const searchInput = document.getElementById('queue-search-input');
     const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+    const categorySelect = document.getElementById('queue-category-filter');
+    const selectedCategory = categorySelect ? categorySelect.value : 'all';
+    const dateSelect = document.getElementById('queue-date-filter');
+    const selectedDate = dateSelect ? dateSelect.value : 'all';
 
     let filtered = allIncidents.filter(inc => {
         if (!inc) return false;
@@ -1002,6 +1006,23 @@ function renderIncidentQueue() {
         if (activeFilter === 'Critical' && inc.emergency_level !== 'CRITICAL') return false;
         if (activeFilter === 'Unassigned' && (inc.assigned_rescue_team || inc.dispatch_team_id || inc.status === 'RESOLVED' || inc.status === 'CANCELLED')) return false;
         if (activeFilter === 'Resolved' && inc.status !== 'RESOLVED') return false;
+
+        // Disaster Category filter
+        if (selectedCategory !== 'all') {
+            const catStr = (inc.category || '').toLowerCase();
+            const filterStr = selectedCategory.toLowerCase();
+            if (!catStr.includes(filterStr)) return false;
+        }
+
+        // Date range filter
+        if (selectedDate !== 'all' && inc.created_at) {
+            const incTime = new Date(inc.created_at).getTime();
+            const now = Date.now();
+            const ageHours = (now - incTime) / (1000 * 60 * 60);
+            if (selectedDate === 'today' && ageHours > 24) return false;
+            if (selectedDate === '48h' && ageHours > 48) return false;
+            if (selectedDate === '7d' && ageHours > 168) return false;
+        }
 
         // Search filter with safe null checks (including Tactical Grid ID)
         if (searchTerm) {
@@ -1037,15 +1058,31 @@ function renderIncidentQueue() {
         const latStr = !isNaN(latNum) ? latNum.toFixed(4) : item.latitude;
         const lngStr = !isNaN(lngNum) ? lngNum.toFixed(4) : item.longitude;
 
+        // Telemetry freshness calculation
+        const createdDate = item.created_at ? new Date(item.created_at).getTime() : Date.now();
+        const gpsTime = item.gps_timestamp ? new Date(item.gps_timestamp).getTime() : createdDate;
+        const ageMinutes = Math.max(0, Math.round((Date.now() - gpsTime) / 60000));
+        let freshnessBadge = '';
+        if (ageMinutes < 5) {
+            freshnessBadge = `<span class="text-[9px] font-mono text-emerald-300 bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-800">● LIVE FIX (${ageMinutes}m)</span>`;
+        } else if (ageMinutes <= 30) {
+            freshnessBadge = `<span class="text-[9px] font-mono text-blue-300 bg-blue-950 px-1.5 py-0.5 rounded border border-blue-800">${ageMinutes}m ago</span>`;
+        } else {
+            freshnessBadge = `<span class="text-[9px] font-mono text-amber-300 bg-amber-950 px-1.5 py-0.5 rounded border border-amber-800">⚠️ STALE (${Math.round(ageMinutes / 60)}h)</span>`;
+        }
+
         card.innerHTML = `
             <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-2">
                     <span class="font-mono font-bold text-purple-400">${item.id}</span>
                     <span class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${levelBadgeClass}">${item.emergency_level}</span>
                 </div>
-                <span class="font-extrabold uppercase text-[10px] px-2 py-0.5 rounded-full ${isResolved ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-purple-950 text-purple-200 border border-purple-700'}">
-                    ${item.status}
-                </span>
+                <div class="flex items-center space-x-1.5">
+                    ${freshnessBadge}
+                    <span class="font-extrabold uppercase text-[10px] px-2 py-0.5 rounded-full ${isResolved ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-purple-950 text-purple-200 border border-purple-700'}">
+                        ${item.status}
+                    </span>
+                </div>
             </div>
 
             <div class="flex items-center justify-between text-[10px] bg-slate-900/90 px-2 py-1 rounded border border-slate-800 font-mono">
@@ -1076,16 +1113,21 @@ function renderIncidentQueue() {
             ${item.assigned_rescue_team ? `
                 <div class="text-[11px] text-purple-300 bg-purple-950/50 p-1.5 rounded-lg border border-purple-800/50 flex items-center justify-between">
                     <span>Squad: <strong>${item.assigned_rescue_team}</strong></span>
+                    ${item.dispatch_eta_minutes ? `<span class="text-emerald-400 font-bold">ETA ~${item.dispatch_eta_minutes}m</span>` : ''}
                 </div>
             ` : ''}
 
-            <div class="grid grid-cols-2 gap-2 pt-2">
-                <button onclick="focusAuthorityMap(${item.latitude}, ${item.longitude}, '${item.id}')" class="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-800/80 px-2.5 py-1.5 rounded-lg font-bold text-[11px] flex items-center justify-center space-x-1.5 transition shadow">
-                    <i data-lucide="crosshair" class="w-3.5 h-3.5 text-purple-400"></i>
-                    <span>Live Location</span>
+            <div class="grid grid-cols-3 gap-1.5 pt-2">
+                <button onclick="focusAuthorityMap(${item.latitude}, ${item.longitude}, '${item.id}')" class="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-800/80 px-2 py-1.5 rounded-lg font-bold text-[10px] flex items-center justify-center space-x-1 transition shadow" title="Focus on GIS Map">
+                    <i data-lucide="crosshair" class="w-3 h-3 text-purple-400"></i>
+                    <span>Map</span>
                 </button>
-                <button onclick="inspectIncident('${item.id}')" class="bg-purple-700 hover:bg-purple-600 text-white px-2.5 py-1.5 rounded-lg font-bold text-[11px] flex items-center justify-center space-x-1 transition shadow">
-                    <span>Command Details →</span>
+                <button onclick="openAiSolutionDossier('${item.id}')" class="bg-cyan-950 hover:bg-cyan-900 text-cyan-200 border border-cyan-800/80 px-2 py-1.5 rounded-lg font-bold text-[10px] flex items-center justify-center space-x-1 transition shadow" title="Inspect AI Solution Engine structured assessment">
+                    <i data-lucide="brain" class="w-3 h-3 text-cyan-400"></i>
+                    <span>AI Dossier</span>
+                </button>
+                <button onclick="inspectIncident('${item.id}')" class="bg-purple-700 hover:bg-purple-600 text-white px-2 py-1.5 rounded-lg font-bold text-[10px] flex items-center justify-center space-x-1 transition shadow">
+                    <span>Manage →</span>
                 </button>
             </div>
         `;
@@ -1585,6 +1627,10 @@ function renderIncidentInspectModal(inc) {
 
             <!-- MANDATORY ACTION BUTTONS (SECTION 13) -->
             <div class="bg-slate-950 p-3 rounded-xl border border-purple-800/60 flex flex-wrap gap-2">
+                <button onclick="openAiSolutionDossier('${inc.id}')" class="bg-gradient-to-r from-cyan-700 to-blue-600 hover:from-cyan-600 hover:to-blue-500 text-white font-black px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow border border-cyan-400/50">
+                    <i data-lucide="brain" class="w-3.5 h-3.5 text-cyan-200"></i>
+                    <span>AI SOLUTION DOSSIER</span>
+                </button>
                 <button onclick="autoAssignIncident('${inc.id}')" class="bg-gradient-to-r from-purple-700 to-indigo-600 hover:from-purple-600 hover:to-indigo-500 text-white font-black px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow border border-purple-500/50">
                     <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-300"></i>
                     <span>AUTO-ASSIGN SQUAD</span>
@@ -1593,6 +1639,12 @@ function renderIncidentInspectModal(inc) {
                     <i data-lucide="arrow-up-circle" class="w-3.5 h-3.5 text-amber-200"></i>
                     <span>ESCALATE (${inc.escalation_level ? 'TIER ' + inc.escalation_level : 'TIER 0'})</span>
                 </button>
+                ${(inc.dispatch_team_id || inc.assigned_rescue_team) ? `
+                <button onclick="promptDeclineTeam('${inc.id}')" class="bg-amber-800 hover:bg-amber-700 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow border border-amber-600/50" title="Decline current team and recalculate next candidate">
+                    <i data-lucide="user-x" class="w-3.5 h-3.5 text-amber-200"></i>
+                    <span>DECLINE SQUAD</span>
+                </button>
+                ` : ''}
                 ${(inc.dispatch_team_id || inc.assigned_rescue_team) && !inc.acknowledged_at ? `
                 <button onclick="teamAcknowledgeIncident('${inc.dispatch_team_id || inc.assigned_rescue_team}', '${inc.id}')" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs flex items-center space-x-1 transition shadow animate-pulse">
                     <i data-lucide="check-check" class="w-3.5 h-3.5"></i>
@@ -2210,6 +2262,265 @@ async function generateIncidentReport(id) {
         showToast(e.message || 'Failed to generate incident report', 'error');
     }
 }
+
+// -------------------------------------------------------------
+// AISTER AI SOLUTION ENGINE OPERATIONAL DOSSIER
+// -------------------------------------------------------------
+async function openAiSolutionDossier(incidentId) {
+    let modal = document.getElementById('ai-solution-dossier-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'ai-solution-dossier-modal';
+        modal.className = 'fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto';
+        document.body.appendChild(modal);
+    }
+
+    const escapeFn = typeof escapeHtml === 'function' ? escapeHtml : (str => String(str || '').replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)));
+
+    modal.innerHTML = `
+        <div class="bg-slate-900 border border-cyan-800/80 rounded-2xl max-w-3xl w-full p-5 sm:p-7 text-slate-200 space-y-5 max-h-[92vh] overflow-y-auto shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-cyan-950 border border-cyan-500/50 flex items-center justify-center text-cyan-400">
+                        <i data-lucide="brain" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-white text-base sm:text-lg flex items-center space-x-2">
+                            <span>AISTER AI Solution Engine — Operational Dossier</span>
+                        </h3>
+                        <p class="text-xs text-slate-400 font-mono">Incident: ${escapeFn(incidentId)}</p>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('ai-solution-dossier-modal').classList.add('hidden')" class="text-slate-400 hover:text-white p-1">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="py-12 text-center text-slate-400 text-xs flex flex-col items-center">
+                <div class="w-7 h-7 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                <span>Synthesizing grounded multi-hazard assessment & tactical guidance...</span>
+            </div>
+        </div>
+    `;
+    modal.classList.remove('hidden');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    try {
+        const res = await api.get(`/api/incidents/${incidentId}/assessment`);
+        if (!res.success || !res.data) throw new Error(res.message || 'Assessment generation failed');
+        const d = res.data;
+
+        const factorsHtml = (d.supportingFactors || []).map(f => `
+            <li class="flex items-start space-x-2">
+                <span class="text-cyan-400 font-bold">▶</span>
+                <span class="text-slate-200">${escapeFn(f)}</span>
+            </li>
+        `).join('') || '<li class="text-slate-400 italic">Standard tactical indicators.</li>';
+
+        const resourcesHtml = (d.resourceRequirements || []).map(r => `
+            <tr class="border-b border-slate-800/80">
+                <td class="py-2 text-white font-semibold">${escapeFn(r.resource)}</td>
+                <td class="py-2 text-right font-mono font-bold text-cyan-300">${escapeFn(r.quantity)}</td>
+                <td class="py-2 text-right">
+                    <span class="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${r.priority === 'CRITICAL' ? 'bg-red-950 text-red-300 border border-red-800' : 'bg-purple-950 text-purple-300'}">${escapeFn(r.priority)}</span>
+                </td>
+            </tr>
+        `).join('') || '<tr><td colspan="3" class="text-center py-2 text-slate-400">Standard emergency relief kits</td></tr>';
+
+        const safetyGuidanceHtml = (d.verifiedSafetyGuidance || []).map((g, idx) => `
+            <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-[11px] space-y-1">
+                <span class="text-[10px] uppercase font-bold text-emerald-400 flex items-center space-x-1">
+                    <i data-lucide="shield-check" class="w-3 h-3"></i>
+                    <span>NDMA/SDRF Protocol #${idx + 1}</span>
+                </span>
+                <p class="text-slate-200">${escapeFn(g)}</p>
+            </div>
+        `).join('');
+
+        const stepsHtml = (d.recommendedSteps || []).map(s => `
+            <div class="flex items-start space-x-2.5 text-xs bg-slate-950/60 p-2 rounded-lg border border-slate-800/60">
+                <span class="text-cyan-400 font-bold font-mono">✓</span>
+                <span class="text-slate-200">${escapeFn(s)}</span>
+            </div>
+        `).join('');
+
+        const missingInfoHtml = (d.missingInformation || []).map(m => `
+            <li class="text-[11px] text-amber-300/90 flex items-start space-x-1.5">
+                <span>⚠️</span><span>${escapeFn(m)}</span>
+            </li>
+        `).join('') || '<li class="text-slate-400 text-xs italic">No critical missing operational variables.</li>';
+
+        const uncertaintyHtml = (d.uncertaintyFlags || []).map(u => `
+            <li class="text-[11px] text-orange-300/90 flex items-start space-x-1.5">
+                <span>⚡</span><span>${escapeFn(u)}</span>
+            </li>
+        `).join('') || '<li class="text-slate-400 text-xs italic">Telemetry and disaster parameters verified.</li>';
+
+        modal.innerHTML = `
+            <div class="bg-slate-900 border border-cyan-800/80 rounded-2xl max-w-3xl w-full p-5 sm:p-7 text-slate-200 space-y-5 max-h-[92vh] overflow-y-auto shadow-2xl">
+                <!-- Header -->
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="flex items-center space-x-2.5">
+                        <div class="w-9 h-9 rounded-xl bg-cyan-950 border border-cyan-500/50 flex items-center justify-center text-cyan-400">
+                            <i data-lucide="brain" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center space-x-2">
+                                <h3 class="font-black text-white text-base sm:text-lg">AI Solution Engine Dossier</h3>
+                                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">${d.isFallback ? 'Deterministic Rule Engine' : (d.aiModel || 'Grounded AI')}</span>
+                            </div>
+                            <p class="text-xs text-slate-400 font-mono">Incident: <strong>${escapeFn(d.incidentId)}</strong></p>
+                        </div>
+                    </div>
+                    <button onclick="document.getElementById('ai-solution-dossier-modal').classList.add('hidden')" class="text-slate-400 hover:text-white p-1">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+
+                <!-- Tactical Grid ID & Grounded Summary Banner -->
+                <div class="bg-gradient-to-r from-slate-950 via-cyan-950/40 to-slate-950 p-4 rounded-xl border border-cyan-700/60 space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-mono text-xs font-bold text-amber-300 bg-amber-950 px-2.5 py-1 rounded border border-amber-800">
+                            TACTICAL GRID: ${escapeFn(d.tacticalGridId || 'TAC-PENDING')}
+                        </span>
+                        <span class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase badge-${(d.urgencyLevel || 'HIGH').toLowerCase()}">
+                            ${escapeFn(d.urgencyLevel)} (Confidence: ${Math.round((d.urgencyConfidence || 0.85) * 100)}%)
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-100 font-medium leading-relaxed">${escapeFn(d.summary)}</p>
+                    <div class="text-[11px] text-slate-400 flex items-center space-x-2 pt-1 font-mono">
+                        <span>📍 GPS: ${d.validatedLat ? d.validatedLat.toFixed(5) : '?'}, ${d.validatedLng ? d.validatedLng.toFixed(5) : '?'}</span>
+                        <span>•</span>
+                        <span>Sector: ${escapeFn(d.locationDescription || 'Field Sector')}</span>
+                    </div>
+                </div>
+
+                <!-- Grounded Supporting Factors -->
+                <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center space-x-1.5">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                        <span>Urgency Supporting Factors (Fact-Grounded)</span>
+                    </h4>
+                    <ul class="text-xs space-y-1.5 pl-1">
+                        ${factorsHtml}
+                    </ul>
+                </div>
+
+                <!-- Rescue Resource Calculations & Suitable Team -->
+                <div class="grid sm:grid-cols-2 gap-3.5">
+                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-purple-300 flex items-center space-x-1.5">
+                            <i data-lucide="truck" class="w-3.5 h-3.5"></i>
+                            <span>Recommended Rescue Squad</span>
+                        </h4>
+                        <div class="text-xs space-y-1.5">
+                            <p class="font-bold text-white">${escapeFn(d.suitableTeamCategory || 'General SAR')}</p>
+                            <p class="text-[11px] text-slate-300 leading-snug">${escapeFn(d.routingRequirements || 'Standard road network transit.')}</p>
+                            <div class="pt-1">
+                                <span class="text-[10px] font-mono text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">
+                                    Casualties: ~${d.peopleAffected || 1} Persons
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center space-x-1.5">
+                            <i data-lucide="package" class="w-3.5 h-3.5"></i>
+                            <span>Required Disaster Relief Items</span>
+                        </h4>
+                        <table class="w-full text-xs">
+                            <tbody>
+                                ${resourcesHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Chronological Tactical Action Steps -->
+                <div class="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center space-x-1.5">
+                        <i data-lucide="list-ordered" class="w-3.5 h-3.5"></i>
+                        <span>Recommended Tactical Response Steps</span>
+                    </h4>
+                    <div class="space-y-1.5">
+                        ${stepsHtml}
+                    </div>
+                </div>
+
+                <!-- Official NDMA/SDRF Safety SOP Guidelines -->
+                <div class="space-y-2">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center space-x-1.5">
+                        <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-amber-400"></i>
+                        <span>Authoritative Government Safety Guidance (NDMA SOP)</span>
+                    </h4>
+                    <div class="grid sm:grid-cols-2 gap-2">
+                        ${safetyGuidanceHtml}
+                    </div>
+                </div>
+
+                <!-- Operational Uncertainty & Missing Information -->
+                <div class="grid sm:grid-cols-2 gap-3.5 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                    <div class="space-y-1.5">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-amber-300">Missing Information Gaps</h4>
+                        <ul class="space-y-1">${missingInfoHtml}</ul>
+                    </div>
+                    <div class="space-y-1.5">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-orange-300">Uncertainty Disclosures</h4>
+                        <ul class="space-y-1">${uncertaintyHtml}</ul>
+                    </div>
+                </div>
+
+                <!-- Modal Actions -->
+                <div class="flex justify-between items-center pt-3 border-t border-slate-800">
+                    <button onclick="focusAuthorityMap(${d.validatedLat}, ${d.validatedLng}, '${escapeFn(d.incidentId)}'); document.getElementById('ai-solution-dossier-modal').classList.add('hidden')" class="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-800 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+                        <span>Focus Location on GIS Grid</span>
+                    </button>
+                    <button onclick="document.getElementById('ai-solution-dossier-modal').classList.add('hidden')" class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition">
+                        Close Dossier
+                    </button>
+                </div>
+            </div>
+        `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (err) {
+        modal.innerHTML = `
+            <div class="bg-slate-900 border border-red-800 rounded-2xl max-w-md w-full p-6 text-slate-200 space-y-4 shadow-2xl text-center">
+                <div class="w-12 h-12 rounded-xl bg-red-950 border border-red-700 text-red-400 flex items-center justify-center mx-auto">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+                <h3 class="text-base font-bold text-white">Assessment Unavailable</h3>
+                <p class="text-xs text-slate-400">${escapeFn(err.message || 'Unable to retrieve structured incident assessment.')}</p>
+                <button onclick="document.getElementById('ai-solution-dossier-modal').classList.add('hidden')" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 rounded-xl text-xs">
+                    Close
+                </button>
+            </div>
+        `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+
+async function promptDeclineTeam(incidentId) {
+    const reason = prompt('Enter operational reason for declining team assignment (e.g., Squad engaged on rescue, Road flooded/impassable, Specialized boat required):');
+    if (reason === null) return; // user cancelled
+
+    try {
+        showToast('Processing assignment decline and recalculating next eligible squad...', 'info');
+        const res = await api.post(`/api/incidents/${incidentId}/decline-team`, { reason: reason.trim() || 'Operational constraints' });
+        if (!res.success) throw new Error(res.message || 'Decline failed');
+
+        showToast('Assignment declined. Automated escalation triggered to next squad.', 'success');
+        await Promise.all([fetchIncidentsList(), fetchOverviewStats(), fetchRescueTeamsList()]);
+        if (currentInspectedIncident && currentInspectedIncident.id === incidentId) {
+            await inspectIncident(incidentId);
+        }
+    } catch (err) {
+        showToast(err.message || 'Failed to decline team assignment', 'error');
+    }
+}
+
+window.openAiSolutionDossier = openAiSolutionDossier;
+window.promptDeclineTeam = promptDeclineTeam;
 
 async function saveIncidentModalChanges(id) {
     const statusSelect = document.getElementById('modal-status-select');

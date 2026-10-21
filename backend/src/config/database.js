@@ -638,6 +638,39 @@ async function createTables() {
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN notification_status ${textType} DEFAULT 'IDLE'`); } catch (e) {}
     try { await run(`ALTER TABLE rescue_teams ADD COLUMN skills ${textType}`); } catch (e) {}
 
+    // 28. incident_assessments (Structured AI Solution Engine Analysis for SOS reports)
+    await run(`
+        CREATE TABLE IF NOT EXISTS incident_assessments (
+            id ${idType},
+            incident_id ${textType} UNIQUE NOT NULL,
+            tactical_grid_id ${textType} NOT NULL,
+            category ${textType} NOT NULL,
+            summary ${textType} NOT NULL,
+            validated_lat ${numType} NOT NULL,
+            validated_lng ${numType} NOT NULL,
+            location_description ${textType},
+            urgency_level ${textType} NOT NULL,
+            urgency_confidence ${intType} DEFAULT 85,
+            supporting_factors ${textType} NOT NULL,
+            people_affected ${intType} DEFAULT 1,
+            reported_hazards ${textType} NOT NULL,
+            resource_requirements ${textType} NOT NULL,
+            recommended_steps ${textType} NOT NULL,
+            verified_safety_guidance ${textType} NOT NULL,
+            suitable_team_category ${textType} NOT NULL,
+            routing_requirements ${textType} NOT NULL,
+            missing_information ${textType} NOT NULL,
+            uncertainty_flags ${textType} NOT NULL,
+            source_timestamps ${textType} NOT NULL,
+            ai_model ${textType} DEFAULT 'RULE_GROUNDED_ENGINE',
+            is_fallback ${intType} DEFAULT 0,
+            created_at ${textType} DEFAULT (${tsDefault}),
+            updated_at ${textType} DEFAULT (${tsDefault})
+        )
+    `);
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_assessments_inc ON incident_assessments(incident_id)`); } catch (e) {}
+    try { await run(`CREATE INDEX IF NOT EXISTS idx_assessments_grid ON incident_assessments(tactical_grid_id)`); } catch (e) {}
+
     // Migrations for incidents dispatch & lifecycle
     try { await run(`ALTER TABLE incidents ADD COLUMN dispatch_distance_type ${textType} DEFAULT 'road'`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN escalation_reason ${textType}`); } catch (e) {}
@@ -648,6 +681,22 @@ async function createTables() {
     try { await run(`ALTER TABLE incidents ADD COLUMN straight_line_distance_km ${numType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN dispatch_eta_text ${textType}`); } catch (e) {}
     try { await run(`ALTER TABLE incidents ADD COLUMN routing_engine ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN ai_solution_assessment_id ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE incidents ADD COLUMN corroborating_incident_ids ${textType}`); } catch (e) {}
+
+    // Migrations for notifications delivery tracking & resilience
+    try { await run(`ALTER TABLE notifications ADD COLUMN delivery_status ${textType} DEFAULT 'DELIVERED'`); } catch (e) {}
+    try { await run(`ALTER TABLE notifications ADD COLUMN retry_count ${intType} DEFAULT 0`); } catch (e) {}
+    try { await run(`ALTER TABLE notifications ADD COLUMN last_attempt_at ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE notifications ADD COLUMN failure_reason ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE notifications ADD COLUMN is_test ${intType} DEFAULT 0`); } catch (e) {}
+
+    // Migrations for rescue_teams assignment state machine
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN assignment_state ${textType} DEFAULT 'UNASSIGNED'`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN assigned_at ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN accepted_at ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN declined_at ${textType}`); } catch (e) {}
+    try { await run(`ALTER TABLE rescue_teams ADD COLUMN decline_reason ${textType}`); } catch (e) {}
 
     try { await run(`ALTER TABLE weather_reports ADD COLUMN forecast_json ${textType}`); } catch (e) {}
 

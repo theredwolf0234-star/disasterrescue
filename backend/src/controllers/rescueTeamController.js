@@ -377,6 +377,38 @@ async function acknowledgeDispatch(req, res, next) {
     }
 }
 
+// POST /api/rescue-teams/:id/decline
+async function declineDispatch(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { incidentId, reason } = req.body;
+
+        if (!incidentId) {
+            return res.status(400).json({
+                success: false,
+                message: 'incidentId is required to decline emergency dispatch.',
+                errorCode: 'VALIDATION_ERROR'
+            });
+        }
+
+        const { declineRescueTeamAssignment } = require('../services/dispatchEngine');
+        const result = await declineRescueTeamAssignment({
+            teamId: id,
+            incidentId,
+            reason: reason || 'Squad declined dispatch assignment',
+            responderId: req.user ? req.user.id : null
+        });
+
+        res.json({
+            success: true,
+            message: 'Dispatch declined. Escalating to alternate units.',
+            data: result
+        });
+    } catch (err) {
+        next(err);
+    }
+}
+
 // GET /api/rescue-teams/suitable?disasterType=...&lat=...&lng=...
 async function getSuitableTeams(req, res, next) {
     try {
@@ -446,6 +478,7 @@ module.exports = {
     updateTeamLocation,
     getTeamLocation,
     acknowledgeDispatch,
+    declineDispatch,
     getSuitableTeams,
     getTeamAssignments
 };

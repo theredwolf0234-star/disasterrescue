@@ -9,6 +9,7 @@ router.post('/', verifyToken, requireRoles(['AUTHORITY', 'ADMIN']), rescueTeamCo
 router.patch('/:id', verifyToken, requireRoles(['AUTHORITY', 'ADMIN', 'RESPONDER']), rescueTeamController.updateRescueTeam);
 router.patch('/:id/status', verifyToken, requireRoles(['AUTHORITY', 'ADMIN', 'RESPONDER']), rescueTeamController.updateRescueTeam);
 router.post('/:id/acknowledge', verifyToken, rescueTeamController.acknowledgeDispatch);
+router.post('/:id/decline', verifyToken, rescueTeamController.declineDispatch);
 router.post('/:id/location', verifyToken, requireRoles(['AUTHORITY', 'ADMIN', 'RESPONDER']), rescueTeamController.updateTeamLocation);
 router.get('/:id/location', verifyToken, rescueTeamController.getTeamLocation);
 router.get('/:id/assignments', verifyToken, rescueTeamController.getTeamAssignments);
